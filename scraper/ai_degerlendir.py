@@ -208,14 +208,14 @@ def gemini(istem: str, anahtar: str):
         log("Gemini model listesi alınamadı:", str(e).replace(anahtar, "***")[:120])
     adaylar += ["gemini-flash-latest", "gemini-2.5-flash"]
     son = None
-    for model in list(dict.fromkeys(adaylar))[:5]:
+    for model in list(dict.fromkeys(adaylar))[:8]:
         r = requests.post(
             f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={anahtar}",
             json={"contents": [{"parts": [{"text": istem}]}],
                   "generationConfig": {"temperature": 0.3, "responseMimeType": "application/json"}},
             timeout=ZAMAN_ASIMI,
         )
-        if r.status_code in (404, 400):
+        if r.status_code in (400, 402, 403, 404):  # model yok ya da ücretsiz planda kapalı: sıradakini dene
             son = f"{model}: {r.status_code} {r.text[:100]}"
             continue
         if r.status_code == 429:
