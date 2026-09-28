@@ -150,25 +150,45 @@ def tercih_et(adaylar: list[str], tercihler: list[str], filtre=None) -> str | No
     return sorted(uygun, reverse=True)[0] if uygun else None
 
 
+def _surum(ad: str) -> float:
+    m = re.search(r"gemini-(\d+(?:\.\d+)?)", ad)
+    return float(m.group(1)) if m else 0.0
+
+
 def gemini(istem: str, anahtar: str):
-    model = os.environ.get("GEMINI_MODEL")
-    if not model:
+    adaylar = [os.environ["GEMINI_MODEL"]] if os.environ.get("GEMINI_MODEL") else []
+    try:
         r = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={anahtar}&pageSize=200", timeout=30)
         r.raise_for_status()
+        yasak = ("lite", "image", "tts", "live", "audio", "embedding", "exp", "vision", "learnlm", "gemma", "thinking", "robotics", "computer")
         adlar = [m["name"].split("/")[-1] for m in r.json().get("models", [])
                  if "generateContent" in m.get("supportedGenerationMethods", [])]
-        yasak = ("lite", "image", "tts", "live", "audio", "embedding", "exp", "preview", "vision", "learnlm", "gemma")
-        model = tercih_et(adlar, ["gemini-2.5-flash", "gemini-2.0-flash"],
-                          lambda a: "flash" in a and not any(y in a for y in yasak)) or "gemini-2.5-flash"
-    r = requests.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={anahtar}",
-        json={"contents": [{"parts": [{"text": istem}]}],
-              "generationConfig": {"temperature": 0.3, "responseMimeType": "application/json"}},
-        timeout=ZAMAN_ASIMI,
-    )
-    r.raise_for_status()
-    parcalar = r.json()["candidates"][0]["content"]["parts"]
-    return model, "".join(p.get("text", "") for p in parcalar)
+        flash = [a for a in adlar if "flash" in a and not any(y in a for y in yasak)]
+        kararli = sorted([a for a in flash if "preview" not in a], key=_surum, reverse=True)
+        onizleme = sorted([a for a in flash if "preview" in a], key=_surum, reverse=True)
+        adaylar += kararli + onizleme
+    except Exception as e:
+        log("Gemini model listesi alınamadı:", str(e).replace(anahtar, "***")[:120])
+    adaylar += ["gemini-flash-latest", "gemini-2.5-flash"]
+    son = None
+    for model in list(dict.fromkeys(adaylar))[:5]:
+        r = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={anahtar}",
+            json={"contents": [{"parts": [{"text": istem}]}],
+                  "generationConfig": {"temperature": 0.3, "responseMimeType": "application/json"}},
+            timeout=ZAMAN_ASIMI,
+        )
+        if r.status_code in (404, 400):
+            son = f"{model}: {r.status_code} {r.text[:100]}"
+            continue
+        if r.status_code == 429:
+            time.sleep(30)
+            son = f"{model}: 429"
+            continue
+        r.raise_for_status()
+        parcalar = r.json()["candidates"][0]["content"]["parts"]
+        return model, "".join(p.get("text", "") for p in parcalar)
+    raise RuntimeError(f"Gemini hiçbir modelle çalışmadı ({son})")
 
 
 def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre, istem: str, json_modu=True):
@@ -186,6 +206,12 @@ def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre
     if json_modu:
         govde["response_format"] = {"type": "json_object"}
     r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
+    for _ in range(3):
+        if r.status_code != 429:
+            break
+        bekle = min(65, float(r.headers.get("retry-after") or 30) + 2)
+        time.sleep(bekle)
+        r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
     if r.status_code == 400 and json_modu:  # bazı modeller json modunu desteklemez
         govde.pop("response_format")
         r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
@@ -269,6 +295,9 @@ def mistral(istem, anahtar):
                          lambda a: a.endswith("-latest") and ("large" in a or "medium" in a), istem)
 
 
+# Ücretsiz katmanda dakikalık metin sınırı düşük olanlara hisseler küçük gruplar hâlinde gönderilir
+PARCA = {"groq": 8, "mistral": 15}
+
 SAGLAYICILAR = [
     ("gemini", "Gemini", "GEMINI_API_KEY", gemini),
     ("groq", "Llama (Groq)", "GROQ_API_KEY", groq),
@@ -329,12 +358,20 @@ def main() -> int:
             continue
         bas = time.time()
         try:
-            model, metin = fn(istem, anahtar)
-            try:
-                ham = json_ayikla(metin)
-            except Exception as e:
-                raise RuntimeError(f"JSON okunamadı ({e}); yanıt başı: {metin[:120]!r}")
-            kararlar = temizle(ham, hisseler)
+            kodlar = sorted(hisseler)
+            boy = PARCA.get(kimlik, len(kodlar))
+            kararlar, model = {}, ""
+            for i in range(0, len(kodlar), boy):
+                alt = {**snap, "hisseler": {k: hisseler[k] for k in kodlar[i:i + boy]}}
+                parca_istem = istem if boy >= len(kodlar) else istem_olustur(alt, news, outlook, temel)
+                model, metin = fn(parca_istem, anahtar)
+                try:
+                    ham = json_ayikla(metin)
+                except Exception as e:
+                    raise RuntimeError(f"JSON okunamadı ({e}); yanıt başı: {metin[:120]!r}")
+                kararlar.update(temizle(ham, hisseler))
+                if boy < len(kodlar) and i + boy < len(kodlar):
+                    time.sleep(20)
             if len(kararlar) < len(hisseler) * 0.5:
                 raise RuntimeError(f"eksik yanıt ({len(kararlar)} hisse)")
             for kod, k in kararlar.items():
