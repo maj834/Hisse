@@ -334,6 +334,8 @@ def mistral(istem, anahtar):
 
 # Ücretsiz katmanda dakikalık metin sınırı düşük olanlara hisseler küçük gruplar hâlinde gönderilir
 PARCA = {"groq": 8, "mistral": 15}
+# Günlük ücretsiz kotası dar olanlar her saat değil, N saatte bir çalışır (arada önceki analiz gösterilir)
+PERIYOT = {"groq": 2}
 
 SAGLAYICILAR = [
     ("gemini", "Gemini", "GEMINI_API_KEY", gemini),
@@ -392,6 +394,14 @@ def main() -> int:
     for kimlik, ad, env, fn in SAGLAYICILAR:
         anahtar = os.environ.get(env, "").strip()
         if not anahtar:
+            continue
+        onceki_ok = next((m for m in eski.get("modeller", []) if m.get("id") == kimlik and m.get("durum") in ("ok", "eski")), None)
+        if (onceki_ok and os.environ.get("GITHUB_EVENT_NAME") == "schedule"
+                and dt.datetime.now(IST).hour % PERIYOT.get(kimlik, 1) != 0):
+            for kod, h in eski_hisse.items():
+                if kimlik in h:
+                    cikti["hisseler"].setdefault(kod, {})[kimlik] = h[kimlik]
+            cikti["modeller"].append(onceki_ok)
             continue
         bas = time.time()
         try:
