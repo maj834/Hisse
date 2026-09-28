@@ -277,8 +277,8 @@ def haberleri_cek(eski: dict) -> dict:
 # ---------------------------------------------------------------- fonlar
 def fon_listesi() -> list[str]:
     try:
-        satirlar = (KOK / "fonlar.txt").read_text(encoding="utf-8").split()
-        return [s.strip().upper() for s in satirlar if s.strip() and not s.startswith("#")]
+        satirlar = (KOK / "fonlar.txt").read_text(encoding="utf-8").splitlines()
+        return [s.split()[0].upper() for s in satirlar if s.strip() and not s.strip().startswith("#")]
     except Exception:
         return ["AES"]
 
