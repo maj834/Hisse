@@ -334,8 +334,9 @@ def fonlari_cek(eski: dict) -> dict:
                 continue
             yeni.append({"k": kod, "ad": (x.get("fonUnvan") or "").strip(), "tur": (x.get("fonTurAciklama") or "").strip(),
                          "r": x.get("riskDegeri"),
-                         "g1a": _sayi(x.get("getiri1a")), "g3a": _sayi(x.get("getiri3a")), "g6a": _sayi(x.get("getiri6a")),
-                         "gyb": _sayi(x.get("getiriyb")), "g1y": _sayi(x.get("getiri1y")), "g3y": _sayi(x.get("getiri3y"))})
+                         **{a: (round(v, 2) if (v := _sayi(x.get(b))) is not None else None)
+                            for a, b in (("g1a", "getiri1a"), ("g3a", "getiri3a"), ("g6a", "getiri6a"),
+                                         ("gyb", "getiriyb"), ("g1y", "getiri1y"), ("g3y", "getiri3y"))}})
         if yeni:
             tum = sorted(yeni, key=lambda f: f["k"])
         else:

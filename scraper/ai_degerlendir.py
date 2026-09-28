@@ -224,7 +224,8 @@ def github_models(istem, anahtar, tercihler, filtre):
     except Exception:
         pass
     model = model or tercihler[0]
-    bas = {"Authorization": f"Bearer {anahtar}", "Accept": "application/vnd.github+json"}
+    bas = {"Authorization": f"Bearer {anahtar}", "Accept": "application/json", "Content-Type": "application/json",
+           "X-GitHub-Api-Version": "2022-11-28"}
     govde = {"model": model, "temperature": 0.3, "max_tokens": 4000,
              "messages": [{"role": "system", "content": "Yalnızca geçerli JSON döndür."}, {"role": "user", "content": istem}]}
     r = requests.post("https://models.github.ai/inference/chat/completions", headers=bas,
@@ -232,8 +233,11 @@ def github_models(istem, anahtar, tercihler, filtre):
     if r.status_code == 400:
         r = requests.post("https://models.github.ai/inference/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
     if not r.ok:
-        raise RuntimeError(f"{r.status_code} {r.text[:150]}")
-    return model, r.json()["choices"][0]["message"]["content"]
+        raise RuntimeError(f"{model} {r.status_code} {r.text[:150]}")
+    try:
+        return model, r.json()["choices"][0]["message"]["content"]
+    except Exception:
+        raise RuntimeError(f"{model} {r.status_code} yanıt okunamadı: {r.headers.get('content-type','')} {r.text[:150]!r}")
 
 
 def gpt(istem, anahtar):
@@ -315,7 +319,11 @@ def main() -> int:
         bas = time.time()
         try:
             model, metin = fn(istem, anahtar)
-            kararlar = temizle(json_ayikla(metin), hisseler)
+            try:
+                ham = json_ayikla(metin)
+            except Exception as e:
+                raise RuntimeError(f"JSON okunamadı ({e}); yanıt başı: {metin[:120]!r}")
+            kararlar = temizle(ham, hisseler)
             if len(kararlar) < len(hisseler) * 0.5:
                 raise RuntimeError(f"eksik yanıt ({len(kararlar)} hisse)")
             for kod, k in kararlar.items():
