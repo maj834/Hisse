@@ -4,12 +4,15 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.view.Window;
+import android.view.ViewGroup;
 import android.webkit.DownloadListener;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -46,6 +49,12 @@ public class MainActivity extends Activity {
         w.setStatusBarColor(Color.parseColor("#0A0F16"));
         w.setNavigationBarColor(Color.parseColor("#0A0F16"));
 
+        webKur();
+        sayfayiYukle();
+    }
+
+    /** WebView'i kurar. Tarayıcı motoru çökerse yeniden kurulur, uygulama kapanmaz. */
+    private void webKur() {
         web = new WebView(this);
         web.setBackgroundColor(Color.parseColor("#0A0F16"));
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
@@ -76,6 +85,22 @@ public class MainActivity extends Activity {
                 disaAc(u);
                 return true;
             }
+
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                // Tarayıcı motoru (ör. hafıza yetmediği için) kapandı: uygulamayı kapatma, sayfayı yeniden aç.
+                try {
+                    ViewGroup ust = (ViewGroup) view.getParent();
+                    if (ust != null) ust.removeView(view);
+                    view.destroy();
+                } catch (Throwable ignored) {
+                }
+                if (!isFinishing()) {
+                    webKur();
+                    sayfayiYukle();
+                }
+                return true;
+            }
         });
 
         web.setDownloadListener(new DownloadListener() {
@@ -84,18 +109,13 @@ public class MainActivity extends Activity {
                 disaAc(Uri.parse(url));
             }
         });
-
-        if (savedInstanceState != null) {
-            web.restoreState(savedInstanceState);
-        } else {
-            sayfayiYukle();
-        }
     }
 
     private int surum() {
         try {
-            return (int) getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();
-        } catch (Exception e) {
+            android.content.pm.PackageInfo p = getPackageManager().getPackageInfo(getPackageName(), 0);
+            return Build.VERSION.SDK_INT >= 28 ? (int) p.getLongVersionCode() : p.versionCode;
+        } catch (Throwable e) {
             return 0;
         }
     }
@@ -103,7 +123,7 @@ public class MainActivity extends Activity {
     private void disaAc(Uri u) {
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, u));
-        } catch (Exception ignored) {
+        } catch (Throwable ignored) {
         }
     }
 
@@ -128,7 +148,7 @@ public class MainActivity extends Activity {
                     }
                 }
                 c.disconnect();
-            } catch (Exception ignored) {
+            } catch (Throwable ignored) {
             }
             if (html == null && kayit.exists()) {
                 try (FileInputStream f = new FileInputStream(kayit)) {
@@ -138,6 +158,7 @@ public class MainActivity extends Activity {
             }
             final String sonuc = html;
             ana.post(() -> {
+                if (isFinishing() || isDestroyed() || web == null) return;
                 if (sonuc != null) {
                     web.loadDataWithBaseURL(TABAN, sonuc, "text/html", "utf-8", null);
                 } else {
@@ -156,16 +177,15 @@ public class MainActivity extends Activity {
         return b.toString("UTF-8");
     }
 
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        web.saveState(outState);
-    }
-
     /** Geri tuşu uygulamadan atmaz: önce uygulama içinde bir önceki ekrana döner. */
     @Override
     public void onBackPressed() {
+        if (web == null) {
+            finish();
+            return;
+        }
         web.evaluateJavascript("(window.hrBack?window.hrBack():false)", sonuc -> {
+            if (isFinishing() || isDestroyed()) return;
             if ("true".equals(sonuc)) return;
             if (web.canGoBack()) {
                 web.goBack();
@@ -184,12 +204,24 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        web.onResume();
+        if (web != null) web.onResume();
     }
 
     @Override
     protected void onPause() {
-        web.onPause();
+        if (web != null) web.onPause();
         super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (web != null) {
+            try {
+                web.destroy();
+            } catch (Throwable ignored) {
+            }
+            web = null;
+        }
+        super.onDestroy();
     }
 }
