@@ -74,6 +74,13 @@ HABER_SORGULARI = [
     ("Dünya", "Trump piyasalar petrol"),
     ("Dünya", "küresel piyasalar Fed faiz"),
     ("Ekonomi", "Merkez Bankası faiz enflasyon"),
+    ("Emtia", "petrol fiyatları Brent"),
+    ("Emtia", "altın fiyatları ons"),
+    ("Emtia", "gümüş fiyatı"),
+    ("Dünya", "Nasdaq teknoloji hisseleri yapay zeka"),
+    ("Dünya", "ABD borsaları S&P 500"),
+    ("Ekonomi", "dolar kuru TL"),
+    ("Fon", "yatırım fonları getiri"),
 ]
 
 AY = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]
@@ -243,9 +250,17 @@ def hisse_guncelle(kod: str, eski: dict | None, gunluk_de: bool) -> dict:
 
 
 # ---------------------------------------------------------------- haberler
+_sirket_sira = 0
+
+
 def haberleri_cek(eski: dict) -> dict:
+    global _sirket_sira
     items = {it["title"]: it for it in eski.get("items", [])}
-    for kat, sorgu in HABER_SORGULARI:
+    kodlar = list(HISSELER)
+    sirketler = [kodlar[(_sirket_sira + i) % len(kodlar)] for i in range(6)]
+    _sirket_sira = (_sirket_sira + 6) % len(kodlar)
+    sorgular = list(HABER_SORGULARI) + [("Şirket", f"{HISSELER[k][0]} hisse {k}") for k in sirketler]
+    for kat, sorgu in sorgular:
         url = f"https://news.google.com/rss/search?q={quote_plus(sorgu + ' when:2d')}&hl=tr&gl=TR&ceid=TR:tr"
         try:
             r = oturum.get(url, timeout=15)
@@ -254,7 +269,7 @@ def haberleri_cek(eski: dict) -> dict:
         except Exception as e:
             log("haber alınamadı", sorgu, e)
             continue
-        for it in list(kok.iter("item"))[:12]:
+        for it in list(kok.iter("item"))[:10]:
             baslik = (it.findtext("title") or "").strip()
             link = (it.findtext("link") or "").strip()
             kaynak = (it.findtext("source") or "").strip()
@@ -268,9 +283,24 @@ def haberleri_cek(eski: dict) -> dict:
                 continue
             if baslik not in items:
                 items[baslik] = {"title": baslik, "url": link, "kaynak": kaynak, "kat": kat}
+                if kat == "Şirket":
+                    kod = sorgu.split()[-1]
+                    ust = baslik.replace("i", "İ").upper()
+                    ad0 = HISSELER[kod][0].replace("i", "İ").upper()
+                    anahtar = {kod, ad0.split()[0] if ad0.split()[0] not in ("TÜRK", "İŞ", "DESTEK") else ad0}
+                    if kod == "THYAO":
+                        anahtar |= {"THY", "TÜRK HAVA YOLLARI"}
+                    if kod == "ISCTR":
+                        anahtar |= {"İŞ BANKASI", "İŞBANK"}
+                    if kod == "TRALT":
+                        anahtar |= {"KOZA ALTIN", "TÜRK ALTIN"}
+                    if any(a in ust for a in anahtar):
+                        items[baslik]["sym"] = kod
+                    else:
+                        items[baslik]["kat"] = "Borsa"
             items[baslik]["ts"] = int(t.timestamp())
             items[baslik]["t"] = kisa_tarih(t)
-    liste = sorted(items.values(), key=lambda x: x.get("ts", 0), reverse=True)[:40]
+    liste = sorted(items.values(), key=lambda x: x.get("ts", 0), reverse=True)[:120]
     return {"updatedAt": simdi().isoformat(timespec="seconds"), "kaynak": "Google Haberler", "items": liste}
 
 

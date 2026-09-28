@@ -76,9 +76,38 @@ def ozet_satiri(kod, h) -> str:
     d20 = (last / c[-21] - 1) * 100 if len(c) > 21 else 0
     hi20 = max((r[2] for r in g[-20:]), default=last)
     lo20 = min((r[3] for r in g[-20:]), default=last)
+    hacim = [r[5] for r in g if r[5]]
+    hac_oran = (hacim[-1] / sma(hacim[:-1], 20)) if len(hacim) > 5 and sma(hacim[:-1], 20) else 0
+    hi60 = max((r[2] for r in g[-60:]), default=last)
+    lo60 = min((r[3] for r in g[-60:]), default=last)
+    ema12 = ema26 = c[0] if c else last
+    for v in c:
+        ema12 = ema12 + (v - ema12) * 2 / 13
+        ema26 = ema26 + (v - ema26) * 2 / 27
     return (f"{kod} ({h.get('ad','')}, {h.get('sektor','')}): son {last:g} TL, bugün {deg:+.2f}%, 5 gün {d5:+.1f}%, "
             f"20 gün {d20:+.1f}%, SMA10 {sma(c,10):.2f}, SMA20 {sma(c,20):.2f}, RSI14 {rsi(c):.0f}, "
-            f"ATR {atr(g):.2f}, 20g düşük/yüksek {lo20:g}/{hi20:g}")
+            f"MACD {'pozitif' if ema12 > ema26 else 'negatif'}, ATR {atr(g):.2f}, 20g düşük/yüksek {lo20:g}/{hi20:g}, "
+            f"3 ay düşük/yüksek {lo60:g}/{hi60:g}, hacim ortalamanın {hac_oran:.1f} katı")
+
+
+ALIAS = {"AEFES": ["EFES"], "AKBNK": ["AKBANK"], "ASELS": ["ASELSAN", "SAVUNMA"], "BIMAS": ["BİM"], "EKGYO": ["EMLAK KONUT"],
+         "ENKAI": ["ENKA"], "EREGL": ["ERDEMİR", "EREĞLİ", "ÇELİK"], "FROTO": ["FORD OTOSAN", "OTOMOTİV"], "GARAN": ["GARANTİ"],
+         "GUBRF": ["GÜBRETAŞ", "GÜBRE"], "ISCTR": ["İŞ BANKASI", "İŞBANK"], "KCHOL": ["KOÇ"], "TRALT": ["KOZA", "ALTIN"],
+         "KRDMD": ["KARDEMİR", "ÇELİK"], "MGROS": ["MİGROS"], "PETKM": ["PETKİM"], "SAHOL": ["SABANCI"], "SASA": ["SASA"],
+         "SISE": ["ŞİŞECAM"], "TAVHL": ["TAV", "HAVALİMANI"], "TCELL": ["TURKCELL"], "THYAO": ["THY", "TÜRK HAVA YOLLARI"],
+         "TOASO": ["TOFAŞ", "OTOMOTİV"], "TTKOM": ["TÜRK TELEKOM"], "TUPRS": ["TÜPRAŞ", "PETROL", "BRENT"],
+         "VAKBN": ["VAKIFBANK"], "YKBNK": ["YAPI KREDİ"], "PGSUS": ["PEGASUS"], "ASTOR": ["ASTOR"], "DSTKF": ["FAKTORİNG"]}
+
+
+def ilgili_haber(kod, news, n=2):
+    sonuc = []
+    for it in news.get("items") or []:
+        b = " " + re.sub(r"[^A-ZÇĞİÖŞÜ0-9]+", " ", it.get("title", "").replace("i", "İ").upper()) + " "
+        if it.get("sym") == kod or any(f" {w} " in b for w in [kod] + ALIAS.get(kod, [])):
+            sonuc.append(it.get("title", "")[:110])
+        if len(sonuc) >= n:
+            break
+    return sonuc
 
 
 def temel_ek(kod, temel) -> str:
@@ -103,7 +132,11 @@ def temel_ek(kod, temel) -> str:
 def istem_olustur(snap, news, outlook, temel=None) -> str:
     temel = temel or {}
     hisseler = snap.get("hisseler", {})
-    satirlar = "\n".join(ozet_satiri(k, h) + temel_ek(k, temel) for k, h in sorted(hisseler.items()) if h.get("g"))
+    def satir(k, h):
+        s = ozet_satiri(k, h) + temel_ek(k, temel)
+        hb = ilgili_haber(k, news)
+        return s + (" | Haber: " + " / ".join(hb) if hb else "")
+    satirlar = "\n".join(satir(k, h) for k, h in sorted(hisseler.items()) if h.get("g"))
     basliklar = "\n".join(f"- {n.get('t','')}: {n.get('title','')}" for n in (news.get("items") or [])[:25])
     gundem = ""
     if outlook.get("olaylar"):
@@ -111,8 +144,12 @@ def istem_olustur(snap, news, outlook, temel=None) -> str:
     return f"""Sen Borsa İstanbul'u takip eden deneyimli bir analistsin. Bugün {dt.datetime.now(IST):%d.%m.%Y %H:%M}.
 Aşağıda BIST 30 hisselerinin güncel teknik verileri, son çeyrek finansalları (varsa) ve son haber başlıkları var. Teknik görünümü, şirketin finansal durumunu ve haberleri birlikte değerlendir. Her hisse için 1 haftalık vadede
 karar ver: "AL", "TUT" ya da "SAT". Gerçekçi ol: her hisseye AL deme, zayıf olanlara SAT de.
-Her hisse için 1 hafta içinde ulaşabileceği gerçekçi bir hedef fiyat ver (genellikle son fiyatın ±%10'u içinde, ATR'yi dikkate al).
-Gerekçe en fazla 18 kelime, Türkçe, teknik veya habere dayalı somut olsun.
+Karar verirken şunları birlikte tart: trend (fiyatın ortalamalara göre yeri, MACD), momentum (RSI; 30 altı aşırı satım, 70 üstü aşırı alım),
+destek/direnç (20 gün ve 3 ay aralığı), hacim teyidi, şirketin son çeyrek finansalları ve hisseye özel haberler ile genel gündem.
+Tek bir göstergeye dayanma; sinyaller çelişiyorsa TUT de ve güveni düşük tut.
+Her hisse için 1 hafta içinde ulaşabileceği gerçekçi bir hedef fiyat ver (genellikle son fiyatın ±%8'i içinde, günlük oynaklığı (ATR) dikkate al;
+AL için hedef son fiyatın üstünde, SAT için altında olsun).
+Gerekçe en fazla 18 kelime, Türkçe; somut bir veri ya da haberi ansın.
 
 Hisseler:
 {satirlar}

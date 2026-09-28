@@ -201,6 +201,13 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 .frow .name{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .update{display:flex;flex-direction:column;gap:2px;margin-top:10px;padding:14px 16px;border-radius:14px;background:var(--blue);color:#fff;text-decoration:none}
 .update span{font-size:13px;opacity:.9}
+.star{color:var(--hold);margin-right:5px}
+.favbtn{font-size:20px;color:var(--muted)}.favbtn.on{color:var(--hold)}
+.nw.fav b{color:var(--ink)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:9px 14px;border-radius:999px;background:var(--s1);border:1px solid var(--line);font-size:14px;font-weight:600;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--s3);color:var(--ink);border-color:var(--s3)}
 .disc{font-size:12px;color:var(--faint);text-align:center;padding:8px 12px 0}
 </style>
 </head>
@@ -254,6 +261,9 @@ const RAW=(dal,yol)=>`https://raw.githubusercontent.com/${REPO}/${dal}/${yol}?t=
 const tvUrl=k=>"https://www.tradingview.com/chart/?symbol=BIST%3A"+encodeURIComponent(k);
 const T=v=>Date.parse(v||"")||0;
 
+let FAV=store.get("fav",[]);
+const isFav=k=>FAV.includes(k);
+function toggleFav(k){FAV=isFav(k)?FAV.filter(x=>x!==k):[...FAV,k];store.set("fav",FAV)}
 let SNAP=seed("seed-snap"),NEWS=seed("seed-news"),OUT=seed("seed-outlook"),FUNDS=seed("seed-funds"),AI=seed("seed-ai"),TEMEL=seed("seed-temel");
 let ALL=[],BY={},cur=null,tab="piyasa";
 
@@ -394,23 +404,27 @@ function renderMarket(){
     <p class="xs faint" style="margin-top:10px">${aiOk?aiOk+" yapay zekâ, Claude ve teknik analizin ortak kararı":"Claude ve teknik analizin ortak kararı"}</p>
   </div>
   <input class="search" id="q" type="search" placeholder="Hisse ya da şirket ara" value="${esc(q)}" aria-label="Hisse ara">
-  <div class="seg" id="filt">${[["all","Tümü"],["up","Yükselen"],["down","Düşen"],["al","AL"],["sat","SAT"]].map(([k,l])=>`<button data-f="${k}" aria-pressed="${k===filt}">${l}</button>`).join("")}</div>
+  ${FAV.filter(k=>BY[k]).length?`<div class="card" style="padding-bottom:6px"><div class="card-h" style="margin-bottom:4px"><h2>★ Favorilerim</h2><span class="xs muted">${FAV.filter(k=>BY[k]).length} hisse</span></div><div class="list" style="border:0;background:none" id="favrows"></div></div>`:""}
+  <div class="seg" id="filt">${[["all","Tümü"],["fav","★"],["up","Yükselen"],["down","Düşen"],["al","AL"],["sat","SAT"]].map(([k,l])=>`<button data-f="${k}" aria-pressed="${k===filt}">${l}</button>`).join("")}</div>
   <div class="list" id="rows"></div>
   <p class="disc">Fiyatlar yaklaşık 15 dk gecikmelidir. Kararlar ve hedefler yatırım tavsiyesi değildir.</p>`;
   renderRows();
   $("#q").addEventListener("input",e=>{q=e.target.value;renderRows()});
   $("#filt").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(!b)return;filt=b.dataset.f;store.set("filt",filt);[...$("#filt").children].forEach(x=>x.setAttribute("aria-pressed",x===b));renderRows()});
 }
+function rowHtml(a){const c=consensus(votes(a.k)).karar;return `<button class="row" data-k="${a.k}">
+    <span style="min-width:0"><span class="code">${isFav(a.k)?`<span class="star">★</span>`:""}${a.k}</span><span class="ai-dot pill ${kCls(c)} ${kCls(c)}">${c}</span><span class="name">${esc(a.s.ad)}</span></span>
+    ${spark(a)}
+    <span class="r"><span class="px">${px(a.last)}</span><span class="ch ${cls(a.ch)} ${cls(a.ch)}">${pct(a.ch)}</span></span></button>`}
 function renderRows(){
+  const fr=$("#favrows");if(fr)fr.innerHTML=FAV.filter(k=>BY[k]).map(k=>rowHtml(BY[k]).replace('class="row"','class="row" style="padding-inline:0"')).join("");
   const t=q.trim().toLocaleLowerCase("tr");
   let arr=ALL.filter(a=>!t||a.k.toLocaleLowerCase("tr").includes(t)||a.s.ad.toLocaleLowerCase("tr").includes(t));
-  if(filt==="up")arr=arr.filter(a=>a.ch>0).sort((x,y)=>y.ch-x.ch);
+  if(filt==="fav")arr=arr.filter(a=>isFav(a.k));
+  else if(filt==="up")arr=arr.filter(a=>a.ch>0).sort((x,y)=>y.ch-x.ch);
   else if(filt==="down")arr=arr.filter(a=>a.ch<0).sort((x,y)=>x.ch-y.ch);
   else if(filt==="al"||filt==="sat"){const w=filt==="al"?"AL":"SAT";arr=arr.map(a=>({a,c:consensus(votes(a.k))})).filter(o=>o.c.karar===w).sort((x,y)=>y.c.c[w]-x.c.c[w]).map(o=>o.a)}
-  $("#rows").innerHTML=arr.map(a=>{const c=consensus(votes(a.k)).karar;return `<button class="row" data-k="${a.k}">
-    <span style="min-width:0"><span class="code">${a.k}</span><span class="ai-dot pill ${kCls(c)} ${kCls(c)}">${c}</span><span class="name">${esc(a.s.ad)}</span></span>
-    ${spark(a)}
-    <span class="r"><span class="px">${px(a.last)}</span><span class="ch ${cls(a.ch)} ${cls(a.ch)}">${pct(a.ch)}</span></span></button>`}).join("")||`<p class="muted" style="padding:18px">Eşleşen hisse yok.</p>`;
+  $("#rows").innerHTML=arr.map(rowHtml).join("")||`<p class="muted" style="padding:18px">${filt==="fav"?"Henüz favori hisse yok. Hisse sayfasındaki ☆ ile ekle.":"Eşleşen hisse yok."}</p>`;
 }
 $("#p-piyasa").addEventListener("click",e=>{const b=e.target.closest(".row[data-k]");if(b)openDetail(b.dataset.k)});
 
@@ -425,6 +439,7 @@ function openDetail(k,keepScroll,fromPop){
   const aiNames=(AI.modeller||[]).filter(m=>m.durum!=="hata").map(m=>m.ad);
   $("#p-detay").innerHTML=`
   <div class="dtop"><button class="back" id="back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Piyasa</button><span class="sp"></span>
+    <button class="iconbtn favbtn ${isFav(k)?"on":""}" id="favbtn" aria-label="${isFav(k)?"Favorilerden çıkar":"Favorilere ekle"}">${isFav(k)?"★":"☆"}</button>
     <a class="iconbtn" href="${tvUrl(k)}" target="_blank" rel="noopener" aria-label="TradingView'da aç"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a></div>
   <div class="price-block">
     <div class="nm">${a.k} · ${esc(a.s.ad)} · ${esc(a.s.sektor)}</div>
@@ -498,6 +513,7 @@ function openDetail(k,keepScroll,fromPop){
   if(!keepScroll)window.scrollTo(0,0);
   drawChart();
   $("#back").onclick=goBack;
+  $("#favbtn").onclick=()=>{toggleFav(k);const on=isFav(k);const b=$("#favbtn");b.textContent=on?"★":"☆";b.classList.toggle("on",on);b.setAttribute("aria-label",on?"Favorilerden çıkar":"Favorilere ekle");renderMarket();renderNews()};
   $("#rng").onclick=e=>{const b=e.target.closest("[data-r]");if(!b)return;range=b.dataset.r;store.set("rng",range);[...$("#rng").children].forEach(x=>x.setAttribute("aria-pressed",x===b));drawChart()};
   $("#mode").onclick=()=>{mode=mode==="mum"?"line":"mum";store.set("mode",mode);if(mode==="mum"&&range==="gun"){range="1a";store.set("rng",range)}openDetail(k,true)};
   const ab=$("#askBtn");if(ab)ab.onclick=()=>{asked=true;store.set("asked",true);$("#ask").hidden=true;$("#answer").hidden=false};
@@ -526,16 +542,29 @@ function fmtTime(iso){const t=T(iso);if(!t)return "";const d=new Date(t);return 
 
 /* haberler */
 const ALIAS={AEFES:["EFES"],AKBNK:["AKBANK"],ASELS:["ASELSAN"],BIMAS:["BİM"],EKGYO:["EMLAK KONUT"],ENKAI:["ENKA"],EREGL:["ERDEMİR","EREĞLİ"],FROTO:["FORD OTOSAN"],GARAN:["GARANTİ"],GUBRF:["GÜBRETAŞ"],ISCTR:["İŞ BANKASI","İŞBANK"],KCHOL:["KOÇ HOLDİNG"],TRALT:["KOZA","TÜRK ALTIN"],KRDMD:["KARDEMİR"],MGROS:["MİGROS"],PETKM:["PETKİM"],SAHOL:["SABANCI"],SASA:["SASA"],SISE:["ŞİŞECAM"],TAVHL:["TAV"],TCELL:["TURKCELL"],THYAO:["THY","TÜRK HAVA YOLLARI"],TOASO:["TOFAŞ"],TTKOM:["TÜRK TELEKOM"],TUPRS:["TÜPRAŞ"],VAKBN:["VAKIFBANK"],YKBNK:["YAPI KREDİ"],PGSUS:["PEGASUS"],ASTOR:["ASTOR"],DSTKF:["DESTEK FAKTORİNG","DESTEK FİNANS"]};
-function hits(title){const t=" "+String(title).toLocaleUpperCase("tr").replace(/[^A-ZÇĞİÖŞÜ0-9]+/g," ")+" ";return ALL.filter(a=>[a.k,...(ALIAS[a.k]||[])].some(w=>t.includes(" "+w+" "))).map(a=>a.k)}
-function newsFor(k){return (NEWS.items||[]).filter(n=>hits(n.title).includes(k))}
+const up=s=>" "+String(s).toLocaleUpperCase("tr").replace(/[^A-ZÇĞİÖŞÜ0-9&]+/g," ")+" ";
+function hits(title,n){const t=up(title);const r=ALL.filter(a=>[a.k,...(ALIAS[a.k]||[])].some(w=>t.includes(" "+w+" "))).map(a=>a.k);if(n&&n.sym&&BY[n.sym]&&!r.includes(n.sym))r.unshift(n.sym);return r}
+function newsFor(k){return (NEWS.items||[]).filter(n=>hits(n.title,n).includes(k))}
+// Fonun adı/türünden ilgili haber konuları
+const KONU=[[/PETROL|ENERJİ/,["PETROL","BRENT","OPEC","ENERJİ"]],[/ALTIN|KIYMETLİ MADEN/,["ALTIN","ONS"]],[/GÜMÜŞ|KIYMETLİ MADEN/,["GÜMÜŞ"]],
+  [/TEKNOLOJİ|BİLİŞİM/,["TEKNOLOJİ","YAPAY ZEKA","NASDAQ","ÇİP"]],[/YABANCI|ABD|GLOBAL|DÜNYA/,["NASDAQ","S&P","ABD","FED","WALL STREET"]],
+  [/HİSSE|BIST|ENDEKS/,["BORSA İSTANBUL","BIST","BORSA"]],[/PARA PİYASASI|BORÇLANMA|KİRA SERTİFİKA|KATILIM|TAHVİL|BONO/,["FAİZ","TCMB","MERKEZ BANKASI","ENFLASYON"]],
+  [/EUROBOND|DÖVİZ|DOLAR|EURO/,["DOLAR","EURO","KUR"]],[/BANKA/,["BANKA"]],[/SAVUNMA/,["SAVUNMA","ASELSAN"]]];
+function fundTopics(f){const s=up((f.ad||"")+" "+(f.tur||"")+" "+(f.kategori||""));const w=new Set();KONU.forEach(([re,ks])=>{if(re.test(s))ks.forEach(k=>w.add(k))});if(!w.size)["FON","BORSA"].forEach(k=>w.add(k));return [...w]}
+function newsForFund(k){const f=fInfo(k),ws=fundTopics(f);return (NEWS.items||[]).filter(n=>{const t=up(n.title);return t.includes(" "+k+" ")||ws.some(w=>t.includes(" "+w+" ")||(w.length>5&&t.includes(w)))})}
+const GENEL=new Set(["BORSA","BORSA İSTANBUL","BIST","FON","ABD","FED","S&P","WALL STREET"]);
+function favNews(n){const h=hits(n.title,n).filter(isFav);const t=up(n.title);const fs=(typeof myF!=="undefined"&&myF?myF:[]).filter(k=>t.includes(" "+k+" ")||fundTopics(fInfo(k)).filter(w=>!GENEL.has(w)).some(w=>t.includes(" "+w+" ")));return [...h,...fs]}
 function ago(n){if(n.ts){const m=Math.round((Date.now()/1000-n.ts)/60);if(m<60)return m+" dk önce";if(m<1440)return Math.floor(m/60)+" sa önce";}return n.t||""}
-function newsRow(n){const h=hits(n.title);return `<a class="nw" href="${esc(n.url)}" target="_blank" rel="noopener"><b>${esc(n.title)}</b><span class="m">${n.kat?`<span class="kat">${esc(n.kat)}</span>`:""}<span>${esc(n.kaynak||"")}</span><span>${esc(ago(n))}</span>${h.map(k=>`<span class="tag">${k}</span>`).join("")}</span></a>`}
+function newsRow(n,fv){const h=hits(n.title,n);fv=fv||[];return `<a class="nw${fv.length?" fav":""}" href="${esc(n.url)}" target="_blank" rel="noopener"><b>${fv.length?`<span class="star">★</span>`:""}${esc(n.title)}</b><span class="m">${n.kat?`<span class="kat">${esc(n.kat)}</span>`:""}<span>${esc(n.kaynak||"")}</span><span>${esc(ago(n))}</span>${h.map(k=>`<span class="tag">${k}</span>`).join("")}</span></a>`}
 let nf2=store.get("nf","all");
 function renderNews(){
-  const kats=["all",...new Set((NEWS.items||[]).map(n=>n.kat).filter(Boolean))];
-  const list=(NEWS.items||[]).filter(n=>nf2==="all"||n.kat===nf2);
-  $("#p-haber").innerHTML=`<div class="seg" id="nf">${kats.map(k=>`<button data-n="${esc(k)}" aria-pressed="${k===nf2}">${k==="all"?"Tümü":esc(k)}</button>`).join("")}</div>
-  <div class="card" style="padding-block:4px"><div class="news">${list.map(newsRow).join("")||`<p class="muted" style="padding:14px 0">Bu kategoride haber yok.</p>`}</div></div>`;
+  const kats=["all","fav",...new Set((NEWS.items||[]).map(n=>n.kat).filter(Boolean))];
+  const all=(NEWS.items||[]).map(n=>({n,fv:favNews(n)}));
+  const list=all.filter(o=>nf2==="all"||(nf2==="fav"?o.fv.length:o.n.kat===nf2));
+  const favs=nf2==="all"?list.filter(o=>o.fv.length):[],rest=nf2==="all"?list.filter(o=>!o.fv.length):list;
+  $("#p-haber").innerHTML=`<div class="chips" id="nf">${kats.map(k=>`<button class="chip" data-n="${esc(k)}" aria-pressed="${k===nf2}">${k==="all"?"Tümü":k==="fav"?"★ Favorilerim":esc(k)}</button>`).join("")}</div>
+  ${favs.length?`<div class="card" style="padding-block:4px"><div class="card-h" style="margin:12px 0 0"><h2 style="font-size:15px">★ Favorilerini ilgilendiren</h2><span class="xs muted">${favs.length} haber</span></div><div class="news">${favs.map(o=>newsRow(o.n,o.fv)).join("")}</div></div>`:""}
+  <div class="card" style="padding-block:4px"><div class="news">${rest.map(o=>newsRow(o.n,o.fv)).join("")||`<p class="muted" style="padding:14px 0">${nf2==="fav"?"Favori hisse ya da takip ettiğin fonlarla ilgili haber yok. Hisse sayfasındaki ☆ ile favori ekleyebilirsin.":"Bu kategoride haber yok."}</p>`}</div></div>`;
   $("#nf").onclick=e=>{const b=e.target.closest("[data-n]");if(!b)return;nf2=b.dataset.n;store.set("nf",nf2);renderNews()};
 }
 
@@ -609,6 +638,7 @@ function openFund(k,noPush){
     <div class="ratios" style="margin:0;grid-template-columns:repeat(3,1fr)">${[["1 ay",g.g1a],["3 ay",g.g3a],["6 ay",g.g6a],["Yılbaşından",g.gyb],["1 yıl",g.g1y],["3 yıl",g.g3y]].map(([l,v])=>`<div><span>${l}</span><b>${gp(v)}</b></div>`).join("")}</div></div>
   ${f.buyukluk||f.yatirimci||f.r?`<div class="card"><div class="kv">${f.buyukluk?`<div><span>Fon büyüklüğü</span><b>${nf(f.buyukluk/1e9,2)} Mr TL</b></div>`:""}${f.yatirimci?`<div><span>Yatırımcı</span><b>${Number(f.yatirimci).toLocaleString("tr-TR")}</b></div>`:""}${f.r?`<div><span>Risk değeri (1-7)</span><b>${esc(f.r)}</b></div>`:""}${f.siralama&&f.kategoriSayi?`<div><span>Kategorisinde sırası</span><b>${esc(f.siralama)} / ${esc(f.kategoriSayi)}</b></div>`:""}</div></div>`:""}
   ${s.length>2?"":`<p class="small muted" style="text-align:center">Fiyat grafiği, depodaki fonlar.txt listesindeki fonlar için çekilir.</p>`}
+  ${(()=>{const nw=newsForFund(k).slice(0,6);return nw.length?`<div class="card"><div class="card-h"><h2>Bu fonu etkileyebilecek haberler</h2></div><p class="xs muted" style="margin:-6px 0 6px">Konular: ${fundTopics(f).map(w=>w.toLocaleLowerCase("tr")).join(", ")}</p><div class="news">${nw.map(n=>newsRow(n)).join("")}</div></div>`:""})()}
   <a class="btn ghost" href="https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(k)}" target="_blank" rel="noopener">TEFAS'ta aç</a>
   <p class="disc">Geçmiş getiri gelecekteki getiriyi göstermez. Yatırım tavsiyesi değildir.</p>`;
   $("#fback").onclick=goBack;
@@ -629,7 +659,7 @@ window.hrBack=function(){const s=history.state;if(s&&s.v&&s.v!=="piyasa"){histor
 
 /* ================= yeni sürüm uyarısı ================= */
 (function(){const m=navigator.userAgent.match(/HisseRadarApp\/(\d+)/);if(!m)return;const mine=+m[1];
-  fetch("https://api.github.com/repos/maj834/Hisse/releases/latest",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;const n=+((d.tag_name||"").split(".").pop()||0);if(n>mine){const b=document.createElement("a");b.className="update";b.href="https://github.com/maj834/Hisse/releases/latest/download/HisseRadar.apk";b.innerHTML=`<b>Yeni sürüm hazır (1.${n})</b><span>Dokun, indir ve kur. Verilerin silinmez.</span>`;document.querySelector("main").prepend(b)}}).catch(()=>{})})();
+  fetch("https://api.github.com/repos/maj834/Hisse/releases/latest",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;const n=+((d.tag_name||"").split(".").pop()||0);if(n>mine){const b=document.createElement("a");b.className="update";b.href="https://github.com/maj834/Hisse/releases/latest";b.innerHTML=`<b>Yeni güncelleme var · 1.${n}</b><span>Dokun, güncelleme sayfasında HisseRadar.apk'yı indirip kur. Favorilerin silinmez.</span>`;document.querySelector("main").prepend(b)}}).catch(()=>{})})();
 
 /* ================= canlılık ================= */
 function isOpen(){const n=new Date(),d=n.getUTCDay(),m=n.getUTCHours()*60+n.getUTCMinutes();return d>=1&&d<=5&&m>=420&&m<=915}
