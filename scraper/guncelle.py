@@ -119,7 +119,7 @@ HATALAR: list[str] = []
 
 
 def log(*a):
-    if a and str(a[0]).startswith(("hata", "haber alınamadı", "fon alınamadı", "günlük alınamadı", "push")):
+    if a and str(a[0]).startswith(("hata", "haber alınamadı", "fon alınamadı", "günlük alınamadı", "push", "piyasa alınamadı", "geçmiş alınamadı")):
         HATALAR.append(" ".join(str(x) for x in a)[:300])
     print(dt.datetime.now(IST).strftime("%H:%M:%S"), *a, flush=True)
 
@@ -304,6 +304,86 @@ def haberleri_cek(eski: dict) -> dict:
     return {"updatedAt": simdi().isoformat(timespec="seconds"), "kaynak": "Google Haberler", "items": liste}
 
 
+
+# ---------------------------------------------------------------- tüm BIST hisseleri
+TV_SUTUN = ["name", "description", "close", "change", "volume", "sector", "market_cap_basic", "Recommend.All",
+            "RSI", "Perf.W", "Perf.1M", "Perf.3M", "high", "low", "Perf.YTD"]
+
+
+def _yuvarla(v, n=2):
+    return round(v, n) if isinstance(v, (int, float)) else None
+
+
+def tum_hisseler(eski: dict) -> dict:
+    """Borsa İstanbul'daki bütün hisseler tek istekte (TradingView tarayıcısı)."""
+    govde = {"filter": [{"left": "type", "operation": "equal", "right": "stock"},
+                        {"left": "exchange", "operation": "equal", "right": "BIST"}],
+             "markets": ["turkey"], "columns": TV_SUTUN, "range": [0, 1500],
+             "sort": {"sortBy": "market_cap_basic", "sortOrder": "desc"}}
+    try:
+        r = yahoo_oturum.post("https://scanner.tradingview.com/turkey/scan", json=govde, timeout=30,
+                              headers={"Content-Type": "application/json", "Origin": "https://www.tradingview.com",
+                                       "Referer": "https://www.tradingview.com/"})
+        if r.status_code != 200:
+            raise RuntimeError(f"{r.status_code} {r.text[:120]}")
+        satirlar = []
+        for x in r.json().get("data", []):
+            d = dict(zip(TV_SUTUN, x.get("d", [])))
+            kod = str(d.get("name") or "").upper()
+            if not kod or not isinstance(d.get("close"), (int, float)):
+                continue
+            satirlar.append([kod, (d.get("description") or "").strip(), d["close"], _yuvarla(d.get("change")),
+                             int(d.get("volume") or 0), d.get("sector") or "", int(d.get("market_cap_basic") or 0),
+                             _yuvarla(d.get("Recommend.All"), 3), _yuvarla(d.get("RSI"), 1), _yuvarla(d.get("Perf.W")),
+                             _yuvarla(d.get("Perf.1M")), _yuvarla(d.get("Perf.3M")), d.get("high"), d.get("low"),
+                             _yuvarla(d.get("Perf.YTD"))])
+        if len(satirlar) < 100:
+            raise RuntimeError(f"yalnız {len(satirlar)} hisse geldi")
+        return {"updatedAt": simdi().isoformat(timespec="seconds"), "kaynak": "TradingView (yaklaşık 15 dk gecikmeli)",
+                "sutun": ["k", "ad", "fiyat", "deg", "hacim", "sektor", "pd", "tv", "rsi", "h1", "a1", "a3", "yuk", "dus", "yb"],
+                "hisseler": satirlar}
+    except Exception as e:
+        log("piyasa alınamadı", e)
+        return eski
+
+
+def gecmisleri_cek(kodlar: list[str], eski: dict) -> dict:
+    """Bütün hisselerin son 3 aylık günlük kapanışları (Yahoo spark, 20'şerli istek)."""
+    yahoo_isit()
+    g = dict(eski.get("g", {}))
+    hata = 0
+    for i in range(0, len(kodlar), 20):
+        parca = kodlar[i:i + 20]
+        semboller = ",".join(f"{k}.IS" for k in parca)
+        try:
+            veri = None
+            for host in ("query1.finance.yahoo.com", "query2.finance.yahoo.com"):
+                r = yahoo_oturum.get(f"https://{host}/v8/finance/spark?symbols={semboller}&range=3mo&interval=1d",
+                                     timeout=20)
+                if r.status_code == 200:
+                    veri = r.json()
+                    break
+                time.sleep(2)
+            if veri is None:
+                raise RuntimeError(f"spark {r.status_code}")
+            for sem, v in veri.items():
+                if not isinstance(v, dict):
+                    continue
+                ts, kap = v.get("timestamp") or [], v.get("close") or []
+                seri = []
+                for t, c in zip(ts, kap):
+                    if isinstance(c, (int, float)):
+                        seri.append([dt.datetime.fromtimestamp(t, IST).strftime("%Y-%m-%d"), round(c, 4)])
+                if len(seri) >= 3:
+                    g[sem.replace(".IS", "")] = seri[-66:]
+        except Exception as e:
+            hata += 1
+            if hata <= 3:
+                log("geçmiş alınamadı", parca[0], "...", e)
+        time.sleep(0.5)
+    return {"updatedAt": simdi().isoformat(timespec="seconds"), "g": g}
+
+
 # ---------------------------------------------------------------- fonlar
 def fon_listesi() -> list[str]:
     try:
@@ -311,6 +391,20 @@ def fon_listesi() -> list[str]:
         return [s.split()[0].upper() for s in satirlar if s.strip() and not s.strip().startswith("#")]
     except Exception:
         return ["AES"]
+
+
+FON_PARTI = int(os.environ.get("FON_PARTI", "15"))
+
+
+def detay_fonlari(tum: list) -> list[str]:
+    """Grafiği ve ayrıntısı tutulan fonlar: fonlar.txt + son 1 yılın en çok kazandıran 140 fonu."""
+    liste = fon_listesi()
+    for f in sorted((f for f in tum if f.get("g1y") is not None), key=lambda f: -f["g1y"]):
+        if len(liste) >= 150:
+            break
+        if f["k"] not in liste:
+            liste.append(f["k"])
+    return liste
 
 
 def _sayi(v):
@@ -374,8 +468,10 @@ def fonlari_cek(eski: dict) -> dict:
     except Exception as e:
         log("fon alınamadı", "tüm fonlar", e)
     getiri = {f["k"]: f for f in tum}
-    # 2) Takip edilen fonların fiyatı ve 3 aylık grafiği
-    for kod in fon_listesi():
+    # 2) Seçili fonların fiyatı ve 3 aylık grafiği; her turda en eski FON_PARTI tanesi yenilenir
+    oncelik = set(fon_listesi())
+    sira = sorted(detay_fonlari(tum), key=lambda k: (fonlar.get(k, {}).get("cekildi", 0), k not in oncelik))
+    for kod in sira[:FON_PARTI]:
         f = dict(fonlar.get(kod, {}))
         try:
             bilgi = tefas("fonBilgiGetir", {"fonKodu": kod})
@@ -400,9 +496,12 @@ def fonlari_cek(eski: dict) -> dict:
             if kod in getiri:
                 f["getiri"] = {k: getiri[kod][k] for k in ("g1a", "g3a", "g6a", "gyb", "g1y", "g3y")}
                 f.setdefault("tur", getiri[kod]["tur"])
+            f["cekildi"] = int(time.time())
             fonlar[kod] = f
         except Exception as e:
             log("fon alınamadı", kod, e)
+            if "429" in str(e):
+                break
         time.sleep(1)
     return {"updatedAt": simdi().isoformat(timespec="seconds"), "fonlar": fonlar, "tum": tum}
 
@@ -448,9 +547,15 @@ def bir_tur(sayac: int, zorla_hepsi: bool) -> tuple[int, int]:
             "hisseler": hisseler,
         })
         yaz_json("snapshot.json", snap)
+    piyasa = tum_hisseler(oku_json("market.json", {}))
+    if piyasa:
+        yaz_json("market.json", piyasa)
+    if piyasa and (zorla_hepsi or sayac % 60 == 0):
+        kodlar = [h[0] for h in piyasa.get("hisseler", []) if h[0] not in HISSELER]
+        yaz_json("gecmis.json", gecmisleri_cek(kodlar, oku_json("gecmis.json", {})))
     if zorla_hepsi or sayac % 5 == 0:
         yaz_json("news.json", haberleri_cek(oku_json("news.json", {})))
-    if zorla_hepsi or sayac % 30 == 0:
+    if zorla_hepsi or sayac % 10 == 0:
         yaz_json("funds.json", fonlari_cek(oku_json("funds.json", {})))
     yaz_json("durum.json", {"zaman": simdi().isoformat(timespec="seconds"), "basarili": basari, "hatali": hata,
                             "hatalar": HATALAR[-40:]})
