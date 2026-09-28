@@ -1,0 +1,59 @@
+name: Veri güncelle
+
+# Borsa İstanbul 10:00-18:10 (TSİ) = 07:00-15:10 UTC.
+# Borsa açıkken iki uzun döngü dakikada bir fiyat çeker; kapalıyken 2 saatte bir haber/fon yenilenir.
+on:
+  schedule:
+    - cron: "50 6 * * 1-5"   # 09:50 TSİ, döngü 12:00 UTC'ye kadar
+    - cron: "57 11 * * 1-5"  # 14:57 TSİ, döngü 15:25 UTC'ye kadar
+    - cron: "40 */2 * * *"   # tek seferlik yenileme
+  workflow_dispatch:
+    inputs:
+      mod:
+        description: "tek = bir kez güncelle, dongu = borsa kapanana kadar dakikada bir"
+        default: "tek"
+        type: choice
+        options: [tek, dongu]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: veri
+  cancel-in-progress: false
+
+jobs:
+  guncelle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install --quiet requests
+
+      - name: data dalını hazırla
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          git config --global user.name "hisse-radar-bot"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          URL="https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
+          if git ls-remote --exit-code "$URL" data >/dev/null 2>&1; then
+            git clone --quiet --depth 1 --branch data "$URL" out
+          else
+            mkdir out && cd out
+            git init --quiet -b data
+            git remote add origin "$URL"
+            cp ../data/snapshot.json ../data/news.json ../data/funds.json .
+            git add -A && git commit --quiet -m "ilk veri"
+          fi
+
+      - name: verileri güncelle
+        env:
+          TEK_SEFER: ${{ ((github.event_name == 'workflow_dispatch' && inputs.mod != 'dongu') || github.event.schedule == '40 */2 * * *') && '1' || '0' }}
+          CIKTI_DIZIN: out
+        run: python scraper/guncelle.py

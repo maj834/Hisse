@@ -1,0 +1,5 @@
+# Takip edilen fonlar (TEFAS kodları, her satıra bir tane)
+AES
+AFT
+YAY
+TTE
