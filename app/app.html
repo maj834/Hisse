@@ -196,6 +196,11 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 .ratios{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
 .ratios div{background:var(--s2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column}
 .ratios span{font-size:12px;color:var(--muted)}.ratios b{font-size:17px}
+.frow{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 0;border-bottom:1px solid var(--line)}
+.frow:last-child{border-bottom:0}
+.frow .name{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.update{display:flex;flex-direction:column;gap:2px;margin-top:10px;padding:14px 16px;border-radius:14px;background:var(--blue);color:#fff;text-decoration:none}
+.update span{font-size:13px;opacity:.9}
 .disc{font-size:12px;color:var(--faint);text-align:center;padding:8px 12px 0}
 </style>
 </head>
@@ -219,6 +224,7 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
   <section class="page" id="p-beklenti" hidden></section>
   <section class="page" id="p-haber" hidden></section>
   <section class="page" id="p-fon" hidden></section>
+  <section class="page" id="p-fondetay" hidden></section>
 </main>
 
 <nav><div class="in" role="tablist">
@@ -409,7 +415,7 @@ function renderRows(){
 $("#p-piyasa").addEventListener("click",e=>{const b=e.target.closest(".row[data-k]");if(b)openDetail(b.dataset.k)});
 
 let asked=store.get("asked",false);
-function openDetail(k,keepScroll){
+function openDetail(k,keepScroll,fromPop){
   const a=BY[k];if(!a)return;cur=a;
   const vs=votes(k),con=consensus(vs),tg=targets(k);
   const avg=tg.length?tg.reduce((s,t)=>s+t.v,0)/tg.length:a.hafta;
@@ -491,11 +497,12 @@ function openDetail(k,keepScroll){
   <p class="disc">Kararlar ve hedefler yapay zekâ ve formül tahminidir, yatırım tavsiyesi değildir.</p>`;
   if(!keepScroll)window.scrollTo(0,0);
   drawChart();
-  $("#back").onclick=()=>showTab("piyasa");
+  $("#back").onclick=goBack;
   $("#rng").onclick=e=>{const b=e.target.closest("[data-r]");if(!b)return;range=b.dataset.r;store.set("rng",range);[...$("#rng").children].forEach(x=>x.setAttribute("aria-pressed",x===b));drawChart()};
   $("#mode").onclick=()=>{mode=mode==="mum"?"line":"mum";store.set("mode",mode);if(mode==="mum"&&range==="gun"){range="1a";store.set("rng",range)}openDetail(k,true)};
   const ab=$("#askBtn");if(ab)ab.onclick=()=>{asked=true;store.set("asked",true);$("#ask").hidden=true;$("#answer").hidden=false};
   setView("detay");
+  if(!keepScroll&&!fromPop)nav({v:"detay",k});
 }
 const mr=v=>{if(v==null)return "–";const a=Math.abs(v);return (v<0?"−":"")+(a>=1e9?nf(a/1e9,1)+" Mr":a>=1e6?nf(a/1e6,0)+" Mn":nf(a,0))};
 const pc=v=>v==null?`<span class="faint">–</span>`:`<span class="${cls(v)}">${v>=0?"+":"−"}%${nf(Math.abs(v),Math.abs(v)>=10?0:1)}</span>`;
@@ -556,23 +563,73 @@ function renderOutlook(){
 $("#p-beklenti").addEventListener("click",e=>{const b=e.target.closest("[data-k]");if(b&&BY[b.dataset.k])openDetail(b.dataset.k)});
 
 /* fonlar */
-let myF=store.get("funds",null);
+let myF=store.get("funds2",null),fq="",fsort=store.get("fsort","g1a"),curF=null;
+const FSORT=[["g1a","1 ay"],["g3a","3 ay"],["gyb","Yılbaşı"],["g1y","1 yıl"]];
+const allFunds=()=>FUNDS.tum||[];
+const fInfo=k=>{const t=allFunds().find(f=>f.k===k)||{},d=(FUNDS.fonlar||{})[k]||{};return {k,...t,...d,getiri:d.getiri||{g1a:t.g1a,g3a:t.g3a,g6a:t.g6a,gyb:t.gyb,g1y:t.g1y,g3y:t.g3y}}};
+const gp=v=>v==null?`<span class="faint">–</span>`:`<span class="${cls(v)}">${v>=0?"+":"−"}%${nf(Math.abs(v),Math.abs(v)>=100?0:1)}</span>`;
+function fSpark(g){if(!g||g.length<3)return "";const c=g.map(r=>r[1]),W=76,H=30,lo=Math.min(...c),hi=Math.max(...c);const P=c.map((v,i)=>[i*(W-4)/(c.length-1)+2,H-4-(v-lo)/(hi-lo||1)*(H-8)]);const col=c[c.length-1]>=c[0]?"#22C38E":"#F4475C";return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smoothPath(P)}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round"/></svg>`}
 function renderFunds(){
-  const known=Object.keys(FUNDS.fonlar||{});if(!myF)myF=known.length?known:["AES"];
-  $("#p-fon").innerHTML=`<div class="card"><div class="card-h"><h2>Fonlarım</h2></div>
-    <div style="display:flex;gap:8px"><input class="search" id="fin" placeholder="Fon kodu (ör. AES)" maxlength="4" style="text-transform:uppercase" aria-label="Fon kodu"><button class="btn ghost" id="fadd">Ekle</button></div></div>
-  ${myF.map(c=>{const f=(FUNDS.fonlar||{})[c];return `<div class="card fund"><div class="card-h" style="margin:0"><div><h2>${esc(c)}</h2>${f?`<p class="small muted">${esc(f.ad)}</p>`:""}</div><button class="xs faint" data-rm="${esc(c)}">Kaldır</button></div>
-    ${f?`<div class="kv">${f.fiyat?`<div><span>Fiyat</span><b>${nf(f.fiyat,4)} ${f.gunluk!=null?`<span class="${cls(f.gunluk)} xs">${pct(f.gunluk)}</span>`:""}</b></div>`:""}${f.buyukluk?`<div><span>Büyüklük</span><b>${nf(f.buyukluk/1e9,2)} Mr TL</b></div>`:""}${f.yatirimci?`<div><span>Yatırımcı</span><b>${Number(f.yatirimci).toLocaleString("tr-TR")}</b></div>`:""}<div><span>Tarih</span><b>${esc(f.tarih||"")}</b></div></div>`:""}
-    <a class="btn ghost" href="https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(c)}" target="_blank" rel="noopener">TEFAS'ta güncel fiyatı gör</a></div>`}).join("")}`;
-  $("#fadd").onclick=()=>{const c=$("#fin").value.trim().toUpperCase().replace(/[^A-Z0-9]/g,"");if(c&&!myF.includes(c)){myF.push(c);store.set("funds",myF);renderFunds()}};
-  $("#p-fon").onclick=e=>{const b=e.target.closest("[data-rm]");if(b){myF=myF.filter(x=>x!==b.dataset.rm);store.set("funds",myF);renderFunds()}};
+  const tracked=Object.keys(FUNDS.fonlar||{});if(!myF)myF=tracked.length?tracked.slice():["AES"];
+  const t=fq.trim().toLocaleLowerCase("tr");
+  let list=allFunds();
+  if(t)list=list.filter(f=>f.k.toLocaleLowerCase("tr").includes(t)||(f.ad||"").toLocaleLowerCase("tr").includes(t)||(f.tur||"").toLocaleLowerCase("tr").includes(t));
+  list=list.filter(f=>f[fsort]!=null).sort((a,b)=>b[fsort]-a[fsort]).slice(0,t?60:30);
+  $("#p-fon").innerHTML=`
+  <div class="card"><div class="card-h"><h2>Takip ettiğim fonlar</h2><span class="xs muted">${allFunds().length?allFunds().length+" fon içinde":""}</span></div>
+    <div class="list" style="border:0;background:none">${myF.map(k=>{const f=fInfo(k),g1=(f.getiri||{}).g1a;return `<button class="row" data-f="${esc(k)}" style="padding-inline:0">
+      <span style="min-width:0"><span class="code">${esc(k)}</span><span class="name">${esc(f.ad||"TEFAS fonu")}</span></span>${fSpark(f.g)}
+      <span class="r"><span class="px">${f.fiyat?nf(f.fiyat,4):"–"}</span>${f.gunluk!=null?`<span class="ch ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:g1!=null?`<span class="xs muted">1 ay ${gp(g1)}</span>`:""}</span></button>`}).join("")||`<p class="muted small">Aşağıdan fon seçip takip et.</p>`}</div></div>
+  <input class="search" id="fq" type="search" placeholder="Fon ara: kod, isim ya da tür (ör. altın, teknoloji)" value="${esc(fq)}" aria-label="Fon ara">
+  <div class="seg" id="fs">${FSORT.map(([k,l])=>`<button data-s="${k}" aria-pressed="${k===fsort}">${l}</button>`).join("")}</div>
+  <div class="card" style="padding-block:4px"><div class="card-h" style="margin:12px 0 4px"><h2 style="font-size:15px">${t?"Arama sonuçları":"En çok kazandıranlar"}</h2><span class="xs muted">${FSORT.find(x=>x[0]===fsort)[1]} getirisi</span></div>
+    ${list.map(f=>`<button class="frow" data-f="${esc(f.k)}"><span style="min-width:0"><b>${esc(f.k)}</b> <span class="xs muted">${esc(f.tur||"")}</span><span class="name">${esc(f.ad)}</span></span><b>${gp(f[fsort])}</b></button>`).join("")||`<p class="muted small" style="padding:12px 0">${allFunds().length?"Eşleşen fon yok.":"Fon listesi yükleniyor."}</p>`}</div>
+  <p class="disc">Kaynak: TEFAS. Getiriler geçmiş performanstır, gelecekteki getiriyi göstermez.</p>`;
+  $("#fq").addEventListener("input",e=>{fq=e.target.value;const pos=e.target.selectionStart;renderFunds();const n=$("#fq");n.focus();n.setSelectionRange(pos,pos)});
+  $("#fs").onclick=e=>{const b=e.target.closest("[data-s]");if(!b)return;fsort=b.dataset.s;store.set("fsort",fsort);renderFunds()};
+}
+$("#p-fon").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(b)openFund(b.dataset.f)});
+function openFund(k,noPush){
+  curF=k;const f=fInfo(k),g=f.getiri||{},on=myF.includes(k),s=f.g||[];
+  let chart="";
+  if(s.length>2){const c=s.map(r=>r[1]),W=360,H=180,L=4,R=44,Tp=12,B=12,lo=Math.min(...c),hi=Math.max(...c),pad=(hi-lo)*.1||hi*.01;
+    const y=v=>Tp+(H-Tp-B)*(1-(v-lo+pad)/(hi-lo+2*pad)),x=i=>L+(W-L-R)*i/(c.length-1),P=c.map((v,i)=>[x(i),y(v)]),d=smoothPath(P),col=c[c.length-1]>=c[0]?"#22C38E":"#F4475C";
+    chart=`<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(k)} fiyat grafiği"><defs><linearGradient id="gf" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+      ${[hi,lo].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#1F2B3C"/><text x="${W-R+6}" y="${y(v)+4}" fill="#5C6C81" font-size="10.5" font-family="Manrope,sans-serif">${nf(v,v>=10?2:4)}</text>`).join("")}
+      <path d="${d}L${x(c.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#gf)"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${x(c.length-1)}" cy="${y(c[c.length-1])}" r="4.5" fill="${col}" stroke="#111823" stroke-width="2"/></svg></div>
+      <div class="chart-foot"><span>${dLbl(s[0][0])}</span><span>Son 3 ay: ${gp((c[c.length-1]/c[0]-1)*100)}</span><span>${dLbl(s[s.length-1][0])}</span></div>`}
+  $("#p-fondetay").innerHTML=`
+  <div class="dtop"><button class="back" id="fback"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Fonlar</button><span class="sp"></span></div>
+  <div class="price-block"><div class="nm">${esc(k)} · ${esc(f.tur||f.kategori||"Yatırım fonu")}</div>
+    <div class="big" style="font-size:${f.fiyat?34:26}px">${f.fiyat?nf(f.fiyat,4)+` <span style="font-size:17px" class="muted">TL</span>`:esc(k)}</div>
+    <div class="meta">${f.gunluk!=null?`<span class="pill ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:""}<span class="small muted">${esc(f.ad||"")}</span></div></div>
+  ${chart?`<div class="card chart-card">${chart}</div>`:""}
+  <button class="btn ${on?"ghost":"primary"}" id="ftrack">${on?"Takipten çıkar":"Takip et"}</button>
+  <div class="card"><div class="card-h"><h2>Getiriler</h2></div>
+    <div class="ratios" style="margin:0;grid-template-columns:repeat(3,1fr)">${[["1 ay",g.g1a],["3 ay",g.g3a],["6 ay",g.g6a],["Yılbaşından",g.gyb],["1 yıl",g.g1y],["3 yıl",g.g3y]].map(([l,v])=>`<div><span>${l}</span><b>${gp(v)}</b></div>`).join("")}</div></div>
+  ${f.buyukluk||f.yatirimci||f.r?`<div class="card"><div class="kv">${f.buyukluk?`<div><span>Fon büyüklüğü</span><b>${nf(f.buyukluk/1e9,2)} Mr TL</b></div>`:""}${f.yatirimci?`<div><span>Yatırımcı</span><b>${Number(f.yatirimci).toLocaleString("tr-TR")}</b></div>`:""}${f.r?`<div><span>Risk değeri (1-7)</span><b>${esc(f.r)}</b></div>`:""}${f.siralama&&f.kategoriSayi?`<div><span>Kategorisinde sırası</span><b>${esc(f.siralama)} / ${esc(f.kategoriSayi)}</b></div>`:""}</div></div>`:""}
+  ${s.length>2?"":`<p class="small muted" style="text-align:center">Fiyat grafiği, depodaki fonlar.txt listesindeki fonlar için çekilir.</p>`}
+  <a class="btn ghost" href="https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(k)}" target="_blank" rel="noopener">TEFAS'ta aç</a>
+  <p class="disc">Geçmiş getiri gelecekteki getiriyi göstermez. Yatırım tavsiyesi değildir.</p>`;
+  $("#fback").onclick=goBack;
+  $("#ftrack").onclick=()=>{myF=myF.includes(k)?myF.filter(x=>x!==k):[...myF,k];store.set("funds2",myF);renderFunds();openFund(k,true)};
+  setView("fondetay");if(!noPush){nav({v:"fondetay",k});window.scrollTo(0,0)}
 }
 
-/* ================= gezinme ================= */
-function setView(v){["piyasa","detay","beklenti","haber","fon"].forEach(n=>$("#p-"+n).hidden=n!==v)}
-function showTab(t){tab=t;cur=null;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));setView(t);window.scrollTo(0,0);if(history.replaceState)history.replaceState(null,"","#"+t)}
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-window.addEventListener("popstate",()=>{if(cur)showTab("piyasa")});
+/* ================= gezinme (telefonun geri tuşu uygulamadan atmaz) ================= */
+const VIEWS=["piyasa","detay","beklenti","haber","fon","fondetay"];
+function setView(v){VIEWS.forEach(n=>$("#p-"+n).hidden=n!==v);const tb=v==="detay"?"piyasa":v==="fondetay"?"fon":v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tb))}
+function nav(st){try{history.pushState(st,"","#"+(st.k||st.v))}catch(e){}}
+function goBack(){if(history.state&&history.state.v&&history.state.v!=="piyasa")history.back();else showTab("piyasa",true)}
+function showTab(t,noPush){tab=t;cur=null;setView(t);window.scrollTo(0,0);if(!noPush){if(t==="piyasa"){try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}}else nav({v:t})}}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{if(!$("#p-"+b.dataset.tab).hidden)return;showTab(b.dataset.tab)});
+window.addEventListener("popstate",e=>{const s=e.state||{v:"piyasa"};if(s.v==="detay"&&BY[s.k])openDetail(s.k,false,true);else if(s.v==="fondetay"&&s.k)openFund(s.k,true);else showTab(VIEWS.includes(s.v)?s.v:"piyasa",true)});
+// Android'in geri tuşu için: true = uygulama içinde geri gidildi
+window.hrBack=function(){const s=history.state;if(s&&s.v&&s.v!=="piyasa"){history.back();return true}if($("#p-piyasa").hidden){showTab("piyasa",true);return true}return false};
+
+/* ================= yeni sürüm uyarısı ================= */
+(function(){const m=navigator.userAgent.match(/HisseRadarApp\/(\d+)/);if(!m)return;const mine=+m[1];
+  fetch("https://api.github.com/repos/maj834/Hisse/releases/latest",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;const n=+((d.tag_name||"").split(".").pop()||0);if(n>mine){const b=document.createElement("a");b.className="update";b.href="https://github.com/maj834/Hisse/releases/latest/download/HisseRadar.apk";b.innerHTML=`<b>Yeni sürüm hazır (1.${n})</b><span>Dokun, indir ve kur. Verilerin silinmez.</span>`;document.querySelector("main").prepend(b)}}).catch(()=>{})})();
 
 /* ================= canlılık ================= */
 function isOpen(){const n=new Date(),d=n.getUTCDay(),m=n.getUTCHours()*60+n.getUTCMinutes();return d>=1&&d<=5&&m>=420&&m<=915}
@@ -590,10 +647,12 @@ async function pollSlow(){
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/temel.json"));if(T(d.updatedAt)>T(TEMEL.updatedAt)){TEMEL=d;renderAll()}}catch(e){}
-  try{const d=await getJ(RAW("data","funds.json"));if(T(d.updatedAt)>T(FUNDS.updatedAt)){FUNDS=d;renderFunds()}}catch(e){}
+  if(Date.now()-lastFunds>6e5){lastFunds=Date.now();try{const d=await getJ(RAW("data","funds.json"));if(T(d.updatedAt)>T(FUNDS.updatedAt)){FUNDS=d;renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}}
 }
+let lastFunds=0;
 renderAll();
-const h=location.hash.slice(1);if(["beklenti","haber","fon"].includes(h))showTab(h);else if(BY[h.toUpperCase()])openDetail(h.toUpperCase());
+const h=location.hash.slice(1);try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}
+if(["beklenti","haber","fon"].includes(h))showTab(h);else if(BY[h.toUpperCase()])openDetail(h.toUpperCase());
 poll();pollSlow();
 setInterval(poll,5000);setInterval(pollSlow,60000);setInterval(updateLive,15000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){poll();pollSlow()}});
