@@ -85,7 +85,12 @@ oturum = requests.Session()
 oturum.headers.update(UA)
 
 
+HATALAR: list[str] = []
+
+
 def log(*a):
+    if a and str(a[0]).startswith(("hata", "haber alınamadı", "fon alınamadı", "günlük alınamadı", "push")):
+        HATALAR.append(" ".join(str(x) for x in a)[:300])
     print(dt.datetime.now(IST).strftime("%H:%M:%S"), *a, flush=True)
 
 
@@ -334,6 +339,9 @@ def bir_tur(sayac: int, zorla_hepsi: bool) -> tuple[int, int]:
         yaz_json("news.json", haberleri_cek(oku_json("news.json", {})))
     if zorla_hepsi or sayac % 30 == 0:
         yaz_json("funds.json", fonlari_cek(oku_json("funds.json", {})))
+    yaz_json("durum.json", {"zaman": simdi().isoformat(timespec="seconds"), "basarili": basari, "hatali": hata,
+                            "hatalar": HATALAR[-40:]})
+    HATALAR.clear()
     return basari, hata
 
 
@@ -356,7 +364,7 @@ def main() -> int:
         b, h = bir_tur(0, True)
         log(f"tek sefer: {b} hisse güncellendi, {h} hata")
         gonder(f"veri {simdi():%d.%m %H:%M}")
-        return 0 if b else 1
+        return 0
     bitis = cikis_zamani()
     log("döngü bitişi (UTC):", bitis.strftime("%H:%M"))
     sayac = 0
@@ -366,8 +374,7 @@ def main() -> int:
         b, h = bir_tur(sayac, sayac == 0)
         toplam_basari += b
         log(f"tur {sayac}: {b} hisse, {h} hata")
-        if b:
-            gonder(f"veri {simdi():%d.%m %H:%M}")
+        gonder(f"veri {simdi():%d.%m %H:%M}")
         sayac += 1
         time.sleep(max(5, 60 - (time.time() - bas)))
     return 0 if toplam_basari else 1
