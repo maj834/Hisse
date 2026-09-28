@@ -81,15 +81,35 @@ def ozet_satiri(kod, h) -> str:
             f"ATR {atr(g):.2f}, 20g düşük/yüksek {lo20:g}/{hi20:g}")
 
 
-def istem_olustur(snap, news, outlook) -> str:
+def temel_ek(kod, temel) -> str:
+    x = (temel.get("hisseler") or {}).get(kod)
+    if not x:
+        return ""
+    s = {r["ad"]: r for r in x.get("satirlar", [])}
+    o = x.get("oranlar", {})
+    parca = []
+    for ad in ("Hasılat", "Net kâr"):
+        if ad in s and s[ad].get("yillik") is not None:
+            parca.append(f"{ad.lower()} yıllık {s[ad]['yillik']:+.0f}%")
+    if o.get("fk"):
+        parca.append(f"F/K {o['fk']:.1f}")
+    if o.get("pddd"):
+        parca.append(f"PD/DD {o['pddd']:.1f}")
+    if o.get("roe") is not None:
+        parca.append(f"ROE %{o['roe']:.0f}")
+    return f" | Temel ({x.get('ceyrek','')}): " + ", ".join(parca) if parca else ""
+
+
+def istem_olustur(snap, news, outlook, temel=None) -> str:
+    temel = temel or {}
     hisseler = snap.get("hisseler", {})
-    satirlar = "\n".join(ozet_satiri(k, h) for k, h in sorted(hisseler.items()) if h.get("g"))
+    satirlar = "\n".join(ozet_satiri(k, h) + temel_ek(k, temel) for k, h in sorted(hisseler.items()) if h.get("g"))
     basliklar = "\n".join(f"- {n.get('t','')}: {n.get('title','')}" for n in (news.get("items") or [])[:25])
     gundem = ""
     if outlook.get("olaylar"):
         gundem = "\nGünün önemli olayları:\n" + "\n".join(f"- {o.get('baslik','')}: {o.get('detay','')}" for o in outlook["olaylar"][:5])
     return f"""Sen Borsa İstanbul'u takip eden deneyimli bir analistsin. Bugün {dt.datetime.now(IST):%d.%m.%Y %H:%M}.
-Aşağıda BIST 30 hisselerinin güncel teknik verileri ve son haber başlıkları var. Her hisse için 1 haftalık vadede
+Aşağıda BIST 30 hisselerinin güncel teknik verileri, son çeyrek finansalları (varsa) ve son haber başlıkları var. Teknik görünümü, şirketin finansal durumunu ve haberleri birlikte değerlendir. Her hisse için 1 haftalık vadede
 karar ver: "AL", "TUT" ya da "SAT". Gerçekçi ol: her hisseye AL deme, zayıf olanlara SAT de.
 Her hisse için 1 hafta içinde ulaşabileceği gerçekçi bir hedef fiyat ver (genellikle son fiyatın ±%10'u içinde, ATR'yi dikkate al).
 Gerekçe en fazla 18 kelime, Türkçe, teknik veya habere dayalı somut olsun.
@@ -237,7 +257,8 @@ def main() -> int:
     if not hisseler:
         log("snapshot boş")
         return 1
-    istem = istem_olustur(snap, news, outlook)
+    temel = oku(os.environ.get("TEMEL", KOK / "data" / "temel.json"), {})
+    istem = istem_olustur(snap, news, outlook, temel)
     eski = oku(CIKTI, {})
     cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"),
              "veri": snap.get("guncelleme", ""), "modeller": [], "hisseler": {}}

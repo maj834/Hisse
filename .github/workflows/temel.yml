@@ -1,0 +1,38 @@
+name: Temel analiz
+
+# Şirket finansallarını (çeyreklik gelir tablosu, marjlar, değerleme) günde bir kez günceller -> data/temel.json
+on:
+  schedule:
+    - cron: "15 5 * * 1-5"   # 08:15 TSİ
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temel
+  cancel-in-progress: false
+
+jobs:
+  temel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet requests curl_cffi
+      - run: python scraper/temel.py
+      - name: kaydet
+        run: |
+          git config user.name "hisse-radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/temel.json
+          git diff --cached --quiet && exit 0
+          git commit --quiet -m "Temel analiz $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
+          for i in 1 2 3; do
+            git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
