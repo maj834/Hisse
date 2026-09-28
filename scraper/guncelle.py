@@ -287,9 +287,13 @@ def fonlari_cek(eski: dict) -> dict:
     fonlar = dict(eski.get("fonlar", {}))
     bit = simdi()
     bas = bit - dt.timedelta(days=10)
+    try:
+        yahoo_oturum.get("https://www.tefas.gov.tr/TarihselVeriler.aspx", timeout=20)
+    except Exception as e:
+        log("fon alınamadı", "tefas giriş", e)
     for kod in fon_listesi():
         try:
-            r = oturum.post(
+            r = yahoo_oturum.post(
                 "https://www.tefas.gov.tr/api/DB/BindHistoryInfo",
                 data={"fontip": "YAT", "sfontur": "", "fonkod": kod, "fongrup": "", "bastarih": bas.strftime("%d.%m.%Y"),
                       "bittarih": bit.strftime("%d.%m.%Y"), "fonturkod": "", "fonunvantip": ""},
@@ -297,7 +301,12 @@ def fonlari_cek(eski: dict) -> dict:
                          "Referer": "https://www.tefas.gov.tr/TarihselVeriler.aspx"},
                 timeout=20,
             )
+            if r.status_code != 200 or "json" not in r.headers.get("content-type", ""):
+                log("fon alınamadı", kod, r.status_code, r.text[:120].replace("\n", " "))
+                continue
             veri = sorted(r.json().get("data") or [], key=lambda x: int(x.get("TARIH", 0)))
+            if not veri:
+                log("fon alınamadı", kod, "boş yanıt")
         except Exception as e:
             log("fon alınamadı", kod, e)
             continue
