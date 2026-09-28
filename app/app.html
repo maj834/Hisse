@@ -467,7 +467,7 @@ function openDetail(k,keepScroll,fromPop){
       <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
         <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p></div>
         <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.hedef?`<span class="tg">1 hf: ${px(v.hedef)}</span>`:""}</div></div>`).join("")}</div>
-      ${aiNames.length?"":`<p class="note">Gemini, Llama, Grok, GPT, DeepSeek ve Mistral'ın kararları, API anahtarları GitHub'a eklenince burada görünecek.</p>`}
+      ${aiNames.length?"":`<p class="note">Llama, OpenRouter, Grok, GPT, DeepSeek ve Mistral'ın kararları, API anahtarları GitHub'a eklenince burada görünecek.</p>`}
     </div>
   </div>
 

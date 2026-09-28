@@ -1,9 +1,9 @@
 name: Yapay zeka degerlendirme
 
-# Borsa açıkken her saat (10:20-18:20 TSİ) BIST 30'u Gemini, Llama (Groq), Grok ve
-# isteğe bağlı DeepSeek (OpenRouter) ile değerlendirir; sonucu data/ai.json'a yazar.
+# Borsa açıkken her saat (10:20-18:20 TSİ) BIST 30'u Llama (Groq), OpenRouter ve isteğe bağlı
+# Grok, Mistral, GPT/DeepSeek (GitHub Models) ile değerlendirir; sonucu data/ai.json'a yazar.
 # Anahtarlar: Settings -> Secrets and variables -> Actions -> New repository secret
-#   GEMINI_API_KEY, GROQ_API_KEY, XAI_API_KEY, MISTRAL_API_KEY, OPENROUTER_API_KEY (hangileri varsa)
+#   GROQ_API_KEY, OPENROUTER_API_KEY, XAI_API_KEY, MISTRAL_API_KEY (hangileri varsa)
 #   GH_MODELS_TOKEN: GitHub -> Settings -> Developer settings -> Fine-grained token, "Models: Read" izni (GPT ve DeepSeek için, ücretsiz)
 on:
   schedule:
@@ -47,13 +47,11 @@ jobs:
 
       - name: değerlendir
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           GROQ_MODEL: ${{ vars.GROQ_MODEL }}
           XAI_MODEL: ${{ vars.XAI_MODEL }}
           OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL }}

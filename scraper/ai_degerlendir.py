@@ -1,11 +1,11 @@
 """Hisse Radar - yapay zekâ değerlendirmesi.
 
-BIST 30 hisselerini birkaç yapay zekâya (Gemini, Groq/Llama, xAI Grok, isteğe bağlı OpenRouter)
+BIST 30 hisselerini birkaç yapay zekâya (Groq/Llama, OpenRouter, isteğe bağlı xAI Grok, Mistral, GitHub Models)
 değerlendirtir: her hisse için AL / TUT / SAT kararı, güven puanı, 1 haftalık hedef fiyat ve kısa gerekçe.
 Sonuç `data/ai.json` dosyasına yazılır; uygulama bu dosyayı okur.
 
 API anahtarları GitHub Secrets'tan ortam değişkeni olarak gelir (koda asla yazılmaz):
-  GEMINI_API_KEY, GROQ_API_KEY, XAI_API_KEY, OPENROUTER_API_KEY
+  GROQ_API_KEY, OPENROUTER_API_KEY, XAI_API_KEY, MISTRAL_API_KEY, GH_MODELS_TOKEN
 İsteğe bağlı model seçimi: GEMINI_MODEL, GROQ_MODEL, XAI_MODEL, OPENROUTER_MODEL
 Girdiler: SNAPSHOT (varsayılan data/snapshot.json), NEWS (data/news.json), OUTLOOK (data/outlook.json)
 """
@@ -338,7 +338,6 @@ PARCA = {"groq": 8, "mistral": 15}
 PERIYOT = {"groq": 2}
 
 SAGLAYICILAR = [
-    ("gemini", "Gemini", "GEMINI_API_KEY", gemini),
     ("groq", "Llama (Groq)", "GROQ_API_KEY", groq),
     ("grok", "Grok", "XAI_API_KEY", grok),
     ("openrouter", "OpenRouter", "OPENROUTER_API_KEY", openrouter),
