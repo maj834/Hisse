@@ -84,6 +84,29 @@ CIKTI = Path(os.environ.get("CIKTI_DIZIN", "out"))
 oturum = requests.Session()
 oturum.headers.update(UA)
 
+# Yahoo, sunuculardan gelen düz istekleri 429 ile reddediyor; tarayıcı taklidi yapan curl_cffi kullan.
+try:
+    from curl_cffi import requests as creq  # type: ignore
+
+    yahoo_oturum = creq.Session(impersonate="chrome")
+except Exception:  # kütüphane yoksa normal oturum
+    yahoo_oturum = requests.Session()
+    yahoo_oturum.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"})
+_yahoo_hazir = False
+
+
+def yahoo_isit() -> None:
+    """Çerez almak için Yahoo ana sayfasına bir kez uğra."""
+    global _yahoo_hazir
+    if _yahoo_hazir:
+        return
+    _yahoo_hazir = True
+    for u in ("https://fc.yahoo.com", "https://finance.yahoo.com/quote/ASELS.IS/"):
+        try:
+            yahoo_oturum.get(u, timeout=15)
+        except Exception:
+            pass
+
 
 HATALAR: list[str] = []
 
@@ -118,11 +141,15 @@ def yaz_json(ad: str, veri) -> None:
 
 # ---------------------------------------------------------------- fiyatlar
 def yahoo_chart(sembol: str, aralik: str, arasi: str):
+    yahoo_isit()
     hatalar = []
     for host in ("query1.finance.yahoo.com", "query2.finance.yahoo.com"):
         url = f"https://{host}/v8/finance/chart/{sembol}?range={aralik}&interval={arasi}&includePrePost=false"
         try:
-            r = oturum.get(url, timeout=15)
+            r = yahoo_oturum.get(url, timeout=15)
+            if r.status_code == 429:
+                time.sleep(2)
+                r = yahoo_oturum.get(url, timeout=15)
             if r.status_code == 200:
                 res = r.json()["chart"]["result"]
                 if res:
