@@ -322,8 +322,10 @@ SEKTOR_TR = {"Electronic Technology": "Elektronik teknoloji", "Finance": "Finans
 
 
 def ad_temizle(ad: str) -> str:
-    ad = re.sub(r"\s+Class\s+[A-Z]\b", "", ad or "")
-    ad = re.sub(r"\s+(A\.?S\.?|Anonim Sirketi)$", " A.Ş.", ad)
+    ad = re.sub(r"\s+Class\s+[A-Z]\b", "", ad or "", flags=re.I)
+    if ad.isupper():
+        ad = " ".join(w if len(w) <= 3 and "." in w else w.capitalize() for w in ad.split())
+    ad = re.sub(r"\s+(A\.?S\.?|Anonim Sirketi)$", " A.Ş.", ad, flags=re.I)
     for x, y in (("Turkiye", "Türkiye"), ("Sanayi ve Ticaret", "San. ve Tic."), ("Sirketi", "Şirketi")):
         ad = ad.replace(x, y)
     return ad.strip()
