@@ -16,6 +16,7 @@ import datetime as dt
 import email.utils
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -310,6 +311,24 @@ TV_SUTUN = ["name", "description", "close", "change", "volume", "sector", "marke
             "RSI", "Perf.W", "Perf.1M", "Perf.3M", "high", "low", "Perf.YTD"]
 
 
+SEKTOR_TR = {"Electronic Technology": "Elektronik teknoloji", "Finance": "Finans", "Energy Minerals": "Enerji",
+             "Non-Energy Minerals": "Madencilik ve metal", "Process Industries": "Kimya ve işleme",
+             "Producer Manufacturing": "Sanayi üretimi", "Consumer Durables": "Dayanıklı tüketim",
+             "Consumer Non-Durables": "Gıda ve tüketim", "Retail Trade": "Perakende", "Transportation": "Ulaştırma",
+             "Utilities": "Elektrik ve doğalgaz", "Communications": "İletişim", "Technology Services": "Teknoloji hizmetleri",
+             "Health Technology": "Sağlık teknolojisi", "Health Services": "Sağlık hizmetleri",
+             "Industrial Services": "Sanayi hizmetleri", "Commercial Services": "Ticari hizmetler",
+             "Consumer Services": "Tüketici hizmetleri", "Distribution Services": "Dağıtım", "Miscellaneous": "Diğer"}
+
+
+def ad_temizle(ad: str) -> str:
+    ad = re.sub(r"\s+Class\s+[A-Z]\b", "", ad or "")
+    ad = re.sub(r"\s+(A\.?S\.?|Anonim Sirketi)$", " A.Ş.", ad)
+    for x, y in (("Turkiye", "Türkiye"), ("Sanayi ve Ticaret", "San. ve Tic."), ("Sirketi", "Şirketi")):
+        ad = ad.replace(x, y)
+    return ad.strip()
+
+
 def _yuvarla(v, n=2):
     return round(v, n) if isinstance(v, (int, float)) else None
 
@@ -332,8 +351,8 @@ def tum_hisseler(eski: dict) -> dict:
             kod = str(d.get("name") or "").upper()
             if not kod or not isinstance(d.get("close"), (int, float)):
                 continue
-            satirlar.append([kod, (d.get("description") or "").strip(), d["close"], _yuvarla(d.get("change")),
-                             int(d.get("volume") or 0), d.get("sector") or "", int(d.get("market_cap_basic") or 0),
+            satirlar.append([kod, ad_temizle(d.get("description") or ""), d["close"], _yuvarla(d.get("change")),
+                             int(d.get("volume") or 0), SEKTOR_TR.get(d.get("sector") or "", d.get("sector") or ""), int(d.get("market_cap_basic") or 0),
                              _yuvarla(d.get("Recommend.All"), 3), _yuvarla(d.get("RSI"), 1), _yuvarla(d.get("Perf.W")),
                              _yuvarla(d.get("Perf.1M")), _yuvarla(d.get("Perf.3M")), d.get("high"), d.get("low"),
                              _yuvarla(d.get("Perf.YTD"))])
@@ -393,7 +412,7 @@ def fon_listesi() -> list[str]:
         return ["AES"]
 
 
-FON_PARTI = int(os.environ.get("FON_PARTI", "15"))
+FON_PARTI = int(os.environ.get("FON_PARTI", "160" if os.environ.get("TEK_SEFER") == "1" else "15"))
 
 
 def detay_fonlari(tum: list) -> list[str]:
