@@ -241,6 +241,12 @@ def github_models(istem, anahtar, tercihler, filtre):
     r = gonder({**govde, "response_format": {"type": "json_object"}})
     if r.status_code == 400:
         r = gonder(govde)
+    if "json" not in r.headers.get("content-type", ""):
+        # eski GitHub Models adresi (Azure üzerinden), model adı yayıncı öneki olmadan
+        kisa = model.split("/")[-1]
+        r = requests.post("https://models.inference.ai.azure.com/chat/completions",
+                          headers={"Authorization": f"Bearer {anahtar}", "Content-Type": "application/json"},
+                          json={**govde, "model": kisa}, timeout=ZAMAN_ASIMI)
     if not r.ok:
         raise RuntimeError(f"{model} {r.status_code} {r.text[:150]}")
     try:
