@@ -147,8 +147,10 @@ karar ver: "AL", "TUT" ya da "SAT". Gerçekçi ol: her hisseye AL deme, zayıf o
 Karar verirken şunları birlikte tart: trend (fiyatın ortalamalara göre yeri, MACD), momentum (RSI; 30 altı aşırı satım, 70 üstü aşırı alım),
 destek/direnç (20 gün ve 3 ay aralığı), hacim teyidi, şirketin son çeyrek finansalları ve hisseye özel haberler ile genel gündem.
 Tek bir göstergeye dayanma; sinyaller çelişiyorsa TUT de ve güveni düşük tut.
-Her hisse için 1 hafta içinde ulaşabileceği gerçekçi bir hedef fiyat ver (genellikle son fiyatın ±%8'i içinde, günlük oynaklığı (ATR) dikkate al;
-AL için hedef son fiyatın üstünde, SAT için altında olsun).
+Her hisse için ÜÇ vade ayrı ayrı değerlendir: 1 hafta, 1 ay ve 3 ay. Kısa vadede teknik görünüm ve haberler, uzun vadede
+şirketin finansalları ve genel trend daha ağır bassın; vadeler arasında karar farklı olabilir.
+Her vade için gerçekçi bir hedef fiyat ver: 1 hafta genellikle ±%8, 1 ay ±%15, 3 ay ±%30 içinde; günlük oynaklığı (ATR) dikkate al.
+AL için hedef son fiyatın üstünde, SAT için altında olsun.
 Gerekçe en fazla 18 kelime, Türkçe; somut bir veri ya da haberi ansın.
 
 Hisseler:
@@ -158,7 +160,8 @@ Son haberler:
 {basliklar}{gundem}
 
 Yalnızca şu biçimde geçerli JSON döndür, başka hiçbir metin yazma:
-{{"hisseler":[{{"k":"ASELS","karar":"AL","guven":65,"hedef":380.5,"neden":"..."}}]}}
+{{"hisseler":[{{"k":"ASELS","karar":"AL","guven":65,"hedef":380.5,"karar1a":"AL","hedef1a":395,"karar3a":"TUT","hedef3a":400,"neden":"..."}}]}}
+("karar/hedef" 1 hafta, "karar1a/hedef1a" 1 ay, "karar3a/hedef3a" 3 ay içindir.)
 Listede yukarıdaki hisselerin hepsi olsun."""
 
 
@@ -347,6 +350,17 @@ SAGLAYICILAR = [
 ]
 
 
+KARAR = {"BUY": "AL", "HOLD": "TUT", "SELL": "SAT", "AL": "AL", "TUT": "TUT", "SAT": "SAT"}
+
+
+def _hedef(x, alan, last, alt, ust):
+    try:
+        v = float(str(x.get(alan) or "").replace(",", "."))
+    except ValueError:
+        return None
+    return round(v, 2) if last * alt <= v <= last * ust else None  # gerçek dışı hedefleri at
+
+
 def temizle(liste, hisseler) -> dict:
     sonuc = {}
     for x in liste or []:
@@ -355,23 +369,22 @@ def temizle(liste, hisseler) -> dict:
         kod = str(x.get("k") or x.get("kod") or x.get("sembol") or x.get("symbol") or "").upper().replace(".IS", "").replace("BIST:", "")
         if kod not in hisseler:
             continue
-        karar = str(x.get("karar") or x.get("decision") or "").upper()
-        karar = {"BUY": "AL", "HOLD": "TUT", "SELL": "SAT", "AL": "AL", "TUT": "TUT", "SAT": "SAT"}.get(karar)
+        karar = KARAR.get(str(x.get("karar") or x.get("decision") or "").upper())
         if not karar:
             continue
         last = float(hisseler[kod]["last"])
         try:
-            hedef = float(str(x.get("hedef") or x.get("target") or "").replace(",", "."))
-        except ValueError:
-            hedef = None
-        if hedef is not None and not (last * 0.7 <= hedef <= last * 1.3):
-            hedef = None  # gerçek dışı hedefleri at
-        try:
             guven = max(0, min(100, int(float(x.get("guven") or x.get("confidence") or 50))))
         except ValueError:
             guven = 50
-        sonuc[kod] = {"karar": karar, "guven": guven, "hedef": round(hedef, 2) if hedef else None,
-                      "neden": str(x.get("neden") or x.get("reason") or "")[:200]}
+        k = {"karar": karar, "guven": guven, "hedef": _hedef(x, "hedef", last, 0.7, 1.3),
+             "neden": str(x.get("neden") or x.get("reason") or "")[:200]}
+        for vade, alt, ust in (("1a", 0.6, 1.5), ("3a", 0.45, 1.9)):
+            kv = KARAR.get(str(x.get("karar" + vade) or "").upper())
+            if kv:
+                k["karar" + vade] = kv
+                k["hedef" + vade] = _hedef(x, "hedef" + vade, last, alt, ust)
+        sonuc[kod] = k
     return sonuc
 
 
