@@ -3,7 +3,8 @@ name: Yapay zeka degerlendirme
 # Borsa açıkken her saat (10:20-18:20 TSİ) BIST 30'u Gemini, Llama (Groq), Grok ve
 # isteğe bağlı DeepSeek (OpenRouter) ile değerlendirir; sonucu data/ai.json'a yazar.
 # Anahtarlar: Settings -> Secrets and variables -> Actions -> New repository secret
-#   GEMINI_API_KEY, GROQ_API_KEY, XAI_API_KEY, OPENROUTER_API_KEY (hangileri varsa)
+#   GEMINI_API_KEY, GROQ_API_KEY, XAI_API_KEY, MISTRAL_API_KEY, OPENROUTER_API_KEY (hangileri varsa)
+# GPT ve DeepSeek, GitHub Models üzerinden anahtarsız çalışır.
 on:
   schedule:
     - cron: "20 7-15 * * 1-5"
@@ -11,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  models: read
 
 concurrency:
   group: ai
@@ -49,6 +51,8 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           GROQ_MODEL: ${{ vars.GROQ_MODEL }}
           XAI_MODEL: ${{ vars.XAI_MODEL }}

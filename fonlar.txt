@@ -1,5 +1,11 @@
-# Takip edilen fonlar (TEFAS kodları, her satıra bir tane)
+# Takip edilen fonlar (TEFAS kodları, her satıra bir tane). Bunların fiyat grafiği çekilir.
 AES
 AFT
 YAY
 TTE
+IPB
+MAC
+NNF
+TI2
+GSP
+IHK

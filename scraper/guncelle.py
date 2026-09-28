@@ -283,51 +283,97 @@ def fon_listesi() -> list[str]:
         return ["AES"]
 
 
+def _sayi(v):
+    if v is None or v == "":
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    try:
+        return float(str(v).replace(".", "").replace(",", ".")) if "," in str(v) else float(v)
+    except ValueError:
+        return None
+
+
+def tefas(ucnokta: str, govde: dict):
+    """TEFAS'ın Nisan 2026 sonrası yeni JSON API'si (www.tefas.gov.tr/api/funds/*)."""
+    url = f"https://www.tefas.gov.tr/api/funds/{ucnokta}"
+    son = None
+    for deneme in range(3):
+        r = yahoo_oturum.post(url, json=govde, timeout=40,
+                              headers={"Content-Type": "application/json", "Accept": "application/json",
+                                       "Origin": "https://www.tefas.gov.tr", "Referer": "https://www.tefas.gov.tr/"})
+        if r.status_code == 429:
+            son = "429"
+            time.sleep(45)
+            continue
+        if r.status_code != 200 or "json" not in r.headers.get("content-type", ""):
+            son = f"{r.status_code} {r.text[:100]}"
+            time.sleep(2)
+            continue
+        d = r.json()
+        if isinstance(d, dict):
+            if d.get("errorMessage"):
+                raise RuntimeError(d["errorMessage"][:120])
+            return d.get("resultList") or []
+        return d or []
+    raise RuntimeError(f"{ucnokta}: {son}")
+
+
 def fonlari_cek(eski: dict) -> dict:
     fonlar = dict(eski.get("fonlar", {}))
-    bit = simdi()
-    bas = bit - dt.timedelta(days=10)
+    tum = eski.get("tum") or []
+    # 1) Tüm fonlar ve getirileri (tek istek)
     try:
-        yahoo_oturum.get("https://www.tefas.gov.tr/TarihselVeriler.aspx", timeout=20)
-    except Exception as e:
-        log("fon alınamadı", "tefas giriş", e)
-    for kod in fon_listesi():
-        try:
-            r = yahoo_oturum.post(
-                "https://www.tefas.gov.tr/api/DB/BindHistoryInfo",
-                data={"fontip": "YAT", "sfontur": "", "fonkod": kod, "fongrup": "", "bastarih": bas.strftime("%d.%m.%Y"),
-                      "bittarih": bit.strftime("%d.%m.%Y"), "fonturkod": "", "fonunvantip": ""},
-                headers={"X-Requested-With": "XMLHttpRequest", "Origin": "https://www.tefas.gov.tr",
-                         "Referer": "https://www.tefas.gov.tr/TarihselVeriler.aspx"},
-                timeout=20,
-            )
-            if r.status_code != 200 or "json" not in r.headers.get("content-type", ""):
-                log("fon alınamadı", kod, r.status_code, r.text[:120].replace("\n", " "))
+        liste = tefas("fonGetiriBazliBilgiGetir", {"fonTipi": "YAT", "dil": "TR", "calismaTipi": 2,
+                      "donemGetiri1a": "1", "donemGetiri3a": "1", "donemGetiri6a": "1", "donemGetiriyb": "1",
+                      "donemGetiri1y": "1", "donemGetiri3y": "1", "donemGetiri5y": "1"})
+        yeni = []
+        for x in liste:
+            kod = (x.get("fonKodu") or "").strip().upper()
+            if not kod:
                 continue
-            veri = sorted(r.json().get("data") or [], key=lambda x: int(x.get("TARIH", 0)))
-            if not veri:
-                log("fon alınamadı", kod, "boş yanıt")
+            yeni.append({"k": kod, "ad": (x.get("fonUnvan") or "").strip(), "tur": (x.get("fonTurAciklama") or "").strip(),
+                         "r": x.get("riskDegeri"),
+                         "g1a": _sayi(x.get("getiri1a")), "g3a": _sayi(x.get("getiri3a")), "g6a": _sayi(x.get("getiri6a")),
+                         "gyb": _sayi(x.get("getiriyb")), "g1y": _sayi(x.get("getiri1y")), "g3y": _sayi(x.get("getiri3y"))})
+        if yeni:
+            tum = sorted(yeni, key=lambda f: f["k"])
+        else:
+            log("fon alınamadı", "tüm fonlar listesi boş")
+    except Exception as e:
+        log("fon alınamadı", "tüm fonlar", e)
+    getiri = {f["k"]: f for f in tum}
+    # 2) Takip edilen fonların fiyatı ve 3 aylık grafiği
+    for kod in fon_listesi():
+        f = dict(fonlar.get(kod, {}))
+        try:
+            bilgi = tefas("fonBilgiGetir", {"fonKodu": kod})
+            if bilgi:
+                b = bilgi[0]
+                f.update({"ad": (b.get("fonUnvan") or f.get("ad") or kod).strip(),
+                          "fiyat": _sayi(b.get("sonFiyat")), "buyukluk": _sayi(b.get("portBuyukluk")),
+                          "yatirimci": int(_sayi(b.get("yatirimciSayi")) or 0), "gunluk": _sayi(b.get("gunlukGetiri")),
+                          "kategori": (b.get("fonKategori") or f.get("kategori") or "").strip(),
+                          "siralama": b.get("kategoriDerece"), "kategoriSayi": b.get("kategoriFonSay")})
+            time.sleep(1)
+            gecmis = tefas("fonFiyatBilgiGetir", {"fonKodu": kod, "dil": "TR", "periyod": 3})
+            seri = []
+            for row in gecmis:
+                tarih, fiyat = str(row.get("tarih") or "")[:10], _sayi(row.get("fiyat"))
+                if len(tarih) == 10 and fiyat:
+                    seri.append([tarih, fiyat])
+            if seri:
+                seri.sort()
+                f["g"] = seri[-70:]
+                f["tarih"] = seri[-1][0]
+            if kod in getiri:
+                f["getiri"] = {k: getiri[kod][k] for k in ("g1a", "g3a", "g6a", "gyb", "g1y", "g3y")}
+                f.setdefault("tur", getiri[kod]["tur"])
+            fonlar[kod] = f
         except Exception as e:
             log("fon alınamadı", kod, e)
-            continue
-        if not veri:
-            continue
-        son = veri[-1]
-        onceki = veri[-2] if len(veri) > 1 else None
-        tarih = dt.datetime.fromtimestamp(int(son["TARIH"]) / 1000, IST)
-        f = dict(fonlar.get(kod, {}))
-        f.update({
-            "ad": son.get("FONUNVAN") or f.get("ad") or kod,
-            "fiyat": float(son["FIYAT"]),
-            "buyukluk": float(son.get("PORTFOYBUYUKLUK") or f.get("buyukluk") or 0),
-            "yatirimci": int(son.get("KISISAYISI") or f.get("yatirimci") or 0),
-            "tarih": f"{tarih.day} {AY[tarih.month - 1]} {tarih.year}",
-        })
-        if onceki and float(onceki["FIYAT"]):
-            f["gunluk"] = round((float(son["FIYAT"]) / float(onceki["FIYAT"]) - 1) * 100, 3)
-        f.setdefault("kategori", "TEFAS yatırım fonu")
-        fonlar[kod] = f
-    return {"updatedAt": simdi().isoformat(timespec="seconds"), "fonlar": fonlar}
+        time.sleep(1)
+    return {"updatedAt": simdi().isoformat(timespec="seconds"), "fonlar": fonlar, "tum": tum}
 
 
 # ---------------------------------------------------------------- git

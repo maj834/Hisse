@@ -207,17 +207,61 @@ def grok(istem, anahtar):
 
 def openrouter(istem, anahtar):
     return openai_uyumlu("https://openrouter.ai/api/v1", anahtar, os.environ.get("OPENROUTER_MODEL"),
-                         ["deepseek/deepseek-chat-v3.1:free", "deepseek/deepseek-chat-v3-0324:free",
-                          "meta-llama/llama-3.3-70b-instruct:free", "qwen/qwen3-235b-a22b:free"],
+                         ["qwen/qwen3-235b-a22b:free", "meta-llama/llama-3.3-70b-instruct:free",
+                          "deepseek/deepseek-chat-v3.1:free"],
                          lambda a: a.endswith(":free") and ("70b" in a or "deepseek" in a or "qwen3" in a), istem,
                          json_modu=False)
+
+
+def github_models(istem, anahtar, tercihler, filtre):
+    """GitHub Models: GitHub Actions'ın kendi GITHUB_TOKEN'ı ile ücretsiz (anahtar gerekmez)."""
+    model = None
+    try:
+        r = requests.get("https://models.github.ai/catalog/models", headers={"Authorization": f"Bearer {anahtar}"}, timeout=30)
+        if r.ok:
+            adlar = [m.get("id") for m in r.json() if m.get("id")]
+            model = tercih_et(adlar, tercihler, filtre)
+    except Exception:
+        pass
+    model = model or tercihler[0]
+    bas = {"Authorization": f"Bearer {anahtar}", "Accept": "application/vnd.github+json"}
+    govde = {"model": model, "temperature": 0.3, "max_tokens": 4000,
+             "messages": [{"role": "system", "content": "Yalnızca geçerli JSON döndür."}, {"role": "user", "content": istem}]}
+    r = requests.post("https://models.github.ai/inference/chat/completions", headers=bas,
+                      json={**govde, "response_format": {"type": "json_object"}}, timeout=ZAMAN_ASIMI)
+    if r.status_code == 400:
+        r = requests.post("https://models.github.ai/inference/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
+    if not r.ok:
+        raise RuntimeError(f"{r.status_code} {r.text[:150]}")
+    return model, r.json()["choices"][0]["message"]["content"]
+
+
+def gpt(istem, anahtar):
+    return github_models(istem, os.environ.get("GH_MODELS_TOKEN") or anahtar,
+                         [os.environ.get("GPT_MODEL") or "openai/gpt-4.1", "openai/gpt-4.1-mini", "openai/gpt-4o"],
+                         lambda a: a.startswith("openai/gpt-4"))
+
+
+def deepseek_gh(istem, anahtar):
+    return github_models(istem, os.environ.get("GH_MODELS_TOKEN") or anahtar,
+                         [os.environ.get("DEEPSEEK_MODEL") or "deepseek/DeepSeek-V3-0324", "deepseek/deepseek-v3-0324"],
+                         lambda a: a.lower().startswith("deepseek/") and "r1" not in a.lower())
+
+
+def mistral(istem, anahtar):
+    return openai_uyumlu("https://api.mistral.ai/v1", anahtar, os.environ.get("MISTRAL_MODEL"),
+                         ["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest"],
+                         lambda a: a.endswith("-latest") and ("large" in a or "medium" in a), istem)
 
 
 SAGLAYICILAR = [
     ("gemini", "Gemini", "GEMINI_API_KEY", gemini),
     ("groq", "Llama (Groq)", "GROQ_API_KEY", groq),
     ("grok", "Grok", "XAI_API_KEY", grok),
-    ("openrouter", "DeepSeek (OpenRouter)", "OPENROUTER_API_KEY", openrouter),
+    ("openrouter", "OpenRouter", "OPENROUTER_API_KEY", openrouter),
+    ("gpt", "GPT (OpenAI)", "GITHUB_TOKEN", gpt),
+    ("deepseek", "DeepSeek", "GITHUB_TOKEN", deepseek_gh),
+    ("mistral", "Mistral", "MISTRAL_API_KEY", mistral),
 ]
 
 
