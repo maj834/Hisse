@@ -1,0 +1,40 @@
+plugins {
+    id "com.android.application"
+}
+
+def surumKodu = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+
+android {
+    namespace "com.cemulas.hisseradar"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.cemulas.hisseradar"
+        minSdk 26
+        targetSdk 34
+        versionCode surumKodu
+        versionName "1." + surumKodu
+    }
+
+    signingConfigs {
+        imza {
+            // Aynı anahtarla imzalanınca yeni sürüm eskisinin üstüne kurulur.
+            storeFile file(System.getenv("KEYSTORE_PATH") ?: "debug.keystore")
+            storePassword System.getenv("KEYSTORE_PASS") ?: "android"
+            keyAlias System.getenv("KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword System.getenv("KEYSTORE_PASS") ?: "android"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.imza
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

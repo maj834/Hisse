@@ -1,0 +1,78 @@
+name: APK derle
+
+# Android uygulamasını derler ve GitHub Releases'e yükler.
+# İndirme linki her zaman aynı: https://github.com/maj834/Hisse/releases/latest/download/HisseRadar.apk
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", "app/**", ".github/workflows/apk.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+jobs:
+  derle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      # İmza anahtarı her derlemede aynı kalmalı ki yeni sürüm eskisinin üstüne kurulsun.
+      # KEYSTORE_B64 gizli değişkeni varsa o kullanılır; yoksa bir kez üretilip önbellekte saklanır.
+      - name: imza anahtarını önbellekten al
+        uses: actions/cache@v4
+        with:
+          path: android/app/hisse.keystore
+          key: hisse-imza-v1
+
+      - name: imza anahtarını hazırla
+        env:
+          KB64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          cd android/app
+          if [ -n "$KB64" ]; then
+            echo "$KB64" | base64 -d > hisse.keystore
+          elif [ ! -f hisse.keystore ]; then
+            keytool -genkeypair -keystore hisse.keystore -alias hisse -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass hisseradar -keypass hisseradar -dname "CN=Hisse Radar, O=Cem Ulas, C=TR"
+          fi
+
+      - name: web dosyalarını uygulamaya kopyala
+        run: |
+          python3 tools/build_index.py
+          mkdir -p android/app/src/main/assets
+          cp index.html icon.svg manifest.webmanifest android/app/src/main/assets/
+
+      - name: derle
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/android/app/hisse.keystore
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS || 'hisseradar' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'hisse' }}
+        run: |
+          cd android
+          gradle --no-daemon --stacktrace assembleRelease
+
+      - name: Releases'e yükle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk HisseRadar.apk
+          TAG="v1.${{ github.run_number }}"
+          gh release create "$TAG" HisseRadar.apk \
+            --title "Hisse Radar 1.${{ github.run_number }}" \
+            --notes "Telefona kurmak için HisseRadar.apk dosyasını indir ve aç. Uygulama açılışta güncel tasarımı internetten yükler, internet yoksa içindeki kopyayı kullanır." \
+            --latest

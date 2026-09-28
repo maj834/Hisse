@@ -1,0 +1,71 @@
+name: Yapay zeka degerlendirme
+
+# Borsa açıkken her saat (10:20-18:20 TSİ) BIST 30'u Gemini, Llama (Groq), Grok ve
+# isteğe bağlı DeepSeek (OpenRouter) ile değerlendirir; sonucu data/ai.json'a yazar.
+# Anahtarlar: Settings -> Secrets and variables -> Actions -> New repository secret
+#   GEMINI_API_KEY, GROQ_API_KEY, XAI_API_KEY, OPENROUTER_API_KEY (hangileri varsa)
+on:
+  schedule:
+    - cron: "20 7-15 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ai
+  cancel-in-progress: false
+
+jobs:
+  degerlendir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install --quiet requests
+
+      # APK imza anahtarının önbellekte silinmemesi için ona düzenli olarak erişilir.
+      - name: imza anahtarını canlı tut
+        uses: actions/cache/restore@v4
+        with:
+          path: android/app/hisse.keystore
+          key: hisse-imza-v1
+
+      - name: güncel veriyi al
+        run: |
+          git fetch --quiet --depth 1 origin data || true
+          mkdir -p /tmp/veri
+          git show origin/data:snapshot.json > /tmp/veri/snapshot.json 2>/dev/null || cp data/snapshot.json /tmp/veri/snapshot.json
+          git show origin/data:news.json > /tmp/veri/news.json 2>/dev/null || cp data/news.json /tmp/veri/news.json
+
+      - name: değerlendir
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+          XAI_MODEL: ${{ vars.XAI_MODEL }}
+          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL }}
+          SNAPSHOT: /tmp/veri/snapshot.json
+          NEWS: /tmp/veri/news.json
+        run: python scraper/ai_degerlendir.py
+
+      - name: kaydet
+        run: |
+          git config user.name "hisse-radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ai.json
+          git diff --cached --quiet && exit 0
+          git commit --quiet -m "Yapay zeka degerlendirmesi $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
+          for i in 1 2 3; do
+            git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1

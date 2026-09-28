@@ -8,7 +8,26 @@ BIST 30 hisseleri için telefondan açılan borsa uygulaması: dokunmatik fiyat 
 |---|---|---|
 | `scraper/guncelle.py` (GitHub Actions) | Yahoo Finance'ten BIST 30 fiyatlarını, Google Haberler'den başlıkları, TEFAS'tan fon fiyatlarını çeker; `data` dalına yazar | Borsa açıkken dakikada bir, kapalıyken 2 saatte bir |
 | `index.html` (GitHub Pages) | Uygulamanın kendisi; `data` dalındaki dosyaları kontrol eder, değişince ekranı günceller | 5 saniyede bir |
-| `data/outlook.json` | Claude'un haber ve fiyatlara bakarak yazdığı beklenti analizi | Borsa açıkken saatte bir |
+| `data/outlook.json` | Claude'un haber ve fiyatlara bakarak yazdığı beklenti analizi, kararları ve 1 haftalık hedefleri | Borsa açıkken saatte bir |
+| `scraper/ai_degerlendir.py` | Gemini, Llama (Groq), Grok ve isteğe bağlı DeepSeek'e 30 hisse için AL/TUT/SAT ve 1 haftalık hedef sorar; `data/ai.json` | Borsa açıkken saatte bir |
+| `android/` | Uygulamanın APK'sı; açılışta güncel sayfayı yükler, internet yoksa içindeki kopyayı açar | Her değişiklikte derlenir |
+
+## APK
+
+İndirme linki: https://github.com/maj834/Hisse/releases/latest/download/HisseRadar.apk
+
+## Yapay zekâ anahtarları
+
+Settings → Secrets and variables → Actions → New repository secret:
+
+| Ad | Nereden | Ücret |
+|---|---|---|
+| `GEMINI_API_KEY` | aistudio.google.com → Get API key | Ücretsiz katman |
+| `GROQ_API_KEY` | console.groq.com → API Keys | Ücretsiz katman |
+| `XAI_API_KEY` | console.x.ai → API Keys | Ücretli |
+| `OPENROUTER_API_KEY` | openrouter.ai → Keys (`:free` modeller) | Ücretsiz katman |
+
+Anahtarlar hiçbir zaman koda ya da uygulamaya yazılmaz; yalnızca GitHub Actions içinde kullanılır.
 
 Fiyatlar kaynağında yaklaşık 15 dakika gecikmelidir. Uygulamadaki sinyaller ve beklentiler yatırım tavsiyesi değildir.
 
@@ -16,6 +35,7 @@ Fiyatlar kaynağında yaklaşık 15 dakika gecikmelidir. Uygulamadaki sinyaller 
 
 - Takip edilen fonlar: `fonlar.txt` (her satıra bir TEFAS kodu).
 - Elle güncelleme: Actions → "Veri güncelle" → Run workflow (`tek` veya `dongu`).
+- Tasarım: `app/app.html` düzenlenir, `python3 tools/build_index.py` ile `index.html` üretilir.
 
 ## Gereksinim
 

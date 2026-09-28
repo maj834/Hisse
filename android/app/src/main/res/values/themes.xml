@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Tema" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/arka</item>
+        <item name="android:statusBarColor">@color/arka</item>
+        <item name="android:navigationBarColor">@color/arka</item>
+    </style>
+    <color name="arka">#0A0F16</color>
+    <color name="mavi">#4C8DFF</color>
+</resources>
