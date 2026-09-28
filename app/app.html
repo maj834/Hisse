@@ -498,7 +498,7 @@ function openDetail(k,keepScroll){
   setView("detay");
 }
 const mr=v=>{if(v==null)return "–";const a=Math.abs(v);return (v<0?"−":"")+(a>=1e9?nf(a/1e9,1)+" Mr":a>=1e6?nf(a/1e6,0)+" Mn":nf(a,0))};
-const pc=v=>v==null?`<span class="faint">–</span>`:`<span class="${cls(v)}">${pct(v)}</span>`;
+const pc=v=>v==null?`<span class="faint">–</span>`:`<span class="${cls(v)}">${v>=0?"+":"−"}%${nf(Math.abs(v),Math.abs(v)>=10?0:1)}</span>`;
 function temelCard(k){
   const x=(TEMEL.hisseler||{})[k];if(!x)return "";
   const p=x.puan||0,lbl=p>=2?"Güçlü":p<=-2?"Zayıf":p>0?"Olumlu":p<0?"Olumsuz":"Nötr",c=p>0?"up":p<0?"down":"hold";
@@ -509,9 +509,9 @@ function temelCard(k){
     ${x.ozet?`<p class="small" style="margin-bottom:14px">${esc(x.ozet.charAt(0).toLocaleUpperCase("tr")+x.ozet.slice(1))}.</p>`:""}
     <div class="fin"><div class="fh"><span>Kalem (${x.para&&x.para!=="TRY"?esc(x.para==="USD"?"dolar":x.para==="EUR"?"euro":x.para):"TL"})</span><span>${esc(x.ceyrek)}</span><span>Çeyrek</span><span>Yıllık</span></div>
       ${(x.satirlar||[]).map(r=>`<div><span>${esc(r.ad)}</span><b>${mr(r.son)}</b>${pc(r.ceyreklik)}${pc(r.yillik)}</div>`).join("")}</div>
-    ${(x.marjlar||[]).length?`<div class="kv" style="margin-top:10px">${x.marjlar.map(m=>`<div><span>${esc(m.ad)}</span><b>%${nf(m.son,1)} ${m.degisimPuan!=null?`<span class="xs ${cls(m.degisimPuan)}">${m.degisimPuan>=0?"+":"−"}${nf(Math.abs(m.degisimPuan),1)} puan</span>`:""}</b></div>`).join("")}</div>`:""}
-    <div class="ratios">${[["F/K",o.fk!=null?nf(o.fk,1):null],["PD/DD",o.pddd!=null?nf(o.pddd,2):null],["Özsermaye kârlılığı",o.roe!=null?"%"+nf(o.roe,1):null],["Borç / özsermaye",o.borcOzsermaye!=null?nf(o.borcOzsermaye,2):null]].filter(r=>r[1]).map(r=>`<div><span>${r[0]}</span><b>${r[1]}</b></div>`).join("")}</div>
-    ${(x.sapmalar||[]).length?`<p class="label" style="margin-top:14px">Önemli değişimler</p><div class="impacts">${x.sapmalar.map(s=>`<span class="imp ${s.yon==="olumlu"?"up up":"down down"}">${esc(s.ad)} ${s.yillik!=null?pct(s.yillik)+" yıllık":(s.puan>=0?"+":"−")+nf(Math.abs(s.puan),1)+" puan"}</span>`).join("")}</div>`:""}
+    ${(x.marjlar||[]).length?`<div class="kv" style="margin-top:10px">${x.marjlar.map(m=>`<div><span>${esc(m.ad)}</span><b>${m.son<0?"−":""}%${nf(Math.abs(m.son),1)} ${m.degisimPuan!=null?`<span class="xs ${cls(m.degisimPuan)}">${m.degisimPuan>=0?"+":"−"}${nf(Math.abs(m.degisimPuan),1)} puan</span>`:""}</b></div>`).join("")}</div>`:""}
+    <div class="ratios">${[["F/K",o.fk!=null&&(!x.para||x.para==="TRY")?nf(o.fk,1):null],["PD/DD",o.pddd!=null&&(!x.para||x.para==="TRY")?nf(o.pddd,2):null],["Özsermaye kârlılığı",o.roe!=null?"%"+nf(o.roe,1):null],["Borç / özsermaye",o.borcOzsermaye!=null?nf(o.borcOzsermaye,2):null]].filter(r=>r[1]).map(r=>`<div><span>${r[0]}</span><b>${r[1]}</b></div>`).join("")}</div>
+    ${(x.sapmalar||[]).length?`<p class="label" style="margin-top:14px">Önemli değişimler</p><div class="impacts">${x.sapmalar.map(s=>`<span class="imp ${s.yon==="olumlu"?"up up":"down down"}">${esc(s.ad)} ${s.yillik!=null?(s.yillik>=0?"+":"−")+"%"+nf(Math.abs(s.yillik),0)+" yıllık":(s.puan>=0?"+":"−")+nf(Math.abs(s.puan),1)+" puan"}</span>`).join("")}</div>`:""}
     <p class="note">Yıllık değişim ±%15, marj değişimi ±3 puan üzerindeyse önemli sayılır. Şirketler enflasyon muhasebesi uyguladığı için karşılaştırmaları dikkatli yorumla. Kaynak: şirket finansal tabloları (Yahoo Finance).</p>
   </div>`;
 }
