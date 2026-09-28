@@ -242,11 +242,7 @@ def github_models(istem, anahtar, tercihler, filtre):
     if r.status_code == 400:
         r = gonder(govde)
     if "json" not in r.headers.get("content-type", ""):
-        # eski GitHub Models adresi (Azure üzerinden), model adı yayıncı öneki olmadan
-        kisa = model.split("/")[-1]
-        r = requests.post("https://models.inference.ai.azure.com/chat/completions",
-                          headers={"Authorization": f"Bearer {anahtar}", "Content-Type": "application/json"},
-                          json={**govde, "model": kisa}, timeout=ZAMAN_ASIMI)
+        raise RuntimeError("GitHub Models yanıt vermedi; GH_MODELS_TOKEN anahtarında 'Models: Read' izni olmalı")
     if not r.ok:
         raise RuntimeError(f"{model} {r.status_code} {r.text[:150]}")
     try:
@@ -278,8 +274,8 @@ SAGLAYICILAR = [
     ("groq", "Llama (Groq)", "GROQ_API_KEY", groq),
     ("grok", "Grok", "XAI_API_KEY", grok),
     ("openrouter", "OpenRouter", "OPENROUTER_API_KEY", openrouter),
-    ("gpt", "GPT (OpenAI)", "GITHUB_TOKEN", gpt),
-    ("deepseek", "DeepSeek", "GITHUB_TOKEN", deepseek_gh),
+    ("gpt", "GPT (OpenAI)", "GH_MODELS_TOKEN", gpt),
+    ("deepseek", "DeepSeek", "GH_MODELS_TOKEN", deepseek_gh),
     ("mistral", "Mistral", "MISTRAL_API_KEY", mistral),
 ]
 

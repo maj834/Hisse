@@ -284,8 +284,8 @@ function analyze(k,s){
 function rebuild(){ALL=Object.keys(SNAP.hisseler||{}).sort().map(k=>analyze(k,SNAP.hisseler[k]));BY={};ALL.forEach(a=>BY[a.k]=a)}
 
 /* yapay zekâ kararları */
-const MODEL_RENK={gemini:"#4C8DFF",groq:"#F2B53A",grok:"#EAF0F7",openrouter:"#9B7CFF",claude:"#D97757",teknik:"#22C38E",temel:"#5AC8FA"};
-const MODEL_HARF={gemini:"G",groq:"L",grok:"X",openrouter:"D",claude:"C",teknik:"T",temel:"F"};
+const MODEL_RENK={gemini:"#4C8DFF",groq:"#F2B53A",grok:"#EAF0F7",openrouter:"#9B7CFF",gpt:"#10A37F",deepseek:"#4D6BFE",mistral:"#FA520F",claude:"#D97757",teknik:"#22C38E",temel:"#5AC8FA"};
+const MODEL_HARF={gemini:"G",groq:"L",grok:"X",openrouter:"R",gpt:"O",deepseek:"D",mistral:"M",claude:"C",teknik:"T",temel:"F"};
 const kCls=v=>v==="AL"?"up":v==="SAT"?"down":"hold";
 const kText={AL:"AL",TUT:"TUT",SAT:"SAT"};
 function votes(k){
@@ -452,7 +452,7 @@ function openDetail(k,keepScroll,fromPop){
       <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
         <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p></div>
         <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.hedef?`<span class="tg">1 hf: ${px(v.hedef)}</span>`:""}</div></div>`).join("")}</div>
-      ${aiNames.length?"":`<p class="note">Gemini, Llama ve Grok'un kararları, API anahtarları GitHub'a eklenince burada görünecek.</p>`}
+      ${aiNames.length?"":`<p class="note">Gemini, Llama, Grok, GPT, DeepSeek ve Mistral'ın kararları, API anahtarları GitHub'a eklenince burada görünecek.</p>`}
     </div>
   </div>
 
