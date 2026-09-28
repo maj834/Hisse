@@ -66,6 +66,12 @@ jobs:
           cd android
           gradle --no-daemon --stacktrace assembleRelease
 
+      - name: APK'yı doğrula
+        run: |
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          $BT/apksigner verify --verbose android/app/build/outputs/apk/release/app-release.apk | head -8
+          $BT/aapt2 dump badging android/app/build/outputs/apk/release/app-release.apk | grep -E "package:|sdkVersion|targetSdkVersion|application-label:" || true
+
       - name: Releases'e yükle
         env:
           GH_TOKEN: ${{ github.token }}

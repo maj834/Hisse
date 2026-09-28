@@ -54,9 +54,12 @@ def seri_cek(sembol: str) -> dict:
             if v is None:
                 continue
             noktalar.append((p.get("asOfDate"), float(v)))
+            if p.get("currencyCode") and tip.startswith("quarterly"):
+                sonuc["_para"] = p.get("currencyCode")
         noktalar.sort()
         sonuc[tip] = noktalar
     return sonuc
+
 
 
 def son(seri, n=1):
@@ -113,11 +116,20 @@ def analiz(kod: str) -> dict:
     onceki = tarihler[i - 1] if i >= 1 else None
     gecen_yil = next((t for t in tarihler if t[:4] == str(int(tarih[:4]) - 1) and t[5:7] == tarih[5:7]), None)
 
+    # tutarsız FAVÖK (faaliyet kârından küçük) gösterilmez
+    favok_c, faal_c = None, None
+    for tt, v in q("EBITDA"):
+        if tt == tarih:
+            favok_c = v
+    for tt, v in q("OperatingIncome"):
+        if tt == tarih:
+            faal_c = v
+    favok_gecerli = not (favok_c is not None and faal_c is not None and favok_c < faal_c)
     satirlar = []
     for ad, seri in [("Hasılat", gelir), ("Brüt kâr", q("GrossProfit")), ("Esas faaliyet kârı", q("OperatingIncome")),
                      ("FAVÖK", q("EBITDA")), ("Net kâr", net)]:
         cur = deger(seri, tarih)
-        if cur is None:
+        if cur is None or (ad == "FAVÖK" and not favok_gecerli):
             continue
         pq = deger(seri, onceki) if onceki else None
         py = deger(seri, gecen_yil) if gecen_yil else None
@@ -129,6 +141,8 @@ def analiz(kod: str) -> dict:
     marjlar = []
     for ad, seri in [("Brüt marj", q("GrossProfit")), ("Faaliyet marjı", q("OperatingIncome")),
                      ("FAVÖK marjı", q("EBITDA")), ("Net marj", net)]:
+        if ad == "FAVÖK marjı" and not favok_gecerli:
+            continue
         m1 = marj(deger(seri, tarih), g_cur)
         m0 = marj(deger(seri, gecen_yil), g_py) if gecen_yil else None
         if m1 is not None:
@@ -186,7 +200,7 @@ def analiz(kod: str) -> dict:
     puan = max(-3, min(3, puan))
 
     return {
-        "ceyrek": ceyrek_adi(tarih), "tarih": tarih,
+        "ceyrek": ceyrek_adi(tarih), "tarih": tarih, "para": veri.get("_para") or "TRY",
         "oncekiCeyrek": ceyrek_adi(onceki), "gecenYilCeyrek": ceyrek_adi(gecen_yil),
         "satirlar": satirlar, "marjlar": marjlar, "sapmalar": sapmalar,
         "oranlar": {"fk": fk, "pddd": pddd, "roe": roe, "piyasaDegeri": pd_,

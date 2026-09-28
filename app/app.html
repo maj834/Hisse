@@ -188,6 +188,14 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 .flash .price-block .big,.flash .row .px{animation:fl 1.4s}
 @keyframes fl{0%{color:var(--hold)}}
 @media (prefers-reduced-motion:reduce){.live.on i,.flash .price-block .big,.flash .row .px{animation:none}}
+.fin{display:flex;flex-direction:column;font-size:14px}
+.fin>div{display:grid;grid-template-columns:minmax(0,1.4fr) 1fr .8fr .8fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.fin>div>*:not(:first-child){text-align:right}
+.fin .fh{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-top:0}
+.fin span:first-child{color:var(--muted)}
+.ratios{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.ratios div{background:var(--s2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column}
+.ratios span{font-size:12px;color:var(--muted)}.ratios b{font-size:17px}
 .disc{font-size:12px;color:var(--faint);text-align:center;padding:8px 12px 0}
 </style>
 </head>
@@ -197,6 +205,7 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 <script type="application/json" id="seed-outlook">__OUTLOOK__</script>
 <script type="application/json" id="seed-funds">__FUNDS__</script>
 <script type="application/json" id="seed-ai">__AI__</script>
+<script type="application/json" id="seed-temel">__TEMEL__</script>
 
 <header class="appbar"><div class="wrap in">
   <span class="logo"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 12v-3M7 14V5M11 11V8M15 9V3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></span>
@@ -239,7 +248,7 @@ const RAW=(dal,yol)=>`https://raw.githubusercontent.com/${REPO}/${dal}/${yol}?t=
 const tvUrl=k=>"https://www.tradingview.com/chart/?symbol=BIST%3A"+encodeURIComponent(k);
 const T=v=>Date.parse(v||"")||0;
 
-let SNAP=seed("seed-snap"),NEWS=seed("seed-news"),OUT=seed("seed-outlook"),FUNDS=seed("seed-funds"),AI=seed("seed-ai");
+let SNAP=seed("seed-snap"),NEWS=seed("seed-news"),OUT=seed("seed-outlook"),FUNDS=seed("seed-funds"),AI=seed("seed-ai"),TEMEL=seed("seed-temel");
 let ALL=[],BY={},cur=null,tab="piyasa";
 
 /* ================= analiz ================= */
@@ -269,8 +278,8 @@ function analyze(k,s){
 function rebuild(){ALL=Object.keys(SNAP.hisseler||{}).sort().map(k=>analyze(k,SNAP.hisseler[k]));BY={};ALL.forEach(a=>BY[a.k]=a)}
 
 /* yapay zekâ kararları */
-const MODEL_RENK={gemini:"#4C8DFF",groq:"#F2B53A",grok:"#EAF0F7",openrouter:"#9B7CFF",claude:"#D97757",teknik:"#22C38E"};
-const MODEL_HARF={gemini:"G",groq:"L",grok:"X",openrouter:"D",claude:"C",teknik:"T"};
+const MODEL_RENK={gemini:"#4C8DFF",groq:"#F2B53A",grok:"#EAF0F7",openrouter:"#9B7CFF",claude:"#D97757",teknik:"#22C38E",temel:"#5AC8FA"};
+const MODEL_HARF={gemini:"G",groq:"L",grok:"X",openrouter:"D",claude:"C",teknik:"T",temel:"F"};
 const kCls=v=>v==="AL"?"up":v==="SAT"?"down":"hold";
 const kText={AL:"AL",TUT:"TUT",SAT:"SAT"};
 function votes(k){
@@ -278,6 +287,7 @@ function votes(k){
   const m=(AI.hisseler||{})[k]||{};
   (AI.modeller||[]).forEach(md=>{const v=m[md.id];if(v&&md.durum!=="hata")list.push({id:md.id,ad:md.ad,model:md.model,...v,eski:md.durum==="eski"})});
   const ck=((OUT.kararlar||{})[k]);if(ck)list.push({id:"claude",ad:"Claude",...ck});
+  const tm=((TEMEL.hisseler||{})[k]);if(tm&&tm.ozet!==undefined){const p=tm.puan||0;list.push({id:"temel",ad:"Temel analiz ("+tm.ceyrek+")",karar:p>=2?"AL":p<=-2?"SAT":"TUT",guven:40+Math.abs(p)*10,neden:tm.ozet?tm.ozet.charAt(0).toLocaleUpperCase("tr")+tm.ozet.slice(1):"Finansallarda belirgin bir sinyal yok"})}
   if(a)list.push({id:"teknik",ad:"Teknik analiz",karar:a.tone,guven:Math.min(90,40+Math.abs(a.sc)*12),hedef:Math.round(a.hafta*100)/100,neden:a.why.slice(0,2).map((w,i)=>i?w.charAt(0).toLocaleLowerCase("tr")+w.slice(1):w).join(", ")});
   return list;
 }
@@ -462,6 +472,7 @@ function openDetail(k,keepScroll){
     </div>
   </div>
 
+  ${temelCard(k)}
   <div class="card">
     <div class="card-h"><h2>Göstergeler</h2></div>
     <div class="kv">
@@ -485,6 +496,24 @@ function openDetail(k,keepScroll){
   $("#mode").onclick=()=>{mode=mode==="mum"?"line":"mum";store.set("mode",mode);if(mode==="mum"&&range==="gun"){range="1a";store.set("rng",range)}openDetail(k,true)};
   const ab=$("#askBtn");if(ab)ab.onclick=()=>{asked=true;store.set("asked",true);$("#ask").hidden=true;$("#answer").hidden=false};
   setView("detay");
+}
+const mr=v=>{if(v==null)return "–";const a=Math.abs(v);return (v<0?"−":"")+(a>=1e9?nf(a/1e9,1)+" Mr":a>=1e6?nf(a/1e6,0)+" Mn":nf(a,0))};
+const pc=v=>v==null?`<span class="faint">–</span>`:`<span class="${cls(v)}">${pct(v)}</span>`;
+function temelCard(k){
+  const x=(TEMEL.hisseler||{})[k];if(!x)return "";
+  const p=x.puan||0,lbl=p>=2?"Güçlü":p<=-2?"Zayıf":p>0?"Olumlu":p<0?"Olumsuz":"Nötr",c=p>0?"up":p<0?"down":"hold";
+  const o=x.oranlar||{};
+  return `<div class="card">
+    <div class="card-h"><h2>Temel analiz</h2><span class="pill ${c} ${c}">${lbl}</span></div>
+    <p class="small muted" style="margin:-4px 0 14px">${esc(x.ceyrek)} bilançosu · karşılaştırma: ${esc(x.oncekiCeyrek||"–")} ve ${esc(x.gecenYilCeyrek||"–")}</p>
+    ${x.ozet?`<p class="small" style="margin-bottom:14px">${esc(x.ozet.charAt(0).toLocaleUpperCase("tr")+x.ozet.slice(1))}.</p>`:""}
+    <div class="fin"><div class="fh"><span>Kalem (${x.para&&x.para!=="TRY"?esc(x.para==="USD"?"dolar":x.para==="EUR"?"euro":x.para):"TL"})</span><span>${esc(x.ceyrek)}</span><span>Çeyrek</span><span>Yıllık</span></div>
+      ${(x.satirlar||[]).map(r=>`<div><span>${esc(r.ad)}</span><b>${mr(r.son)}</b>${pc(r.ceyreklik)}${pc(r.yillik)}</div>`).join("")}</div>
+    ${(x.marjlar||[]).length?`<div class="kv" style="margin-top:10px">${x.marjlar.map(m=>`<div><span>${esc(m.ad)}</span><b>%${nf(m.son,1)} ${m.degisimPuan!=null?`<span class="xs ${cls(m.degisimPuan)}">${m.degisimPuan>=0?"+":"−"}${nf(Math.abs(m.degisimPuan),1)} puan</span>`:""}</b></div>`).join("")}</div>`:""}
+    <div class="ratios">${[["F/K",o.fk!=null?nf(o.fk,1):null],["PD/DD",o.pddd!=null?nf(o.pddd,2):null],["Özsermaye kârlılığı",o.roe!=null?"%"+nf(o.roe,1):null],["Borç / özsermaye",o.borcOzsermaye!=null?nf(o.borcOzsermaye,2):null]].filter(r=>r[1]).map(r=>`<div><span>${r[0]}</span><b>${r[1]}</b></div>`).join("")}</div>
+    ${(x.sapmalar||[]).length?`<p class="label" style="margin-top:14px">Önemli değişimler</p><div class="impacts">${x.sapmalar.map(s=>`<span class="imp ${s.yon==="olumlu"?"up up":"down down"}">${esc(s.ad)} ${s.yillik!=null?pct(s.yillik)+" yıllık":(s.puan>=0?"+":"−")+nf(Math.abs(s.puan),1)+" puan"}</span>`).join("")}</div>`:""}
+    <p class="note">Yıllık değişim ±%15, marj değişimi ±3 puan üzerindeyse önemli sayılır. Şirketler enflasyon muhasebesi uyguladığı için karşılaştırmaları dikkatli yorumla. Kaynak: şirket finansal tabloları (Yahoo Finance).</p>
+  </div>`;
 }
 function fmtTime(iso){const t=T(iso);if(!t)return "";const d=new Date(t);return d.toLocaleDateString("tr-TR",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})+" analizi"}
 
@@ -560,6 +589,7 @@ async function pollSlow(){
   try{const d=await getJ(RAW("data","news.json"));if(d.items&&T(d.updatedAt)>T(NEWS.updatedAt)){NEWS=d;renderNews()}}catch(e){}
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/temel.json"));if(T(d.updatedAt)>T(TEMEL.updatedAt)){TEMEL=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("data","funds.json"));if(T(d.updatedAt)>T(FUNDS.updatedAt)){FUNDS=d;renderFunds()}}catch(e){}
 }
 renderAll();

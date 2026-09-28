@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.view.Window;
+import android.webkit.DownloadListener;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -53,6 +54,14 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri u = request.getUrl();
                 String sema = u.getScheme() == null ? "" : u.getScheme();
+                String adres = u.toString();
+                if (adres.endsWith(".apk") || adres.contains("/releases/")) {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, u));
+                    } catch (Exception ignored) {
+                    }
+                    return true;
+                }
                 if (sema.equals("http") || sema.equals("https") || sema.equals("file")) {
                     return false; // haberler ve TradingView uygulamanın içinde açılır
                 }
@@ -71,6 +80,17 @@ public class MainActivity extends Activity {
             @Override
             public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
                 if (request.isForMainFrame() && request.getUrl().toString().startsWith(CANLI)) yereleGec();
+            }
+        });
+
+        // İndirme bağlantıları (ör. yeni APK) telefonun tarayıcısında/indiricisinde açılsın
+        web.setDownloadListener(new DownloadListener() {
+            @Override
+            public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimeType, long contentLength) {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                } catch (Exception ignored) {
+                }
             }
         });
 
