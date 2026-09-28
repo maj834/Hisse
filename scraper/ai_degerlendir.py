@@ -217,7 +217,7 @@ def github_models(istem, anahtar, tercihler, filtre):
     """GitHub Models: GitHub Actions'ın kendi GITHUB_TOKEN'ı ile ücretsiz (anahtar gerekmez)."""
     model = None
     try:
-        r = requests.get("https://models.github.ai/catalog/models", headers={"Authorization": f"Bearer {anahtar}"}, timeout=30)
+        r = requests.get("https://models.github.ai/catalog/models", headers={"Authorization": f"Bearer {anahtar}", "Accept": "application/json"}, timeout=30)
         if r.ok:
             adlar = [m.get("id") for m in r.json() if m.get("id")]
             model = tercih_et(adlar, tercihler, filtre)
@@ -228,16 +228,25 @@ def github_models(istem, anahtar, tercihler, filtre):
            "X-GitHub-Api-Version": "2022-11-28"}
     govde = {"model": model, "temperature": 0.3, "max_tokens": 4000,
              "messages": [{"role": "system", "content": "Yalnızca geçerli JSON döndür."}, {"role": "user", "content": istem}]}
-    r = requests.post("https://models.github.ai/inference/chat/completions", headers=bas,
-                      json={**govde, "response_format": {"type": "json_object"}}, timeout=ZAMAN_ASIMI)
+    def gonder(g):
+        url = "https://models.github.ai/inference/chat/completions"
+        for _ in range(4):  # yönlendirmelerde POST gövdesini koru
+            r = requests.post(url, headers=bas, json=g, timeout=ZAMAN_ASIMI, allow_redirects=False)
+            if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("location"):
+                url = requests.compat.urljoin(url, r.headers["location"])
+                continue
+            return r
+        return r
+
+    r = gonder({**govde, "response_format": {"type": "json_object"}})
     if r.status_code == 400:
-        r = requests.post("https://models.github.ai/inference/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
+        r = gonder(govde)
     if not r.ok:
         raise RuntimeError(f"{model} {r.status_code} {r.text[:150]}")
     try:
         return model, r.json()["choices"][0]["message"]["content"]
     except Exception:
-        raise RuntimeError(f"{model} {r.status_code} yanıt okunamadı: {r.headers.get('content-type','')} {r.text[:150]!r}")
+        raise RuntimeError(f"{model} {r.status_code} yanıt okunamadı: {r.headers.get('content-type','')} {r.text[:150]!r} url={r.url}")
 
 
 def gpt(istem, anahtar):
