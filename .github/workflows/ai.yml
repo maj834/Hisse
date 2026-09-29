@@ -66,7 +66,20 @@ jobs:
           SNAPSHOT: /tmp/veri/snapshot.json
           NEWS: /tmp/veri/news.json
           MARKET: /tmp/veri/market.json
-        run: python scraper/ai_degerlendir.py
+        run: |
+          set -o pipefail
+          python scraper/ai_degerlendir.py 2>&1 | tee /tmp/calisma.log
+
+      - name: hata günlüğü
+        # kayıtlar sohbet ortamından okunamıyor: hata olursa son satırları depoya yaz (anahtarlar zaten *** ile gizli)
+        if: failure()
+        run: |
+          git config user.name "hisse-radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p data/hata
+          { echo "$(TZ=Europe/Istanbul date '+%d.%m %H:%M') ai.yml"; tail -n 60 /tmp/calisma.log 2>/dev/null; } > data/hata/ai.txt
+          git add data/hata/ai.txt && git commit --quiet -m "ai.yml hata günlüğü" || exit 0
+          for i in 1 2 3; do git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0; sleep 5; done
 
       - name: kaydet
         run: |
