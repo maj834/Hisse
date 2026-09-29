@@ -1,0 +1,38 @@
+name: Geçmiş veri testi
+
+# Hangi koşullarda tahminlerin gerçekten tuttuğunu 5 yıllık veriyle ölçer -> data/backtest.json
+on:
+  schedule:
+    - cron: "30 4 * * 1-5"   # 07:30 TSİ, borsa açılmadan önce ("bugün uyan hisseler" güncel olsun)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backtest
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet requests curl_cffi pandas numpy
+      - run: python scraper/backtest.py
+      - name: kaydet
+        run: |
+          git config user.name "hisse-radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/backtest.json
+          git diff --cached --quiet && exit 0
+          git commit --quiet -m "Geçmiş veri testi $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
+          for i in 1 2 3; do
+            git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
