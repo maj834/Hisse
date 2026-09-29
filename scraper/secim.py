@@ -53,7 +53,7 @@ def puanla(gecmis: list, fiyat: dict) -> None:
     """Vadesi dolan seçimleri gerçek fiyatlarla puanla."""
     xu = fiyat.get("XU100", {})
     for s in gecmis:
-        if s.get("sonuc"):
+        if s.get("sonuc") or s["tur"] == "fon":
             continue
         seri = fiyat.get(s["kod"])
         if not seri or not xu:
@@ -81,8 +81,8 @@ def puanla(gecmis: list, fiyat: dict) -> None:
 
 def ozet(gecmis: list) -> dict:
     o = {}
-    for tur in ("zayif", "guclu"):
-        biten = [s for s in gecmis if s["tur"] == tur and s.get("sonuc")]
+    for tur in ("zayif", "guclu", "fon"):
+        biten = [s for s in gecmis if s["tur"] == tur and s.get("sonuc") and "dogru" in s["sonuc"]]
         son = biten[-60:]
         o[tur] = {"n": len(biten), "dogru": sum(s["sonuc"]["dogru"] for s in biten),
                   "son60_n": len(son), "son60_dogru": sum(s["sonuc"]["dogru"] for s in son),
@@ -132,6 +132,85 @@ def haber_etkisi(kod: str, sektor: str, gundem: dict, outlook: dict) -> str:
     if any(x.get("sembol") == kod for x in outlook.get("yukselis") or []):
         return "olumlu"
     return ""
+
+
+def durum(g: dict) -> dict:
+    """Hisse detayında gösterilecek genel durum (yüzdeler)."""
+    f = lambda v, c=100: None if v is None else round(v * c, 1)
+    return {"r20": f(g.get("r20")), "r60": f(g.get("r60")), "rs60": f(g.get("rs60")), "s200": f(g.get("s200")),
+            "zirve": f(g.get("zirve")), "rsi": None if g.get("rsi") is None else round(g["rsi"], 1),
+            "trend": g.get("trend"), "hacim_mn": None if not g.get("likit") else round(g["likit"] / 1e6)}
+
+
+# ---------------------------------------------------------------- fonlar
+PASIF_TUR = ("para piyasası", "kısa vadeli", "kira sertifika", "katılım para")
+
+
+def fon_sec(fon_ai: dict, fonlar: dict) -> list[dict]:
+    """Öne çıkan fonlar: yapay zekâların hepsi 1 aylık AL + kendi türünde getiri sırası üstte + tek günlük sıçrama yok."""
+    if yas_saat(fon_ai.get("updatedAt")) > 48 or not fonlar:
+        return []
+    tum = fonlar.get("tum") or []
+    tur_grup: dict = {}
+    for f in tum:
+        tur_grup.setdefault(f.get("tur") or "?", []).append(f)
+
+    def sira(f, alan):
+        l = sorted([x for x in tur_grup.get(f.get("tur") or "?", []) if x.get(alan) is not None], key=lambda x: x[alan])
+        if len(l) < 5 or f.get(alan) is None:
+            return None
+        return l.index(f) / (len(l) - 1)
+
+    modeller = [m["id"] for m in fon_ai.get("modeller", []) if m.get("durum") != "hata"]
+    tmap = {f["k"]: f for f in tum}
+    aday = []
+    for k, v in (fon_ai.get("fonlar") or {}).items():
+        f = tmap.get(k)
+        if not f or any(s in (f.get("tur") or "").lower() for s in PASIF_TUR):
+            continue
+        oy = [v[m] for m in modeller if isinstance(v.get(m), dict) and v[m].get("karar1a")]
+        if len(oy) < 2 or any(o["karar1a"] != "AL" for o in oy):
+            continue
+        s1, s3 = sira(f, "g1a"), sira(f, "g3a")
+        if s1 is None or s3 is None or s1 < 0.6 or s3 < 0.5 or (f.get("g1a") or 0) > 25:
+            continue
+        g = ((fonlar.get("fonlar") or {}).get(k) or {}).get("g") or []
+        c = [x[1] for x in g[-23:]]
+        sicrama = max([abs(c[i] / c[i - 1] - 1) * 100 for i in range(1, len(c)) if c[i - 1]] or [0])
+        if sicrama >= 5 and sicrama >= abs(f.get("g1a") or 0) * 0.5:
+            continue
+        guven = sum(o.get("guven") or 50 for o in oy) / len(oy)
+        aday.append({"kod": k, "ad": f.get("ad", ""), "kategori": f.get("tur", ""), "g1a": f.get("g1a"), "g3a": f.get("g3a"),
+                     "sira1a": round(s1 * 100), "sira3a": round(s3 * 100), "oy": f"{len(oy)}/{len(oy)}",
+                     "neden": " · ".join((o.get("neden") or "")[:140] for o in oy)[:300],
+                     "_puan": guven + (s1 + s3) * 20})
+    aday.sort(key=lambda a: -a["_puan"])
+    return [{k2: v2 for k2, v2 in a.items() if k2 != "_puan"} for a in aday[:3]]
+
+
+def fon_puanla(gecmis: list, fonlar: dict) -> None:
+    """Fon seçimi 1 ay sonra: fonun 1 aylık getirisi kendi türündeki fonların ortancasından iyi mi?"""
+    tum = fonlar.get("tum") or []
+    if not tum:
+        return
+    tmap = {f["k"]: f for f in tum}
+    bugun = datetime.now(TSI).date()
+    for s in gecmis:
+        if s["tur"] != "fon" or s.get("sonuc"):
+            continue
+        gun = (bugun - datetime.fromisoformat(s["tarih"]).date()).days
+        f = tmap.get(s["kod"])
+        if gun < 30 or not f or f.get("g1a") is None:
+            s["ara_gun"] = gun
+            continue
+        if gun > 36:   # ölçüm penceresi kaçtı: dürüstçe "ölçülemedi"
+            s["sonuc"] = {"olculemedi": True}
+            continue
+        grup = sorted(x["g1a"] for x in tum if x.get("tur") == f.get("tur") and x.get("g1a") is not None)
+        orta = grup[len(grup) // 2] if grup else 0
+        s["sonuc"] = {"tarih": bugun.isoformat(), "getiri": f["g1a"], "tur_ortanca": orta,
+                      "fark": round(f["g1a"] - orta, 2), "dogru": bool(f["g1a"] > orta)}
+        s.pop("ara_gun", None)
 
 
 # ---------------------------------------------------------------- Cerebras (son eleme)
@@ -206,6 +285,14 @@ def main():
     bugun = datetime.now(TSI).strftime("%Y-%m-%d")
 
     puanla(gecmis, fiyat)
+    try:
+        fonlar = requests.get("https://raw.githubusercontent.com/maj834/Hisse/data/funds.json", timeout=60).json()
+    except Exception as e:
+        log("funds.json:", e)
+        fonlar = {}
+    fon_puanla(gecmis, fonlar)
+    fon = fon_sec(oku("fon_ai.json"), fonlar)
+    log("Fon seçimi:", [f["kod"] for f in fon])
 
     # ---- zayıf kalacaklar (ölçülmüş kurallar)
     uyum = (bt.get("uyum") or {}).get("SAT") or []
@@ -230,7 +317,7 @@ def main():
         grup = next((u for u in uyum if u["en_az"] == min(b["kural_sayisi"], len(uyum))), None)
         zayif.append({**b, "ad": market.get(b["kod"], {}).get("ad", ""),
                       "grup_isabet": grup["test"][0] if grup else None, "grup_n": grup["test"][1] if grup else None,
-                      "r20": g.get("r20"), "zirve": g.get("zirve")})
+                      "durum": durum(g)})
     zayif.sort(key=lambda x: (-x["kural_sayisi"], -x["isabet"], (x.get("rsi") or 50)))
     zayif = zayif[:EN_COK_ZAYIF]
 
@@ -287,13 +374,19 @@ def main():
             a = amap[s["kod"]]
             guclu.append({"kod": a["kod"], "ad": a["ad"], "neden": s.get("neden", ""), "rsi": round(a["rsi"] or 0, 1),
                           "getiri_1ay": a["getiri_1ay_%"], "bist100e_gore_3ay": a["bist100e_gore_3ay_%"],
-                          "oy": f'{sum(o["karar"] == "AL" for o in a["ai_oylari"])}/{len(a["ai_oylari"])}'})
+                          "oy": f'{sum(o["karar"] == "AL" for o in a["ai_oylari"])}/{len(a["ai_oylari"])}',
+                          "durum": durum(gunluk.get(a["kod"], {}))})
 
     # ---- bugünkü seçimleri kaydet (aynı hisse vadesi dolmadan tekrar sayılmaz)
     acik = {(s["kod"], s["tur"]) for s in gecmis if not s.get("sonuc")}
-    for tur, liste in (("zayif", zayif), ("guclu", guclu)):
+    for tur, liste in (("zayif", zayif), ("guclu", guclu), ("fon", fon)):
         for x in liste:
-            if (x["kod"], tur) in acik or x["kod"] not in fiyat or tarih not in fiyat[x["kod"]]:
+            if (x["kod"], tur) in acik:
+                continue
+            if tur == "fon":
+                gecmis.append({"tarih": bugun, "kod": x["kod"], "tur": "fon", "kategori": x.get("kategori", ""), "neden": (x.get("neden") or "")[:240]})
+                continue
+            if x["kod"] not in fiyat or tarih not in fiyat[x["kod"]]:
                 continue
             gecmis.append({"tarih": tarih, "kod": x["kod"], "tur": tur, "vade_gun": VADE_GUN, "neden": (x.get("neden") or "")[:240],
                            "fiyat": fiyat[x["kod"]][tarih], "bist100": xu.get(tarih)})
@@ -309,6 +402,7 @@ def main():
                         "donem": bt.get("donem")},
         "guclu": guclu,
         "guclu_not": cer_not,
+        "fon": fon,
         "canli": ozet(gecmis),
         "gecmis": gecmis,
         "cerebras": cer,

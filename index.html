@@ -211,6 +211,9 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;padding:9px 14px;border-radius:999px;background:var(--s1);border:1px solid var(--line);font-size:14px;font-weight:600;color:var(--muted)}
 .chip[aria-pressed="true"]{background:var(--s3);color:var(--ink);border-color:var(--s3)}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.sgrid div{display:flex;flex-direction:column;gap:3px;background:var(--s1);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.secneden{border-color:rgba(76,141,255,.35)}
 .disc{font-size:12px;color:var(--faint);text-align:center;padding:8px 12px 0}
 .disc a{color:var(--muted)}
 /* açılış bilgilendirmesi */
@@ -652,6 +655,7 @@ function openDetail(k,keepScroll,fromPop){
     <div class="big">${px(a.last)} <span style="font-size:18px;font-weight:700" class="muted">TL</span></div>
     <div class="meta"><span class="pill ${cls(a.ch)} ${cls(a.ch)}">${pct(a.ch)}</span><span class="small muted">${a.ch>=0?"+":"−"}${nf(Math.abs(a.last-a.s.prev),2)} TL · ${esc(a.s.t||"")}</span></div>
   </div>
+  ${secimNeden(k)}
   <div class="card chart-card">
     <div class="chart-top"><div class="seg sm" id="rng">${[["gun","Gün"],["1h","1H"],["1a","1A"],["3a","3A"]].map(([r,l])=>`<button data-r="${r}" aria-pressed="${r===range}">${l}</button>`).join("")}</div>
       <button class="modebtn" id="mode" ${a.lite?"hidden":""} aria-label="${mode==="mum"?"Çizgi grafiğe geç":"Mum grafiğe geç"}">${mode==="mum"?`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 17l5-5 4 3 8-8"/></svg>`:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 3v18M17 3v18"/><rect x="5" y="7" width="4" height="8" rx="1"/><rect x="15" y="5" width="4" height="6" rx="1"/></svg>`}</button></div>
@@ -802,48 +806,71 @@ const KOSUL_AD={"200 günlük ort. uzaklık: en düşük %20":"200 günlük orta
   "oynaklık: en yüksek %20":"en oynak hisselerden","oynaklık: en düşük %20":"en sakin hisselerden","Zirveden %30+ aşağı":"52 haftalık zirvesinden %30'dan fazla aşağıda",
   "Düşen trend":"düşüş trendinde","Yükselen trend":"yükseliş trendinde","RSI 30-45":"RSI 30–45 arası (zayıf)","RSI<30":"RSI 30'un altında","RSI>70":"RSI 70'in üstünde"};
 const kosulYaz=l=>(l||[]).map(x=>KOSUL_AD[x]||x.replace(": en yüksek %20"," en yüksek %20'de").replace(": en düşük %20"," en düşük %20'de")).join(" · ");
+let sekT=store.get("sekT","hisse");
+const isr=v=>v==null?"–":(v>=0?"+":"−")+"%"+nf(Math.abs(v),1);
+const secimTaze=()=>SEC.updatedAt&&(Date.now()-T(SEC.updatedAt))/36e5<=100;
+function canliYaz(t){const s=(SEC.canli||{})[t]||{};return s.n?`Canlı sonuç: <b>${s.dogru}/${s.n} doğru (${yuzde(s.dogru/s.n)})</b>${s.bekleyen?` · ${s.bekleyen} tahmin sürüyor`:""}`:`Canlı takip: ${s.bekleyen||0} tahmin sürüyor, ilk sonuçlar 1 ay sonra`}
+function secimBul(k){if(!secimTaze())return null;const z=(SEC.zayif||[]).find(x=>x.kod===k);if(z)return {tur:"zayif",x:z};const g=(SEC.guclu||[]).find(x=>x.kod===k);if(g)return {tur:"guclu",x:g};return null}
+function takipYaz(k,tur){const s=(SEC.gecmis||[]).filter(x=>x.kod===k&&x.tur===tur).pop();if(!s)return "";
+  if(s.sonuc&&"dogru" in s.sonuc)return `Seçildiği gün: ${dLbl(s.tarih)} · Sonuç: ${s.sonuc.dogru?"<b class='up'>doğru</b>":"<b class='down'>yanlış</b>"} (BIST 100'e göre ${isr(s.sonuc.fark)})`;
+  if(s.ara!=null&&s.ara_gun>0)return `Seçildiği gün: ${dLbl(s.tarih)} · ${s.ara_gun} işlem günüdür BIST 100'e göre <b class="${cls(s.ara)}">${isr(s.ara)}</b> (sonuç 21. günde)`;
+  return `Seçildiği gün: ${dLbl(s.tarih)} · sonuç 1 ay sonra`}
+function durumIzgara(d){if(!d)return "";const h=[["1 ay getiri",isr(d.r20)],["3 ay getiri",isr(d.r60)],["3 ayda BIST 100'e göre",isr(d.rs60)],["RSI (14)",d.rsi==null?"–":nf(d.rsi,0)],
+  ["Trend (50/200 gün)",d.trend==null?"–":d.trend==1?"Yükseliş":"Düşüş"],["200 günlük ortalamaya",isr(d.s200)],["52 hafta zirvesine",isr(d.zirve)],["Günlük işlem",d.hacim_mn==null?"–":nf(d.hacim_mn,0)+" mn TL"]];
+  return `<div class="sgrid">${h.map(([a,b])=>`<div><span class="xs muted">${a}</span><b>${b}</b></div>`).join("")}</div>`}
+function secimNeden(k){const s=secimBul(k);if(!s)return "";const x=s.x,z=s.tur==="zayif";
+  const olcum=z?(x.grup_isabet&&x.kural_sayisi>1?`${x.kural_sayisi} doğrulanmış kural birden uyuyor. Bu durumdaki hisseler geçmiş testte <b>${yuzde(x.grup_isabet)}</b> doğru çıktı (${x.grup_n} örnek).`:`Bu kural geçmiş testte <b>${yuzde(x.isabet)}</b> doğru çıktı (${x.n} örnek).`)
+    :`Yapay zekâ AL oyu ${esc(x.oy||"")}. Bu tür için geçmiş testte doğrulanmış kural yok, <b>ölçüm sürüyor</b>.`;
+  return `<div class="card secneden"><div class="card-h"><h2>Neden Beklenti listesinde?</h2></div>
+    <span class="label ${z?"down":"up"}">${z?"▼ 1 ayda piyasadan zayıf kalması bekleniyor":"▲ 1 ayda piyasadan güçlü gitmesi bekleniyor"}</span>
+    <p style="line-height:1.6;margin:10px 0 6px">${esc(z?kosulYaz(x.kosul):(x.neden||""))}</p>
+    <p class="small muted" style="line-height:1.55">${olcum}</p>
+    <p class="xs faint" style="margin-top:6px;line-height:1.5">${takipYaz(k,s.tur)}</p>
+    <div style="height:12px"></div><span class="label">Genel durum</span>${durumIzgara(x.durum)}</div>`}
+function fonNeden(k){if(!secimTaze())return "";const x=(SEC.fon||[]).find(f=>f.kod===k);if(!x)return "";
+  const s=(SEC.gecmis||[]).filter(g=>g.kod===k&&g.tur==="fon").pop();
+  return `<div class="card secneden"><div class="card-h"><h2>Neden Beklenti listesinde?</h2></div>
+    <span class="label up">▲ 1 ayda kendi türünden iyi gitmesi bekleniyor</span>
+    <p style="line-height:1.6;margin:10px 0 6px">${esc(x.neden||"")}</p>
+    <p class="small muted" style="line-height:1.55">Yapay zekâların tamamı AL diyor (${esc(x.oy)}); kendi türündeki fonlar arasında getiri sırası 1 ayda ${x.sira1a}/100, 3 ayda ${x.sira3a}/100. <b>Ölçüm sürüyor.</b></p>
+    ${s?`<p class="xs faint" style="margin-top:6px">Seçildiği gün: ${dLbl(s.tarih)} · sonuç 1 ay sonra</p>`:""}
+    <div style="height:12px"></div><span class="label">Genel durum</span>
+    <div class="sgrid"><div><span class="xs muted">Tür</span><b style="font-size:13px">${esc(x.kategori||"")}</b></div><div><span class="xs muted">1 ay getiri</span><b>${isr(x.g1a)}</b></div><div><span class="xs muted">3 ay getiri</span><b>${isr(x.g3a)}</b></div><div><span class="xs muted">Türünde sıra (1 ay)</span><b>${x.sira1a}/100</b></div></div></div>`}
 function secimKart(){
   if(!SEC.updatedAt)return "";
-  const eski=(Date.now()-T(SEC.updatedAt))/36e5>100;
-  const z=eski?[]:(SEC.zayif||[]),g=eski?[]:(SEC.guclu||[]),c=SEC.canli||{},o=SEC.zayif_olcum||{};
-  const satir=(x,yon,alt)=>{const a=BY[x.kod];return `<button class="exp" data-k="${esc(x.kod)}">
-    <div class="top"><div><span class="code">${esc(x.kod)}</span> <span class="small muted">${a?esc(a.s.ad):esc(x.ad||"")}</span></div>${a?`<div style="text-align:right"><b>${px(a.last)}</b><br><span class="xs ${cls(a.ch)}">${pct(a.ch)}</span></div>`:""}</div>
-    <p class="small" style="line-height:1.55">${alt}</p></button>`};
-  const canli=t=>{const s=c[t]||{};return s.n?`Canlı sonuç: <b>${s.dogru}/${s.n} doğru (${yuzde(s.dogru/s.n)})</b>${s.bekleyen?` · ${s.bekleyen} tahmin sürüyor`:""}`:`Canlı takip başladı: ${s.bekleyen||0} tahmin sürüyor, ilk sonuçlar 1 ay sonra`};
-  return `<div class="card"><div class="card-h"><h2>Yüksek ihtimalli sinyaller</h2><span class="xs muted">${SEC.tarih?dLbl(SEC.tarih):""}</span></div>
-  <p class="small muted" style="line-height:1.55;margin-bottom:12px">Az ama ölçülmüş: 1 ay içinde hissenin <b>BIST 100'den</b> iyi mi kötü mü gideceği. Emin olunmayan gün liste boş kalır.</p>
-  ${eski?`<p class="small muted">Seçim ${esc(dLbl(SEC.tarih||""))} tarihinden, eski olduğu için gösterilmiyor.</p>`:""}
-  <span class="label down">▼ Piyasadan zayıf kalması beklenenler</span>
-  <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Geçmiş testte hiç görmediği ${o.donem?esc(o.donem.test_basi.slice(0,4)):"2025"}–bugün verisinde doğrulandı. Tahminsiz taban: ${o.taban?yuzde(o.taban):"–"}. ${canli("zayif")}</p>
-  ${z.map(x=>satir(x,"down",`${esc(kosulYaz(x.kosul))}<br><span class="xs faint">${x.grup_isabet&&x.kural_sayisi>1?`${x.kural_sayisi} kural birden uyuyor: geçmiş testte <b>${yuzde(x.grup_isabet)}</b> doğru (${x.grup_n} örnek)`:`Geçmiş testte <b>${yuzde(x.isabet)}</b> doğru (${x.n} örnek)`}</span>`)).join("")||`<p class="small muted" style="padding:6px 0 12px">Bugün yeterince güçlü sinyal yok.</p>`}
+  const eski=!secimTaze(),o=SEC.zayif_olcum||{};
+  const z=eski?[]:(SEC.zayif||[]),g=eski?[]:(SEC.guclu||[]),f=eski?[]:(SEC.fon||[]);
+  const satir=(kod,ad,alt,attr)=>{const a=attr==="k"?BY[kod]||getA(kod):null;return `<button class="exp" data-${attr}="${esc(kod)}">
+    <div class="top"><div><span class="code">${esc(kod)}</span> <span class="small muted">${esc(a&&a.s?a.s.ad:ad||"")}</span></div>${a&&a.last?`<div style="text-align:right"><b>${px(a.last)}</b><br><span class="xs ${cls(a.ch)}">${pct(a.ch)}</span></div>`:""}</div>
+    <p class="small" style="line-height:1.55">${alt}</p><span class="xs" style="color:var(--blue)">Nedenini ve genel durumu gör ›</span></button>`};
+  const bos=m=>`<p class="small muted" style="padding:6px 0 12px">${m}</p>`;
+  const hisse=`<span class="label down">▼ Piyasadan zayıf kalması beklenenler</span>
+  <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Hiç görmediği ${o.donem?esc(o.donem.test_basi.slice(0,4)):"2025"}–bugün verisinde doğrulanmış kurallar. Tahminsiz taban: ${o.taban?yuzde(o.taban):"–"}. ${canliYaz("zayif")}</p>
+  ${z.map(x=>satir(x.kod,x.ad,`${esc(kosulYaz(x.kosul))}<br><span class="xs faint">${x.grup_isabet&&x.kural_sayisi>1?`${x.kural_sayisi} kural birden: geçmiş testte <b>${yuzde(x.grup_isabet)}</b> doğru (${x.grup_n} örnek)`:`Geçmiş testte <b>${yuzde(x.isabet)}</b> doğru (${x.n} örnek)`}</span>`,"k")).join("")||bos("Bugün yeterince güçlü sinyal yok.")}
   <div style="height:14px"></div>
   <span class="label up">▲ Piyasadan güçlü gitmesi beklenenler</span>
-  <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Yükseliş tarafında geçmiş testte tutan kural bulunamadı. Burada yalnızca yapay zekâ, trend ve haberin aynı yönü gösterdiği en çok 3 hisse var. <b>Ölçüm sürüyor.</b> ${canli("guclu")}</p>
-  ${g.map(x=>satir(x,"up",`${esc(x.neden||"")}<br><span class="xs faint">Yapay zekâ AL oyu ${esc(x.oy||"")} · RSI ${nf(x.rsi||0,0)} · 3 ayda BIST 100'e göre ${x.bist100e_gore_3ay>=0?"+":""}%${nf(x.bist100e_gore_3ay||0,1)}</span>`)).join("")||`<p class="small muted" style="padding:6px 0 4px">Bugün şartları sağlayan hisse yok.</p>`}
-  </div>`;
+  <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Yapay zekâ, trend ve haberin aynı yönü gösterdiği en çok 3 hisse. Bu tarafta geçmiş testte tutan kural yok; <b>ölçüm sürüyor.</b> ${canliYaz("guclu")}</p>
+  ${g.map(x=>satir(x.kod,x.ad,`${esc(x.neden||"")}<br><span class="xs faint">Yapay zekâ AL oyu ${esc(x.oy||"")} · RSI ${nf(x.rsi||0,0)}</span>`,"k")).join("")||bos("Bugün şartları sağlayan hisse yok.")}`;
+  const fon=`<span class="label up">▲ Kendi türünden iyi gitmesi beklenen fonlar</span>
+  <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Yapay zekâların tamamı AL diyor, kendi türünde getirisi üst sıralarda ve tek günlük sıçramadan gelmiyor. Para piyasası gibi her zaman artan fonlar hariç. <b>Ölçüm sürüyor.</b> ${canliYaz("fon")}</p>
+  ${f.map(x=>satir(x.kod,x.ad,`${esc(x.kategori||"")}<br><span class="xs faint">1 ay ${isr(x.g1a)} · 3 ay ${isr(x.g3a)} · türünde sıra ${x.sira1a}/100 · AL oyu ${esc(x.oy)}</span>`,"f")).join("")||bos("Bugün şartları sağlayan fon yok.")}`;
+  return `<div class="card"><div class="card-h"><h2>Yüksek ihtimalli sinyaller</h2><span class="xs muted">${SEC.tarih?dLbl(SEC.tarih):""}</span></div>
+  <p class="small muted" style="line-height:1.55;margin-bottom:12px">Az ama ölçülmüş: 1 ay içinde piyasadan iyi mi kötü mü gideceği. Emin olunmayan gün liste boş kalır.</p>
+  ${eski?bos("Son seçim eski olduğu için gösterilmiyor."):""}
+  <div class="seg" id="sekT" style="margin-bottom:14px"><button data-s="hisse" aria-pressed="${sekT==="hisse"}">Hisseler</button><button data-s="fon" aria-pressed="${sekT==="fon"}">Fonlar</button></div>
+  ${sekT==="fon"?fon:hisse}</div>`;
 }
 function renderOutlook(){
-  const taze=outTaze(),up=taze?(OUT.yukselis||[]):[],dn=taze?(OUT.dusus||[]):[],list=ex==="up"?up:dn;
-  const cons=ALL.map(a=>({a,c:kararK(a.k)}));
-  const topAL=cons.filter(o=>o.c.karar==="AL").sort((x,y)=>y.c.c.AL-x.c.c.AL).slice(0,5),topSAT=cons.filter(o=>o.c.karar==="SAT").sort((x,y)=>y.c.c.SAT-x.c.c.SAT).slice(0,5);
+  const taze=outTaze();
   $("#p-beklenti").innerHTML=`
   ${secimKart()}
-  ${taze?`<div class="card"><div class="card-h"><h2>Günün özeti</h2><span class="xs muted">${esc(OUT.guncelleme||"")}</span></div><p style="line-height:1.6">${esc(OUT.ozet||"")}</p></div>`:`<div class="card"><div class="card-h"><h2>Claude'un haber yorumu</h2></div><p class="small muted" style="line-height:1.6">Claude'un son yorumu ${OUT.updatedAt?"çok eski ("+esc(OUT.guncelleme||"")+")":"henüz yok"}, bu yüzden yanıltmamak için gösterilmiyor. Yeni yorum geldiğinde burada görünecek. Aşağıdaki piyasa gündemi ve yapay zekâ kararları güncel verilerle hesaplanıyor.</p></div>`}
+  ${taze?`<div class="card"><div class="card-h"><h2>Günün özeti</h2><span class="xs muted">${esc(OUT.guncelleme||"")}</span></div><p style="line-height:1.6">${esc(OUT.ozet||"")}</p></div>`:""}
   ${gundemKart()}
-  <div class="seg" id="ex"><button data-e="up" aria-pressed="${ex==="up"}">▲ Yükselecekler</button><button data-e="down" aria-pressed="${ex==="down"}">▼ Düşecekler</button></div>
-  ${list.map(o=>{const a=BY[o.sembol],h=o.hedef||(a?null:null);return `<button class="exp" data-k="${esc(o.sembol)}">
-    <div class="top"><div><span class="code">${esc(o.sembol)}</span> <span class="small muted">${a?esc(a.s.ad):""}</span></div>${a?`<div style="text-align:right"><b>${px(a.last)}</b><br><span class="xs ${cls(a.ch)}">${pct(a.ch)}</span></div>`:""}</div>
-    <p class="small" style="line-height:1.55">${esc(o.neden)}</p>
-    ${o.hedef&&a?`<div class="tgtline"><span class="muted">1 haftalık hedef (habere göre)</span><b class="${cls(o.hedef-a.last)}">${px(o.hedef)} TL (${pct((o.hedef/a.last-1)*100)})</b></div>`:""}
-    <span class="xs faint">Dayanak: ${esc(o.olay||"")} · Güven ${Number(o.guven)||0}/100</span></button>`}).join("")||`<div class="card muted">Şu an bu yönde öne çıkan hisse yok.</div>`}
-  <div class="card"><div class="card-h"><h2>Yapay zekâların ortak görüşü</h2></div>${hzSeg("hzB")}<div style="height:12px"></div>
-    <div class="cons"><div><span class="label up">Çoğunluk AL</span>${topAL.map(o=>`<button data-k="${o.a.k}"><span>${o.a.k}</span><span class="up">${o.c.c.AL}/${o.c.n}</span></button>`).join("")||`<p class="xs muted" style="padding-top:8px">Yok</p>`}</div>
-    <div><span class="label down">Çoğunluk SAT</span>${topSAT.map(o=>`<button data-k="${o.a.k}"><span>${o.a.k}</span><span class="down">${o.c.c.SAT}/${o.c.n}</span></button>`).join("")||`<p class="xs muted" style="padding-top:8px">Yok</p>`}</div></div></div>
-  ${(OUT.olaylar||[]).length?`<div class="card"><div class="card-h"><h2>Gündem ve etkileri</h2></div>${OUT.olaylar.map(e=>`<div class="ev"><a href="${esc(e.url||"#")}" target="_blank" rel="noopener"><b>${esc(e.baslik)}</b></a><p class="small muted" style="margin-top:4px">${esc(e.detay||"")}</p><div class="impacts">${(e.etki||[]).map(x=>`<span class="imp ${x.yon==="up"?"up up":"down down"}">${x.yon==="up"?"▲":"▼"} ${esc(x.ad)}${(x.hisseler||[]).length?" · "+x.hisseler.map(esc).join(", "):""}</span>`).join("")}</div></div>`).join("")}</div>`:""}
-  <p class="disc">Beklentiler haberlere dayalı tahminlerdir, yatırım tavsiyesi değildir.</p>`;
-  $("#ex").onclick=e=>{const b=e.target.closest("[data-e]");if(!b)return;ex=b.dataset.e;store.set("ex",ex);renderOutlook()};
+  ${taze&&(OUT.olaylar||[]).length?`<div class="card"><div class="card-h"><h2>Gündem ve etkileri</h2></div>${OUT.olaylar.map(e=>`<div class="ev"><a href="${esc(e.url||"#")}" target="_blank" rel="noopener"><b>${esc(e.baslik)}</b></a><p class="small muted" style="margin-top:4px">${esc(e.detay||"")}</p><div class="impacts">${(e.etki||[]).map(x=>`<span class="imp ${x.yon==="up"?"up up":"down down"}">${x.yon==="up"?"▲":"▼"} ${esc(x.ad)}${(x.hisseler||[]).length?" · "+x.hisseler.map(esc).join(", "):""}</span>`).join("")}</div></div>`).join("")}</div>`:""}
+  <p class="disc">Sinyaller geçmiş veriye ve yapay zekâya dayalı otomatik tahminlerdir, yanılabilir ve yatırım tavsiyesi değildir.</p>`;
+  const sg=$("#sekT");if(sg)sg.onclick=e=>{const b=e.target.closest("[data-s]");if(!b)return;sekT=b.dataset.s;store.set("sekT",sekT);renderOutlook()};
 }
-$("#p-beklenti").addEventListener("click",e=>{const b=e.target.closest("[data-k]");if(b&&BY[b.dataset.k])openDetail(b.dataset.k)});
+$("#p-beklenti").addEventListener("click",e=>{const f=e.target.closest("[data-f]");if(f){openFund(f.dataset.f);return}const b=e.target.closest("[data-k]");if(b&&getA(b.dataset.k))openDetail(b.dataset.k)});
 
 /* fonlar */
 // Takip listesi boş başlar; fonlar yalnızca kullanıcı "Takip et" deyince eklenir (eskiden 10 fon otomatik takipteydi)
@@ -935,6 +962,7 @@ function openFund(k,noPush){
   <div class="price-block"><div class="nm">${esc(k)} · ${esc(f.tur||f.kategori||"Yatırım fonu")}</div>
     <div class="big" style="font-size:${f.fiyat?34:26}px">${f.fiyat?nf(f.fiyat,4)+` <span style="font-size:17px" class="muted">TL</span>`:esc(k)}</div>
     <div class="meta">${f.gunluk!=null?`<span class="pill ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:""}<span class="small muted">${esc(f.ad||"")}</span></div></div>
+  ${fonNeden(k)}
   ${chart?`<div class="card chart-card">${chart}</div>`:""}
   ${fundAICard(k)}
   <button class="btn ${on?"ghost":"primary"}" id="ftrack">${on?"Takipten çıkar":"Takip et"}</button>
