@@ -79,6 +79,7 @@ jobs:
           mkdir -p data/hata
           { echo "$(TZ=Europe/Istanbul date '+%d.%m %H:%M') ai.yml"; tail -n 60 /tmp/calisma.log 2>/dev/null; } > data/hata/ai.txt
           git add data/hata/ai.txt && git commit --quiet -m "ai.yml hata günlüğü" || exit 0
+          git stash --quiet --include-untracked || true
           for i in 1 2 3; do git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0; sleep 5; done
 
       - name: kaydet
