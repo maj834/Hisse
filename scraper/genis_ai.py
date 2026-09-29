@@ -238,7 +238,8 @@ def main() -> int:
                 CIKTI.write_text(json.dumps(eski, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
             return 0
     else:
-        secilen = sira_sec(sirali[:POPULER_N], hisseler, GRUP * ISTEK)
+        # popüler taramada saatte tek istek (12 hisse): Groq'un günlük kotası BIST 30 ve kullanıcı istekleri için korunur
+        secilen = sira_sec(sirali[:POPULER_N], hisseler, GRUP)
     log("değerlendirilecek:", len(secilen), "hisse:", ", ".join(secilen[:12]), "...")
     global GUNDEM
     GUNDEM = oku(KOK / "data" / "gundem.json", {})

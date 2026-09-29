@@ -605,7 +605,7 @@ def haber_modeli(istem: str):
             log("Cerebras haber AI olmadı:", str(e)[:100])
     anahtar = os.environ.get("GROQ_API_KEY", "")
     son = None
-    for m in ("openai/gpt-oss-20b", "openai/gpt-oss-120b"):
+    for m in ("openai/gpt-oss-120b", "openai/gpt-oss-20b"):
         try:
             return openai_uyumlu("https://api.groq.com/openai/v1", anahtar, m, [], None, istem, en_cok=4000, tekrar=1)
         except Exception as e:
@@ -633,8 +633,13 @@ def haber_ai(hisseler: dict) -> None:
     kod_listesi = ", ".join(f"{r[0]}={r[1][:22]}" for r in en_cok) or ", ".join(f"{k}={h.get('ad', '')}" for k, h in hisseler.items())
     istem_ = f"""Sen Borsa İstanbul için çalışan bir HABER ANALİSTİSİN. Görevin haberleri okuyup piyasaya etkisini çıkarmak; al/sat kararı vermiyorsun.
 Bugün {dt.datetime.now(IST):%d.%m.%Y %H:%M}. {pz.get('ozet', '')[:600]}
-KURALLAR: Yalnızca aşağıdaki başlıklara dayan, uydurma. Bir hisseyi ancak haber o şirketi ya da doğrudan sektörünü ilgilendiriyorsa yaz.
-Etkiyi abartma; belirsizse yazma. "onem": 1 zayıf, 2 orta, 3 güçlü etki.
+KURALLAR: Yalnızca aşağıdaki başlıklara dayan, uydurma. Bir hisseyi ancak haber o şirketin kârını, satışlarını, maliyetini,
+borcunu ya da hisse fiyatını gerçekten etkileyebilecekse yaz (ör. sipariş, ihale, bilanço, ceza, soruşturma, birleşme, temettü,
+sermaye artırımı, fiyat/ürün değişikliği, yabancı alım-satımı). Sosyal sorumluluk, ödül, çalışan etkinliği, sıralama, "canlı grafik" gibi
+fiyatı etkilemeyecek haberleri YAZMA.
+Makro haberlerin sektörlere etkisini de çıkar: ör. petrol artışı → havayolu ve ulaştırma olumsuz, rafineri/enerji olumlu;
+faiz/tahvil getirisi artışı → bankacılık ve gayrimenkul baskı; altın düşüşü → altın madencileri olumsuz; dolar artışı → ihracatçılar olumlu.
+Etkiyi abartma; belirsizse yazma. "onem": 1 zayıf, 2 orta, 3 güçlü etki; önemi 1 olanları hiç yazma.
 Hisse kodlarını yalnızca şu listeden kullan (kod=şirket): {kod_listesi}
 Sektör adlarını yalnızca şu listeden kullan: {", ".join(sektorler) or "Bankacılık, Enerji, Ulaştırma, Savunma, Perakende, Holding, Demir-Çelik"}
 
@@ -647,10 +652,15 @@ Yalnızca geçerli JSON döndür:
     m = re.search(r"\{.*\}", re.sub(r"<think>.*?</think>", "", metin, flags=re.S), re.S)
     d = json.loads(m.group(0)) if m else {}
     gecerli = set(adlar) | set(hisseler)
+    def onem(x):
+        try:
+            return int(x.get("onem") or 1)
+        except (TypeError, ValueError):
+            return 1
     hs = [x for x in d.get("hisseler") or [] if isinstance(x, dict) and str(x.get("k", "")).upper() in gecerli
-          and x.get("etki") in ("olumlu", "olumsuz")]
+          and x.get("etki") in ("olumlu", "olumsuz") and onem(x) >= 2]
     sk = [x for x in d.get("sektorler") or [] if isinstance(x, dict) and x.get("etki") in ("olumlu", "olumsuz")
-          and (not sektorler or x.get("sektor") in sektorler)]
+          and (not sektorler or x.get("sektor") in sektorler) and onem(x) >= 2]
     GUNDEM["haber_ai"] = {"ts": int(time.time()), "zaman": dt.datetime.now(IST).isoformat(timespec="seconds"), "imza": imza,
                           "model": model, "piyasa_havasi": d.get("piyasa_havasi", "nötr"), "ozet": str(d.get("ozet", ""))[:500],
                           "sektorler": sk[:12],
