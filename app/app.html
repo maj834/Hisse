@@ -475,12 +475,28 @@ function hisseKarar(k,vs){const a=getA(k),c=consensus(vs||votes(k));if(!a||HZ!==
   if(r!=null&&c.karar==="SAT"&&r<30)return {...c,karar:"TUT",not:`Oylar SAT yönünde ama RSI ${nf(r,0)} ile aşırı satım bölgesinde; bu seviyeden satmak geç kalmış olabilir, tepki alımı da gelebilir. Bu yüzden TUT.`};
   if(r!=null&&c.karar==="AL"&&r>75)return {...c,karar:"TUT",not:`Oylar AL yönünde ama RSI ${nf(r,0)} ile aşırı alım bölgesinde; bu seviyeden almak riskli, düzeltme gelebilir. Bu yüzden TUT.`};
   return c}
-function nedenKutu(con,vs){
-  const c=con.c,kr=con.karar,ai=vs.filter(v=>v.aciklama);let s;
-  if(kr==="TUT")s=c.AL||c.SAT?`AL diyen ${c.AL}, SAT diyen ${c.SAT} kaynak var. AL ya da SAT demek için en az 2 kaynağın ve oyların %60'ının aynı yönde olması gerekiyor; bu sağlanmadığı için yön belirsiz, karar TUT.`
-    :`Kaynakların hepsi TUT diyor: belirgin bir yükseliş ya da düşüş sinyali yok.`;
-  else s=`Kaynakların %${nf(con.oran*100,0)}'i ${kr} diyor (${c[kr]}/${con.n}); en az 2 kaynağın ve oyların %60'ının aynı yönde olması şartı sağlandı.${c[kr==="AL"?"SAT":"AL"]?` ${c[kr==="AL"?"SAT":"AL"]} kaynak ters yönde, bunu risk olarak düşün.`:""}`;
-  return `<div class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--s2);line-height:1.6"><b>Neden ${kr}?</b> ${s}${ai.map(v=>`<br><span class="muted">${esc(v.ad)} (1 aylık karar):</span> ${esc(v.aciklama)}`).join("")}</div>`}
+// "Neden?": oy kuralını değil, hisseyi gerçekten etkileyen gelişmeleri sayar (haber, sektör, petrol/dolar/faiz, piyasa havası)
+// [petrol yükselince etki yönü, kanal]: havayolu için yükseliş olumsuz, rafineri için olumlu
+const PETROL_ETKI={"Ulaştırma":[-1,"yakıt maliyeti"],"Enerji":[1,"rafineri ürün fiyatları ve stok değeri"],"Kimya ve işleme":[0,"hammadde maliyeti"],"Elektrik ve doğalgaz":[0,"enerji fiyatları"]};
+function nedenKutu(k,con,vs){
+  const a=getA(k),sek=(a&&a.s&&a.s.sektor)||(MK[k]||{}).sek||"",ha=GUN.haber_ai||{},m=[];
+  const etkiYaz=e=>e==="olumlu"?`<b class="up">olumlu</b>`:e==="olumsuz"?`<b class="down">olumsuz</b>`:esc(e||"");
+  const hx=(ha.hisseler||{})[k];if(hx)m.push(`📰 Hisseye özel haber etkisi ${etkiYaz(hx.etki)}${hx.neden?": "+esc(hx.neden):""}`);
+  const sx=(ha.sektorler||[]).find(s=>s.sektor===sek);if(sx)m.push(`🏭 ${esc(sek)} sektörü ${etkiYaz(sx.etki)}: ${esc(sx.neden||"")}`);
+  const ex=outTaze()?[...(OUT.yukselis||[]).map(x=>({...x,y:"up"})),...(OUT.dusus||[]).map(x=>({...x,y:"down"}))].find(x=>x.sembol===k):null;
+  if(ex)m.push(`🗞️ ${esc(ex.olay||"")}${ex.olay?" — ":""}${esc(ex.neden||"")}`);
+  const sirket=(((GUN.sirket||{})[k]||{}).haberler||[]).slice(0,2);sirket.forEach(h=>m.push(`🔎 ${esc(h.baslik)}${h.duygu!=null?` <span class="xs ${h.duygu>=.15?"up":h.duygu<=-.15?"down":"muted"}">(${h.duygu>=.15?"olumlu":h.duygu<=-.15?"olumsuz":"nötr"})</span>`:""}`));
+  if(!hx&&!sirket.length)newsFor(k).slice(0,2).forEach(n=>m.push(`🔎 ${esc(n.title)}`));
+  const sr=((GUN.makro||{}).seriler||[]).filter(x=>Date.now()-T(x.tarih)<10*864e5),yon=v=>v>=0?"yükseldi":"düştü";
+  const br=sr.find(x=>/brent/i.test(x.ad)),pe=PETROL_ETKI[sek];
+  if(br&&pe&&Math.abs(br.d5)>=3){const iyi=pe[0]*(br.d5>=0?1:-1);m.push(`🛢️ Brent petrol 5 günde %${nf(Math.abs(br.d5),1)} ${yon(br.d5)} (${nf(br.son,1)} $, ${dLbl(br.tarih)} itibarıyla). Bu, ${pe[1]} üzerinden ${pe[0]===0?"hisseyi doğrudan etkiler":iyi>0?`<b class="up">olumlu</b> etki yapar`:`<b class="down">olumsuz</b> etki yapar`}.`)}
+  const usd=sr.find(x=>/dolar/i.test(x.ad));if(usd&&Math.abs(usd.d20)>=3)m.push(`💵 Dolar/TL 20 günde %${nf(Math.abs(usd.d20),1)} ${yon(usd.d20)} (${dLbl(usd.tarih)})${sek==="Finans"?"":"; ihracatçı şirketleri destekler, ithalata bağımlı olanlara maliyet getirir"}.`);
+  const fz=sr.find(x=>/faiz/i.test(x.ad));if(fz&&Math.abs(fz.d20)>=5)m.push(`🏦 ABD 10 yıllık faizi 20 günde %${nf(Math.abs(fz.d20),1)} ${yon(fz.d20)} (%${nf(fz.son,2)})${fz.d20>0?"; gelişmekte olan piyasalardan yabancı fon çıkışı baskısı yaratır":"; yabancı fon girişini destekler"}.`);
+  if(ha.piyasa_havasi&&ha.ozet){const c=String(ha.ozet).split(/(?<=\.)\s/)[0];m.push(`🌐 Piyasa havası ${etkiYaz(ha.piyasa_havasi)}: ${esc(c)}`)}
+  const ai=vs.filter(v=>v.aciklama);
+  if(!m.length&&!ai.length)m.push(`Bu hisseyi doğrudan etkileyen önemli bir haber ya da makro gelişme yok; karar ağırlıklı olarak grafik ve göstergelere dayanıyor.`);
+  return `<div class="small" style="margin-top:10px;padding:12px;border-radius:12px;background:var(--s2);line-height:1.6"><b>Neden ${con.karar}? Etkileyen gelişmeler</b>
+    <ul style="margin:8px 0 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:8px">${m.slice(0,6).map(x=>`<li>${x}</li>`).join("")}${ai.map(v=>`<li>🤖 <span class="muted">${esc(v.ad)}:</span> ${esc(v.aciklama)}</li>`).join("")}</ul></div>`}
 function kararK(k){const key=HZ+k;if(KC[key])return KC[key];const a=getA(k);if(!a)return null;return KC[key]=hisseKarar(k)}
 function targets(k){
   const a=getA(k);if(!a)return [];
@@ -697,7 +713,7 @@ function openDetail(k,keepScroll,fromPop){
       <div class="verdict"><span class="v ${kCls(con.karar)} ${kCls(con.karar)}">${con.karar}</span>
         <div><b>${con.karar==="AL"?"Alınır":con.karar==="SAT"?"Satılır":"Tutulur"} <span class="small muted">· ${HZL[HZ]} vadede</span></b><p class="small muted">${con.n} değerlendirmeden ${con.c.AL} AL, ${con.c.TUT} TUT, ${con.c.SAT} SAT${con.karar!=="TUT"?` · oyların %${nf(con.oran*100,0)}'i`:""}</p>
         <div class="votes">${vs.map(v=>`<i style="background:var(--${kCls(v.karar)==="up"?"up":kCls(v.karar)==="down"?"down":"hold"})" title="${esc(v.ad)}"></i>`).join("")}</div></div></div>
-      ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--hold-a)">${esc(con.not)}</p>`:nedenKutu(con,vs)}
+      ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--hold-a)">${esc(con.not)}</p>`:""}${nedenKutu(k,con,vs)}
       ${(()=>{const x=((GUN.haber_ai||{}).hisseler||{})[k];return x?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--${x.etki==="olumlu"?"up":"down"}-a)"><b class="${x.etki==="olumlu"?"up":"down"}">Haber yapay zekâsı: ${x.etki==="olumlu"?"olumlu":"olumsuz"} haber</b> <span class="xs muted">(önem ${x.onem}/3)</span><br>${esc(x.neden)}</p>`:""})()}
       <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
         <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null||v.tarih?`<span class="xs faint">${v.guven!=null?"Güven: "+gSev(v.guven)+(v.guven<50?" · yarım oy sayılır":"")+(v.sig?" · işlem hacmi düşük hisse":""):""}${v.tarih?(v.guven!=null?" · ":"")+esc(fmtTime(new Date(v.tarih*1000).toISOString())):""}</span>`:""}${isabetTxt(v.id)}</div>

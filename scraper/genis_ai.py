@@ -145,8 +145,10 @@ KURALLAR:
 6) Hedefler gerçekçi olsun, ortalama günlük hareketi dikkate al: 1 hafta en çok ±%8, 1 ay ±%15, 3 ay ±%30.
    AL ise hedef son fiyatın ÜSTÜNDE, SAT ise ALTINDA, TUT ise son fiyata yakın. Uymayan yanıt otomatik silinir.
 7) "guven" 0-100; karışık sinyalde 50 altı. Gerekçe ("neden") en fazla 18 kelime, verideki somut bir sayıyı ansın.
-8) "aciklama": en fazla 40 kelime, sade Türkçe. 1 aylık kararı neden verdiğini VE neden diğer iki kararı vermediğini
-   verideki sayılarla anlat. Örnek (TUT için): "Neden AL değil: ... Neden SAT değil: ...". Uydurma bilgi yazma.
+8) "aciklama": en fazla 45 kelime, sade Türkçe. 1 aylık kararın ARKASINDAKİ GERÇEK GELİŞMELERİ say: yukarıda verilen
+   şirket haberleri, sektör/piyasa haberleri ve makro veriler (petrol, dolar, faiz, jeopolitik gelişmeler) bu hisseyi nasıl
+   etkiliyor? Örnek: "Brent 5 günde %12 düştü, yakıt maliyeti azalır; ama BIST 100'deki fon çıkışı baskı yapıyor."
+   Yalnızca verilen haber ve rakamları kullan; hisseyi etkileyen önemli haber yoksa bunu açıkça yaz. Uydurma yok.
 {endeks_satiri(snap)}{kaynaklar.makro_satiri(GUNDEM.get("makro") or {}, GUNDEM.get("piyasa"))}{ai_degerlendir.haber_ai_genel()}
 Hisseler:
 {satirlar}
@@ -155,7 +157,7 @@ Son haber başlıkları:
 {basliklar}
 
 Yalnızca şu biçimde geçerli JSON döndür, başka metin yazma:
-{{"hisseler":[{{"k":"KOD","karar":"TUT","guven":50,"hedef":10.2,"karar1a":"TUT","hedef1a":10.4,"karar3a":"AL","hedef3a":11.5,"neden":"...","aciklama":"Neden AL değil: ... Neden SAT değil: ..."}}]}}
+{{"hisseler":[{{"k":"KOD","karar":"TUT","guven":50,"hedef":10.2,"karar1a":"TUT","hedef1a":10.4,"karar3a":"AL","hedef3a":11.5,"neden":"...","aciklama":"Hisseyi etkileyen gelişmeler: ..."}}]}}
 Listede yukarıdaki hisselerin hepsi olsun."""
 
 
