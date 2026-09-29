@@ -189,7 +189,13 @@ def haber_satiri(haberler: list, n: int = 3) -> str:
 
 def makro_satiri(makro: dict, piyasa: dict | None) -> str:
     satir = []
+    bugun = dt.date.today()
     for s in (makro or {}).get("seriler", []):
+        try:  # Alpha Vantage bazı serileri günlerce geç günceller; eski veri yanıltmasın
+            if (bugun - dt.date.fromisoformat(s.get("tarih", "")[:10])).days > 4:
+                continue
+        except ValueError:
+            continue
         deger = f"%{s['son']:g}" if s["birim"] == "%" else f"{s['son']:g} {s['birim']}"
         satir.append(f"{s['ad']} {deger} (5 gün {s['d5']:+.1f}%"
                      + (f", 20 gün {s['d20']:+.1f}%" if s.get("d20") is not None else "") + ")")

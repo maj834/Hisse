@@ -778,7 +778,7 @@ function renderNews(){
 }
 
 /* piyasa gündemi: makro veriler (Alpha Vantage) + web özeti (Tavily) + Türkiye haberleri (Marketaux) */
-function gundemKart(){const m=GUN.makro||{},pz=GUN.piyasa||{},sr=m.seriler||[],kd=m.kuresel_duygu,ha=GUN.haber_ai||{};if(!sr.length&&!pz.ozet&&!kd&&!ha.ozet)return "";
+function gundemKart(){const m=GUN.makro||{},pz=GUN.piyasa||{},sr=(m.seriler||[]).filter(x=>Date.now()-T(x.tarih)<4.5*864e5),kd=m.kuresel_duygu,ha=GUN.haber_ai||{};if(!sr.length&&!pz.ozet&&!kd&&!ha.ozet)return "";
   return `<div class="card"><div class="card-h"><h2>Piyasa gündemi</h2><span class="xs muted">${esc(fmtTime(pz.zaman||m.zaman||""))}</span></div>
     ${sr.length?`<div class="ratios" style="margin:0 0 12px;grid-template-columns:repeat(${Math.min(3,sr.length)},1fr)">${sr.map(x=>`<div><span>${esc(x.ad)}</span><b>${x.birim==="%"?"%"+nf(x.son,2):nf(x.son,x.son>=100?1:2)+" "+esc(x.birim)}</b><span class="${cls(x.d5)}">5 gün ${pct(x.d5)}</span></div>`).join("")}</div>`:""}
     ${kd?`<p class="small" style="margin-bottom:10px">Küresel piyasa haberlerinin genel havası: <b class="${kd.etiket==="olumlu"?"up":kd.etiket==="olumsuz"?"down":"hold"}">${esc(kd.etiket)}</b> <span class="xs muted">(${kd.haber_sayisi} haber)</span></p>`:""}
