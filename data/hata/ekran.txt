@@ -1,0 +1,31 @@
+30.09 02:03 ekran.yml
+page.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('nav button[data-tab="beklenti"]')
+    - locator resolved to <button role="tab" data-tab="beklenti" aria-selected="false">…</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <button disabled id="onayBtn" class="btn primary">Kabul et ve devam et</button> from <div id="onay" class="onay" role="dialog" aria-modal="true">…</div> subtree intercepts pointer events
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is visible, enabled and stable
+      - scrolling into view if needed
+      - done scrolling
+      - <button disabled id="onayBtn" class="btn primary">Kabul et ve devam et</button> from <div id="onay" class="onay" role="dialog" aria-modal="true">…</div> subtree intercepts pointer events
+    - retrying click action
+      - waiting 100ms
+    58 × waiting for element to be visible, enabled and stable
+       - element is visible, enabled and stable
+       - scrolling into view if needed
+       - done scrolling
+       - <button disabled id="onayBtn" class="btn primary">Kabul et ve devam et</button> from <div id="onay" class="onay" role="dialog" aria-modal="true">…</div> subtree intercepts pointer events
+     - retrying click action
+       - waiting 500ms
+
+    at /home/runner/work/Hisse/Hisse/tools/ekran_test.js:13:69 {
+  name: 'TimeoutError'
+}
