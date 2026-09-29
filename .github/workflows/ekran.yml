@@ -40,7 +40,17 @@ jobs:
         run: |
           cd tools && npm install --no-audit --no-fund --silent playwright@1.56.1 && npx playwright install --with-deps chromium >/dev/null
           cd .. && (python3 -m http.server 8765 >/dev/null 2>&1 &) && sleep 2
-          node tools/ekran_test.js
+          node tools/ekran_test.js 2>&1 | tee /tmp/ekran_test.log; exit ${PIPESTATUS[0]}
+      - name: hata günlüğü (yayın yapılmadı)
+        if: failure()
+        run: |
+          git config user.name "hisse-radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p data/hata
+          { echo "$(TZ=Europe/Istanbul date '+%d.%m %H:%M') ekran.yml"; tail -n 60 /tmp/ekran_test.log 2>/dev/null; } > data/hata/ekran.txt
+          git add data/hata/ekran.txt && git commit --quiet -m "ekran.yml hata günlüğü" || exit 0
+          git stash --quiet --include-untracked || true
+          for i in 1 2 3; do git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0; sleep 5; done
       - name: kaydet
         run: |
           git config user.name "hisse-radar-bot"
