@@ -400,8 +400,7 @@ def github_models(istem, anahtar, tercihler, filtre):
     except Exception:
         pass
     model = model or tercihler[0]
-    bas = {"Authorization": f"Bearer {anahtar}", "Accept": "application/json", "Content-Type": "application/json",
-           "X-GitHub-Api-Version": "2022-11-28"}
+    bas = {"Authorization": f"Bearer {anahtar}", "Accept": "application/json", "Content-Type": "application/json"}
     govde = {"model": model, "temperature": 0.3, "max_tokens": 4000,
              "messages": [{"role": "system", "content": "Yalnızca geçerli JSON döndür."}, {"role": "user", "content": istem}]}
     def gonder(g):
@@ -417,6 +416,18 @@ def github_models(istem, anahtar, tercihler, filtre):
     r = gonder({**govde, "response_format": {"type": "json_object"}})
     if r.status_code == 400:
         r = gonder(govde)
+    if "json" not in r.headers.get("content-type", ""):
+        # eski uç nokta (Azure üzerinden); model adları yayıncı öneki olmadan
+        eski_ad = model.split("/")[-1]
+        try:
+            r2 = requests.post("https://models.inference.ai.azure.com/chat/completions",
+                               headers={"Authorization": f"Bearer {anahtar}", "Content-Type": "application/json"},
+                               json={**govde, "model": eski_ad}, timeout=ZAMAN_ASIMI)
+            if "json" in r2.headers.get("content-type", "") and r2.ok:
+                return eski_ad, r2.json()["choices"][0]["message"]["content"]
+            log("GitHub Models eski uç nokta:", r2.status_code, r2.text[:120])
+        except Exception as e:
+            log("GitHub Models eski uç nokta hata:", str(e)[:100])
     if "json" not in r.headers.get("content-type", ""):
         raise RuntimeError(f"GitHub Models {r.status_code} {r.headers.get('content-type', '')} {r.text[:120]!r} "
                            "(GH_MODELS_TOKEN'da 'Models: Read' izni olmalı)")
