@@ -582,6 +582,33 @@ def fonlari_cek(eski: dict) -> dict:
     return {"updatedAt": simdi().isoformat(timespec="seconds"), "fonlar": fonlar, "tum": tum}
 
 
+# ---------------------------------------------------------------- analiz istekleri
+TALEP_KONU = os.environ.get("TALEP_KONU", "hisseradar-analiz-istek-7k3q")
+_talep_son = int(time.time())
+
+
+def talep_tetikle() -> None:
+    """Uygulamadan yeni "analiz ettir" isteği geldiyse yapay zekâ iş akışını hemen başlat (borsa açıkken daha hızlı yanıt)."""
+    global _talep_son
+    token = os.environ.get("GH_TOKEN")
+    if not token:
+        return
+    try:
+        r = oturum.get(f"https://ntfy.sh/{TALEP_KONU}/json", params={"poll": "1", "since": str(_talep_son + 1)}, timeout=15)
+        yeni = [json.loads(x) for x in r.text.splitlines() if x.strip()]
+        yeni = [m for m in yeni if m.get("event") == "message"]
+        if not yeni:
+            return
+        _talep_son = max(int(m.get("time") or 0) for m in yeni)
+        repo = os.environ.get("GITHUB_REPOSITORY", "maj834/Hisse")
+        d = oturum.post(f"https://api.github.com/repos/{repo}/actions/workflows/genis_ai.yml/dispatches",
+                        json={"ref": "main", "inputs": {"mod": "talep"}},
+                        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}, timeout=15)
+        log("analiz isteği:", len(yeni), "yeni istek, iş akışı başlatıldı", d.status_code)
+    except Exception as e:
+        print("talep kontrolü:", e, flush=True)
+
+
 # ---------------------------------------------------------------- git
 def git(*args, check=True):
     return subprocess.run(["git", "-C", str(CIKTI), *args], check=check, capture_output=True, text=True)
@@ -678,6 +705,7 @@ def main() -> int:
         toplam_basari += b
         log(f"tur {sayac}: {b} hisse, {h} hata")
         gonder(f"veri {simdi():%d.%m %H:%M}")
+        talep_tetikle()
         sayac += 1
         time.sleep(max(5, 60 - (time.time() - bas)))
     return 0 if toplam_basari else 1

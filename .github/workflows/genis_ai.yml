@@ -1,12 +1,24 @@
 name: Tum hisseler yapay zeka
 
-# BIST 30 dışındaki ~600 hisseyi popülerlik sırasıyla, her çalıştırmada ~36 hisse olacak şekilde değerlendirir.
-# Hafta içi saatte bir çalışır; bir günde bütün borsa taranır, popüler hisseler daha sık yenilenir.
-# Sonuç: data/ai_genis.json. Anahtar: GROQ_API_KEY (isteğe bağlı OPENROUTER_API_KEY).
+# BIST 30 dışındaki hisseler:
+#  - populer: borsa açıkken saatte bir en popüler 100 hisseden en eski analizli 24'ü yenilenir.
+#  - talep: uygulamadaki "Yapay zekâya analiz ettir" istekleri (ntfy.sh) 5 dakikada bir işlenir;
+#    borsa açıkken veri döngüsü de yeni istek görünce bu iş akışını hemen başlatır.
+# Sonuç: data/ai_genis.json. Anahtar: GROQ_API_KEY.
 on:
   schedule:
-    - cron: "35 * * * 1-5"
+    - cron: "35 7-15 * * 1-5"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
+    inputs:
+      mod:
+        description: "talep = kullanıcı istekleri, populer = en popüler 100 hisse"
+        default: "talep"
+        type: choice
+        options: [talep, populer]
+      test_kod:
+        description: "Deneme: bu hisse kodu için uygulamadaki gibi istek gönder (boş bırak)"
+        default: ""
 
 permissions:
   contents: write
@@ -18,7 +30,7 @@ concurrency:
 jobs:
   degerlendir:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -30,11 +42,16 @@ jobs:
 
       - name: güncel veriyi al
         run: |
+          git pull --quiet origin main || true
           git fetch --quiet --depth 1 origin data
           mkdir -p /tmp/veri
           for f in market gecmis snapshot news ek; do
             git show origin/data:$f.json > /tmp/veri/$f.json 2>/dev/null || echo '{}' > /tmp/veri/$f.json
           done
+
+      - name: deneme isteği
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_kod != '' }}
+        run: curl -s -d "${{ inputs.test_kod }}" https://ntfy.sh/hisseradar-analiz-istek-7k3q && sleep 3
 
       - name: değerlendir
         env:
@@ -46,6 +63,7 @@ jobs:
           SNAPSHOT: /tmp/veri/snapshot.json
           NEWS: /tmp/veri/news.json
           EK: /tmp/veri/ek.json
+          MOD: ${{ (github.event.schedule == '35 7-15 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.mod == 'populer')) && 'populer' || 'talep' }}
         run: python scraper/genis_ai.py
 
       - name: kaydet

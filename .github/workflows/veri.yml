@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: veri
@@ -56,4 +57,5 @@ jobs:
         env:
           TEK_SEFER: ${{ ((github.event_name == 'workflow_dispatch' && inputs.mod != 'dongu') || github.event.schedule == '40 */2 * * *') && '1' || '0' }}
           CIKTI_DIZIN: out
+          GH_TOKEN: ${{ github.token }}
         run: python scraper/guncelle.py

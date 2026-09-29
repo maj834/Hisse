@@ -350,6 +350,34 @@ function consensus(list){
   return {karar:top,c,n:list.length,guc,oran:W?w[top]/W:0};
 }
 // Aşırı uç bölgelerde kısa vadeli sinyali frenle: sert düşüşten sonra SAT, sert yükselişten sonra AL demek geç kalmış olabilir
+/* istek üzerine yapay zekâ analizi (BIST 30 dışı): ntfy.sh üzerinden istek gönderilir, GitHub Actions değerlendirir */
+const TALEP_KONU="hisseradar-analiz-istek-7k3q",GUNLUK_HAK=5,TAZE_SAAT=3;
+let TALEP=store.get("talep",{}),talepTimer=null;
+const bugun=()=>new Date().toLocaleDateString("sv-SE",{timeZone:"Europe/Istanbul"});
+function hakKalan(){const h=store.get("hak",{d:"",n:0});return h.d===bugun()?Math.max(0,GUNLUK_HAK-h.n):GUNLUK_HAK}
+function hakKullan(){const h=store.get("hak",{d:"",n:0}),d=bugun();store.set("hak",{d,n:(h.d===d?h.n:0)+1})}
+function aigTs(k){return ((AIG.hisseler||{})[k]||{}).ts||0}
+function talepDurum(k){const t=TALEP[k];if(!t)return null;if(aigTs(k)*1000>=t)return null;return Date.now()-t<20*60e3?"bekliyor":"gecikti"}
+function talepHtml(k){
+  const yas=(Date.now()/1000-aigTs(k))/3600,d=talepDurum(k);
+  if(d==="bekliyor")return `<p class="small" style="margin-bottom:12px;padding:12px;border-radius:12px;background:var(--blue-a)"><b>İsteğin alındı.</b> Yapay zekâ bu hisseyi birkaç dakika içinde değerlendirecek, sonuç burada kendiliğinden görünecek.</p>`;
+  if(aigTs(k)&&yas<TAZE_SAAT)return "";
+  const n=hakKalan();
+  return `<div style="margin-bottom:12px;padding:12px;border-radius:12px;background:var(--s2)">
+    <p class="small muted" style="margin-bottom:10px">${d==="gecikti"?"Önceki isteğe yanıt gelmedi; tekrar deneyebilirsin. ":""}${aigTs(k)?"Bu hissenin yapay zekâ analizi "+nf(Math.floor(yas),0)+" saat önce yapıldı.":"Bu hisse henüz yapay zekâya sorulmadı."} İstersen şimdi analiz ettirebilirsin; sonuç herkes için kaydedilir.</p>
+    <button class="btn ${n?"primary":"ghost"}" id="talepBtn" ${n?"":"disabled"} style="width:100%">${n?"Yapay zekâya analiz ettir":"Bugünkü hakkın bitti"}</button>
+    <p class="xs faint" style="margin-top:8px;text-align:center">Günde ${GUNLUK_HAK} hak · bugün ${n} hakkın kaldı</p></div>`;
+}
+async function talepGonder(k){
+  if(!hakKalan())return;const b=$("#talepBtn");if(b){b.disabled=true;b.textContent="Gönderiliyor…"}
+  try{const r=await fetch("https://ntfy.sh/"+TALEP_KONU,{method:"POST",body:k});if(!r.ok)throw new Error(r.status);
+    const eski=talepDurum(k)==="gecikti";if(!eski)hakKullan();TALEP[k]=Date.now();store.set("talep",TALEP);talepIzle()}
+  catch(e){if(b){b.disabled=false;b.textContent="Gönderilemedi, tekrar dene"}return}
+  if(cur&&cur.k===k)openDetail(k,true);
+}
+function talepIzle(){if(talepTimer)return;talepTimer=setInterval(async()=>{const bekleyen=Object.keys(TALEP).filter(k=>talepDurum(k)==="bekliyor");
+  if(!bekleyen.length){clearInterval(talepTimer);talepTimer=null;return}
+  try{const d=await getJ(RAW("main","data/ai_genis.json"));if(T(d.updatedAt)>T(AIG.updatedAt)){AIG=d;KC={};renderRows();if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}},20000)}
 function hisseKarar(k,vs){const a=getA(k),c=consensus(vs||votes(k));if(!a||HZ!=="1h")return c;const r=(MK[k]&&MK[k].rsi!=null)?MK[k].rsi:a.noHist?null:a.R;
   if(r!=null&&c.karar==="SAT"&&r<30)return {...c,karar:"TUT",not:`Oylar SAT yönünde ama RSI ${nf(r,0)} ile aşırı satım bölgesinde; bu seviyeden satmak geç kalmış olabilir, tepki alımı da gelebilir. Bu yüzden TUT.`};
   if(r!=null&&c.karar==="AL"&&r>75)return {...c,karar:"TUT",not:`Oylar AL yönünde ama RSI ${nf(r,0)} ile aşırı alım bölgesinde; bu seviyeden almak riskli, düzeltme gelebilir. Bu yüzden TUT.`};
@@ -512,7 +540,7 @@ function renderRows(){
   else if(filt==="up")arr=arr.filter(k=>chOf(k)>0).sort((x,y)=>chOf(y)-chOf(x));
   else if(filt==="down")arr=arr.filter(k=>chOf(k)<0).sort((x,y)=>chOf(x)-chOf(y));
   else if(kd){const w=filt==="al"?"AL":"SAT";arr=arr.map(k=>({k,c:kararK(k)})).filter(o=>o.c&&o.c.karar===w).sort((x,y)=>w==="AL"?y.c.guc-x.c.guc||y.c.n-x.c.n:x.c.guc-y.c.guc||y.c.n-x.c.n).map(o=>o.k)}
-  const ki=$("#kinfo");if(ki)ki.innerHTML=kd?`<div class="card" style="padding:12px 14px">${hzSeg("hzM")}<p class="xs muted" style="margin-top:8px">${arr.length} hisse ${HZL[HZ]} vadesinde ${filt==="al"?"AL":"SAT"} diyor. Karar için kaynakların en az %60'ının aynı yönde olması gerekir; en güçlü sinyal en üstte. Ayrıntı için hisseye dokun.</p>${GEC?"":`<p class="xs faint" style="margin-top:4px">Tüm hisselerin geçmiş verisi yükleniyor, liste birazdan uzayacak…</p>`}${AIG.ilerleme?`<p class="xs faint" style="margin-top:4px">Yapay zekâ şu ana kadar ${AIG.ilerleme.yapilan} / ${AIG.ilerleme.toplam} hisseyi değerlendirdi (en popülerden başlayarak, saatte bir ~36 hisse). BIST 30 ayrıca her saat değerlendiriliyor.</p>`:""}</div>`:"";
+  const ki=$("#kinfo");if(ki)ki.innerHTML=kd?`<div class="card" style="padding:12px 14px">${hzSeg("hzM")}<p class="xs muted" style="margin-top:8px">${arr.length} hisse ${HZL[HZ]} vadesinde ${filt==="al"?"AL":"SAT"} diyor. Karar için kaynakların en az %60'ının aynı yönde olması gerekir; en güçlü sinyal en üstte. Ayrıntı için hisseye dokun.</p>${GEC?"":`<p class="xs faint" style="margin-top:4px">Tüm hisselerin geçmiş verisi yükleniyor, liste birazdan uzayacak…</p>`}<p class="xs faint" style="margin-top:4px">Yapay zekâ BIST 30'u ve en popüler 100 hisseyi düzenli değerlendirir; diğer hisseleri hisse sayfasındaki "Yapay zekâya analiz ettir" düğmesiyle sen istersin.${AIG.ilerleme?` Şu an ${AIG.ilerleme.yapilan} hissede yapay zekâ analizi var.`:""}</p></div>`:"";
   const n=arr.length;
   rows.innerHTML=(arr.slice(0,LIM).map(k=>anyRow(k,kd)).join("")||`<p class="muted" style="padding:18px">${!kod.length?"Hisse listesi yükleniyor…":filt==="fav"?"Henüz favori hisse yok. Hisse sayfasındaki ☆ ile ekle.":kd?"Şu an bu yönde güçlü sinyal veren hisse yok.":"Eşleşen hisse yok."}</p>`)+(n>LIM?`<button class="btn ghost" id="more" style="margin:12px;width:calc(100% - 24px)">Daha fazla göster (${n-LIM} hisse daha)</button>`:"");
   const mb=$("#more");if(mb)mb.onclick=()=>{LIM+=150;renderRows()};
@@ -546,8 +574,9 @@ function openDetail(k,keepScroll,fromPop){
   </div>
 
   <div class="card">
-    <div class="card-h"><h2>Yapay zekâ kararı</h2><span class="xs muted">${esc(fmtTime(AI.updatedAt||OUT.updatedAt))}</span></div>
+    <div class="card-h"><h2>Yapay zekâ kararı</h2><span class="xs muted">${esc(fmtTime(a.lite?(aigTs(k)?new Date(aigTs(k)*1000).toISOString():""):(AI.updatedAt||OUT.updatedAt)))}</span></div>
     ${hzSeg("hzD")}<div style="height:12px"></div>
+    ${a.lite?talepHtml(k):""}
     <div class="ask" id="ask" ${asked?"hidden":""}>
       <p class="small muted">${a.lite?((AIG.hisseler||{})[k]?"Yapay zekâ, ":"")+(a.noHist?"TradingView göstergeleri":"TradingView göstergeleri ve teknik analiz"):aiNames.length?esc(aiNames.join(", "))+", Claude ve teknik analiz":"Claude ve teknik analiz"} bu hisseyi değerlendirdi. Kararı görmek için sor.</p>
       <button class="btn primary" id="askBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Yapay zekâlara sor</button>
@@ -560,7 +589,7 @@ function openDetail(k,keepScroll,fromPop){
       <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
         <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null?`<span class="xs faint">Güven: ${gSev(v.guven)}${v.guven<50?" · yarım oy sayılır":""}${v.sig?" · işlem hacmi düşük hisse":""}${v.tarih?" · "+esc(fmtTime(new Date(v.tarih*1000).toISOString())):""}</span>`:""}${isabetTxt(v.id)}</div>
         <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.hedef?`<span class="tg">${HZL[HZ]}: ${px(v.hedef)}</span>`:""}</div></div>`).join("")}</div>
-      ${a.lite?`<p class="note">${(AIG.hisseler||{})[k]?"Bu hisseyi yapay zekâ, borsadaki tüm hisseleri popülerlik sırasıyla tarayan döngüde değerlendirdi; TradingView göstergeleri ve teknik analiz de oy veriyor.":"Yapay zekâ borsadaki tüm hisseleri popülerlik sırasıyla tarıyor; bu hisse sırası gelince değerlendirilecek. Şimdilik TradingView göstergeleri ve teknik analiz var."}</p>`:""}
+      ${a.lite?`<p class="note">Yapay zekâ en popüler 100 hisseyi borsa açıkken düzenli olarak, diğerlerini istek üzerine değerlendirir. TradingView göstergeleri ve teknik analiz de oy verir.</p>`:""}
       <p class="note">AL ya da SAT için kaynakların en az %60'ının aynı yönde olması gerekir, yoksa karar TUT'tur. Bu bilgiler yatırım tavsiyesi değildir; yapay zekâ tahminleri yanılabilir.</p>
     </div>
   </div>
@@ -613,6 +642,7 @@ function openDetail(k,keepScroll,fromPop){
   $("#favbtn").onclick=()=>{toggleFav(k);const on=isFav(k);const b=$("#favbtn");b.textContent=on?"★":"☆";b.classList.toggle("on",on);b.setAttribute("aria-label",on?"Favorilerden çıkar":"Favorilere ekle");renderMarket();renderNews()};
   $("#rng").onclick=e=>{const b=e.target.closest("[data-r]");if(!b)return;range=b.dataset.r;store.set("rng",range);[...$("#rng").children].forEach(x=>x.setAttribute("aria-pressed",x===b));drawChart()};
   $("#mode").onclick=()=>{mode=mode==="mum"?"line":"mum";store.set("mode",mode);if(mode==="mum"&&range==="gun"){range="1a";store.set("rng",range)}openDetail(k,true)};
+  const tb=$("#talepBtn");if(tb)tb.onclick=()=>talepGonder(k);
   const ab=$("#askBtn");if(ab)ab.onclick=()=>{asked=true;store.set("asked",true);$("#ask").hidden=true;$("#answer").hidden=false};
   setView("detay");
   if(!keepScroll&&!fromPop)nav({v:"detay",k});
@@ -833,7 +863,7 @@ async function pollSlow(){
   if(Date.now()-lastFunds>6e5){lastFunds=Date.now();try{const d=await getJ(RAW("data","funds.json"));if(T(d.updatedAt)>T(FUNDS.updatedAt)){FUNDS=d;renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}}
 }
 let lastFunds=0;
-renderAll();
+renderAll();talepIzle();
 const h=location.hash.slice(1);try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}
 if(["beklenti","haber","fon"].includes(h))showTab(h);else if(getA(h.toUpperCase()))openDetail(h.toUpperCase());
 poll();pollSlow();

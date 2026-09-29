@@ -1,8 +1,11 @@
-"""Hisse Radar - tüm BIST hisseleri için kademeli yapay zekâ değerlendirmesi.
+"""Hisse Radar - BIST 30 dışındaki hisseler için yapay zekâ değerlendirmesi.
 
-BIST 30 dışındaki ~600 hisseyi her çalıştırmada küçük gruplar hâlinde değerlendirir. Sıra popülerliğe göredir
-(piyasa değeri ve işlem hacmi): önce hiç değerlendirilmemiş en popüler hisseler, sonra en eski analizler yenilenir;
-popüler hisseler daha sık yenilenir. Böylece ücretsiz kotayı aşmadan bir günde bütün borsa taranır.
+İki çalışma biçimi (MOD):
+  populer : en popüler POPULER_N hisseyi (piyasa değeri + işlem hacmi) sırayla, en eski analizden başlayarak yeniler.
+  talep   : kullanıcıların uygulamadaki "Yapay zekâya analiz ettir" düğmesiyle istediği hisseleri değerlendirir.
+            İstekler anahtarsız ntfy.sh konusundan okunur (TALEP_KONU); yalnızca geçerli hisse kodları alınır,
+            bir çalıştırmada en çok TALEP_EN_COK hisse, son 3 saatte analiz edilmiş hisse tekrar edilmez.
+Böylece kimsenin bakmadığı hisseler boşuna analiz edilmez, ücretsiz kota korunur.
 
 Kalite kuralları ai_degerlendir.py ile aynıdır: model yalnızca verilen sayılara dayanır, yönü ya da büyüklüğü
 tutarsız hedefler atılır, fiyatı eski hisseye karar verilmez. Hacmi çok düşük hisselerde güven düşürülür.
@@ -29,14 +32,38 @@ from ai_degerlendir import (IST, HISSELER_BIST30, endeks_satiri, json_ayikla, lo
 
 KOK = Path(__file__).resolve().parent.parent
 CIKTI = Path(os.environ.get("GENIS_CIKTI", KOK / "data" / "ai_genis.json"))
+MOD = os.environ.get("MOD", "talep")
 GRUP = int(os.environ.get("GENIS_GRUP", "12"))       # bir istekteki hisse sayısı
-ISTEK = int(os.environ.get("GENIS_ISTEK", "3"))      # bir çalıştırmadaki istek sayısı
+ISTEK = int(os.environ.get("GENIS_ISTEK", "2"))      # bir çalıştırmadaki en çok istek sayısı
+POPULER_N = int(os.environ.get("POPULER_N", "100"))
+TALEP_KONU = os.environ.get("TALEP_KONU", "hisseradar-analiz-istek-7k3q")
+TALEP_TAZE_SAAT = 3
 BEKLE = int(os.environ.get("GENIS_BEKLE", "65"))     # istekler arası bekleme (dakikalık token sınırı için)
 DUSUK_HACIM_TL = 20_000_000                          # günlük işlem hacmi bunun altındaysa sığ hisse
 
 # Groq'ta her modelin ayrı günlük kotası var; BIST 30 değerlendirmesi gpt-oss-120b kullandığı için burada önce başkaları denenir
-GROQ_TERCIH = ["qwen/qwen3-32b", "openai/gpt-oss-20b", "meta-llama/llama-4-maverick-17b-128e-instruct",
-               "moonshotai/kimi-k2-instruct-0905", "llama-3.3-70b-versatile", "openai/gpt-oss-120b"]
+# En kaliteli model önce; kota dolarsa küçük modele düşer
+GROQ_TERCIH = ["openai/gpt-oss-120b", "moonshotai/kimi-k2-instruct-0905", "llama-3.3-70b-versatile", "openai/gpt-oss-20b"]
+
+
+def talepleri_oku(son_ts: int, gecerli: set) -> tuple[list[str], int]:
+    """ntfy.sh konusundaki istekleri oku. Dönüş: (istenen kodlar, en yeni istek zamanı)."""
+    since = str(son_ts + 1) if son_ts else "12h"
+    r = requests.get(f"https://ntfy.sh/{TALEP_KONU}/json", params={"poll": "1", "since": since}, timeout=30)
+    r.raise_for_status()
+    kodlar, en_yeni = [], son_ts
+    for satir_ in r.text.splitlines():
+        try:
+            m = json.loads(satir_)
+        except ValueError:
+            continue
+        if m.get("event") != "message":
+            continue
+        en_yeni = max(en_yeni, int(m.get("time") or 0))
+        kod = re.sub(r"[^A-Z0-9]", "", str(m.get("message") or "").upper())[:8]
+        if kod in gecerli and kod not in kodlar:
+            kodlar.append(kod)
+    return kodlar, en_yeni
 
 
 def populerlik(satirlar: list) -> list[str]:
@@ -187,7 +214,23 @@ def main() -> int:
         hisseler.pop(k)
     ts_market = dt.datetime.fromisoformat(market["updatedAt"]).timestamp() if market.get("updatedAt") else time.time()
     fiyatlar = {k: {"last": r[2], "ts": ts_market} for k, r in by.items()}
-    secilen = sira_sec(sirali, hisseler, GRUP * ISTEK)
+    talep_son = int(eski.get("talepSon") or 0)
+    if MOD == "talep":
+        try:
+            istenen, talep_son = talepleri_oku(talep_son, set(by))
+        except Exception as e:
+            log("istekler okunamadı:", e)
+            return 0
+        simdi = time.time()
+        secilen = [k for k in istenen if simdi - ((hisseler.get(k) or {}).get("ts") or 0) > TALEP_TAZE_SAAT * 3600][:GRUP * ISTEK]
+        log("istenen:", istenen, "değerlendirilecek:", secilen)
+        if not secilen:
+            if talep_son != int(eski.get("talepSon") or 0):
+                eski["talepSon"] = talep_son
+                CIKTI.write_text(json.dumps(eski, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            return 0
+    else:
+        secilen = sira_sec(sirali[:POPULER_N], hisseler, GRUP * ISTEK)
     log("değerlendirilecek:", len(secilen), "hisse:", ", ".join(secilen[:12]), "...")
     modeller = {m["id"]: m for m in eski.get("modeller") or []}
     for kimlik, ad, env, fn in SAGLAYICILAR:
@@ -204,6 +247,8 @@ def main() -> int:
                 sonuc = temizle(json_ayikla(metin), fiyatlar, kimlik)
                 atilan += GECERSIZ.get(kimlik, 0)
                 for k, v in sonuc.items():
+                    if not re.search(r"\d", v.get("neden", "")):  # somut veriye dayanmayan gerekçe: güveni düşür
+                        v["guven"] = min(v.get("guven", 50), 40)
                     if (by[k][4] or 0) * (by[k][2] or 0) < DUSUK_HACIM_TL:
                         v["guven"] = min(v.get("guven", 50), 45)
                         v["sig"] = True
@@ -224,8 +269,8 @@ def main() -> int:
                             "zaman": dt.datetime.now(IST).isoformat(timespec="seconds")}
         log(ad, model, basari, "hisse,", atilan, "tutarsız kayıt atıldı")
     yapilan = sum(1 for k in sirali if k in hisseler)
-    cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"),
-             "ilerleme": {"yapilan": yapilan, "toplam": len(sirali)},
+    cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"), "talepSon": talep_son,
+             "ilerleme": {"yapilan": yapilan, "toplam": len(sirali), "populer": POPULER_N},
              "modeller": list(modeller.values()), "groqModelleri": MODELLER.get("groq", [])[:40], "hisseler": hisseler}
     CIKTI.parent.mkdir(parents=True, exist_ok=True)
     CIKTI.write_text(json.dumps(cikti, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
