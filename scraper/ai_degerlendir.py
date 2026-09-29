@@ -523,12 +523,15 @@ SAGLAYICILAR = [
     ("sambanova", "SambaNova", "SAMBANOVA_API_KEY", sambanova),
     ("cohere", "Cohere", "COHERE_API_KEY", cohere),
     ("grok", "Grok", "XAI_API_KEY", grok),
-    ("openrouter", "OpenRouter", "OPENROUTER_API_KEY", openrouter),
+    # OpenRouter'ın ücretsiz modelleri sürekli 429 veriyor; OPENROUTER_AKTIF=1 ile yeniden açılabilir (aşağıda)
     # GitHub Models 30 Temmuz 2026'da kapatıldı (github.blog/changelog/2026-07-30-github-models-is-now-retired);
     # gpt ve deepseek_gh işlevleri kodda duruyor ama kullanılmıyor.
     ("mistral", "Mistral", "MISTRAL_API_KEY", mistral),
 ]
 
+
+if os.environ.get("OPENROUTER_AKTIF") == "1":
+    SAGLAYICILAR.append(("openrouter", "OpenRouter", "OPENROUTER_API_KEY", openrouter))
 
 KARAR = {"BUY": "AL", "HOLD": "TUT", "SELL": "SAT", "AL": "AL", "TUT": "TUT", "SAT": "SAT"}
 

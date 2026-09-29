@@ -247,7 +247,7 @@ def main() -> int:
     GUNDEM = oku(KOK / "data" / "gundem.json", {})
     ai_degerlendir.GUNDEM = GUNDEM
     # istek üzerine analizde şirketin güncel haberleri de toplanır (kota sınırlı)
-    butce = kaynaklar.Butce(eski.setdefault("kullanim", {}), {"tavily": ("ay", 600), "marketaux": ("gun", 45), "cohere": ("ay", 400)})
+    butce = kaynaklar.Butce(eski.setdefault("kullanim", {}), {"tavily": ("ay", 600), "marketaux": ("gun", 45), "cohere": ("ay", 300)})
     ai_degerlendir.BUTCE = butce
     if MOD == "talep":
         for k in secilen[:6]:

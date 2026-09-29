@@ -201,9 +201,9 @@ def groq_fon(istem_, anahtar):
 
 SAGLAYICILAR = [
     ("groq", "Groq", "GROQ_API_KEY", groq_fon),
+    ("cohere", "Cohere", "COHERE_API_KEY", lambda i, a: openai_uyumlu("https://api.cohere.ai/compatibility/v1", a, "command-a-03-2025", [], None, i, en_cok=3000)),
     ("mistral", "Mistral", "MISTRAL_API_KEY", lambda i, a: openai_uyumlu("https://api.mistral.ai/v1", a, os.environ.get("MISTRAL_MODEL"),
                                                                          ["mistral-large-latest", "mistral-medium-latest"], None, i, en_cok=3000)),
-    ("openrouter", "OpenRouter", "OPENROUTER_API_KEY", lambda i, a: openrouter(i, a, en_cok=3000)),
 ]
 
 
