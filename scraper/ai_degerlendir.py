@@ -282,7 +282,7 @@ def gemini(istem: str, anahtar: str):
     raise RuntimeError(f"Gemini hiçbir modelle çalışmadı ({son})")
 
 
-def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre, istem: str, json_modu=True):
+def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre, istem: str, json_modu=True, en_cok=8000):
     bas = {"Authorization": f"Bearer {anahtar}"}
     if not model:
         r = requests.get(f"{taban}/models", headers=bas, timeout=30)
@@ -291,7 +291,7 @@ def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre
         model = tercih_et(adlar, tercihler, filtre)
         if not model:
             raise RuntimeError("uygun model yok")
-    govde = {"model": model, "temperature": 0.2, "max_tokens": 8000,
+    govde = {"model": model, "temperature": 0.2, "max_tokens": en_cok,
              "messages": [{"role": "system", "content": "Yalnızca geçerli JSON döndür."},
                           {"role": "user", "content": istem}]}
     if "gpt-oss" in model:  # düşünme payı yanıtı yarıda kesmesin
@@ -311,7 +311,8 @@ def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre
     if r.status_code == 400 and "reasoning_effort" in govde:
         govde.pop("reasoning_effort")
         r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
-    r.raise_for_status()
+    if not r.ok:
+        raise RuntimeError(f"{model} {r.status_code}: {r.text[:160]}")
     ch = r.json()["choices"][0]
     if ch.get("finish_reason") == "length":
         log(model, "uyarı: yanıt uzunluk sınırında kesildi, tamamlanan kayıtlar kurtarılacak")

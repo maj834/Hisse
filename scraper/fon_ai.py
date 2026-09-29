@@ -27,7 +27,7 @@ from ai_degerlendir import IST, KARAR, json_ayikla, log, oku, openai_uyumlu  # n
 KOK = Path(__file__).resolve().parent.parent
 CIKTI = Path(os.environ.get("FON_AI_CIKTI", KOK / "data" / "fon_ai.json"))
 EN_FAZLA = int(os.environ.get("FON_SAYI", "60"))
-PARCA = 15
+PARCA = 10
 
 # vade: (en büyük |getiri| %, TUT için en büyük |getiri| %)
 SINIR = {"": (6.0, 3.0), "1a": (12.0, 6.0), "3a": (25.0, 12.0)}
@@ -194,11 +194,11 @@ def temizle(liste, turler: dict) -> tuple[dict, int]:
 SAGLAYICILAR = [
     ("groq", "Llama (Groq)", "GROQ_API_KEY",
      lambda i, a: openai_uyumlu("https://api.groq.com/openai/v1", a, os.environ.get("GROQ_FON_MODEL") or "llama-3.3-70b-versatile",
-                                [], None, i)),
+                                [], None, i, en_cok=2500)),
     ("openrouter", "OpenRouter", "OPENROUTER_API_KEY",
      lambda i, a: openai_uyumlu("https://openrouter.ai/api/v1", a, os.environ.get("OPENROUTER_MODEL"),
                                 ["qwen/qwen3-235b-a22b:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-chat-v3.1:free"],
-                                lambda m: m.endswith(":free") and ("70b" in m or "deepseek" in m or "qwen3" in m), i, json_modu=False)),
+                                lambda m: m.endswith(":free") and ("70b" in m or "deepseek" in m or "qwen3" in m), i, json_modu=False, en_cok=3000)),
 ]
 
 
@@ -219,7 +219,7 @@ def main() -> int:
             continue
         bas = time.time()
         try:
-            kararlar, model, atilan = {}, "", 0
+            kararlar, model, atilan, son_hata = {}, "", 0, ""
             for i in range(0, len(kodlar), PARCA):
                 parca = kodlar[i:i + PARCA]
                 try:
@@ -228,11 +228,12 @@ def main() -> int:
                     kararlar.update(sonuc)
                     atilan += at
                 except Exception as e:  # tek parça başarısızsa diğerlerine devam et
-                    log(ad, "parça hatası:", str(e).replace(anahtar, "***")[:160])
+                    son_hata = str(e).replace(anahtar, "***")[:160]
+                    log(ad, "parça hatası:", son_hata)
                 if i + PARCA < len(kodlar):
                     time.sleep(25)
             if len(kararlar) < len(kodlar) * 0.4:
-                raise RuntimeError(f"eksik ya da tutarsız yanıt ({len(kararlar)} geçerli fon, {atilan} tutarsız kayıt)")
+                raise RuntimeError(f"eksik ya da tutarsız yanıt ({len(kararlar)} geçerli fon, {atilan} tutarsız kayıt) {son_hata}")
             for k, v in kararlar.items():
                 cikti["fonlar"].setdefault(k, {})[kimlik] = v
             cikti["modeller"].append({"id": kimlik, "ad": ad, "model": model, "durum": "ok", "sayi": len(kararlar),
