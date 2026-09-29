@@ -24,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ai_degerlendir  # noqa: E402
 import kaynaklar  # noqa: E402
-from ai_degerlendir import IST, KARAR, json_ayikla, log, oku, openai_uyumlu, openrouter  # noqa: E402
+from ai_degerlendir import IST, KARAR, groq_yedekli, json_ayikla, log, oku, openai_uyumlu, openrouter  # noqa: E402
 
 KOK = Path(__file__).resolve().parent.parent
 CIKTI = Path(os.environ.get("FON_AI_CIKTI", KOK / "data" / "fon_ai.json"))
@@ -204,9 +204,9 @@ def temizle(liste, turler: dict) -> tuple[dict, int]:
 def groq_fon(istem_, anahtar):
     """Hisse değerlendirmesinden ayrı bir Groq modeli (her modelin kendi günlük kotası var)."""
     tercih = [os.environ["GROQ_FON_MODEL"]] if os.environ.get("GROQ_FON_MODEL") else []
-    tercih += ["moonshotai/kimi-k2-instruct-0905", "moonshotai/kimi-k2-instruct", "qwen/qwen3-32b", "openai/gpt-oss-120b"]
-    return openai_uyumlu("https://api.groq.com/openai/v1", anahtar, None, tercih,
-                         lambda a: "gpt-oss" in a or "kimi" in a, istem_, en_cok=3000)
+    tercih += ["qwen/qwen3-32b", "moonshotai/kimi-k2-instruct-0905", "openai/gpt-oss-120b"]
+    tercih += ["llama-3.3-70b-versatile"]
+    return groq_yedekli(istem_, anahtar, tercih, en_cok=3000)
 
 
 SAGLAYICILAR = [

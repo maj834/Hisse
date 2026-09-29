@@ -143,6 +143,34 @@ def av_makro(butce: Butce) -> dict:
     return m
 
 
+# ------------------------------------------------------------ Yahoo: anlık petrol / dolar / faiz
+def yahoo_makro() -> list:
+    try:
+        from curl_cffi import requests as creq  # type: ignore
+        s = creq.Session(impersonate="chrome")
+    except Exception:
+        s = requests.Session()
+        s.headers.update({"User-Agent": "Mozilla/5.0"})
+    out = []
+    for sembol, ad, birim in (("BZ=F", "Brent petrol", "$"), ("TRY=X", "Dolar/TL", "TL"), ("^TNX", "ABD 10 yıllık faiz", "%")):
+        for host in ("query1.finance.yahoo.com", "query2.finance.yahoo.com"):
+            try:
+                r = s.get(f"https://{host}/v8/finance/chart/{sembol}?range=3mo&interval=1d", timeout=15)
+                if r.status_code != 200:
+                    continue
+                res = r.json()["chart"]["result"][0]
+                ts, kap = res["timestamp"], res["indicators"]["quote"][0]["close"]
+                veri = [{"date": dt.datetime.fromtimestamp(t_, dt.timezone.utc).strftime("%Y-%m-%d"), "value": c} for t_, c in zip(ts, kap) if c]
+                x = _seri_ozet(veri, ad, birim)
+                if x:
+                    x["kaynak"] = "Yahoo"
+                    out.append(x)
+                break
+            except Exception as e:
+                _log("Yahoo makro", sembol, str(e)[:80])
+    return out
+
+
 # ------------------------------------------------------------ Marketaux (haber + varlık bazlı duyarlılık)
 def marketaux(butce: Butce, **params) -> list:
     anahtar = os.environ.get("MARKETAUX_API_KEY", "").strip()
@@ -167,10 +195,27 @@ def marketaux(butce: Butce, **params) -> list:
         return []
 
 
+GENEL_AD = {"türkiye", "turkiye", "türk", "turk", "t.", "anadolu", "borsa", "istanbul", "global", "yeni", "doğu", "batı", "ege"}
+
+
+def kisa_ad(ad: str) -> str:
+    """Şirketin haberlerde geçen kısa adı: 'Aselsan Elektronik San. ve Tic. A.Ş.' -> 'Aselsan'.
+    İlk kelime genel bir sözcükse ('Türk Hava Yolları', 'Türkiye İş Bankası') boş döner; o zaman yalnızca hisse koduyla eşleşilir."""
+    w = (ad or "").replace(",", " ").split()
+    if not w:
+        return ""
+    ilk = w[0]
+    k = ilk.replace("İ", "i").replace("I", "ı").lower()
+    return "" if k in GENEL_AD or len(ilk) < 4 else ilk
+
+
 def sirket_haberleri(kod: str, ad: str, butce: Butce, tavily_de: bool = True) -> list:
-    """Bir şirketin son günlerdeki haberleri: önce Marketaux (ucuz), yetmezse Tavily."""
-    temiz_ad = " ".join(w for w in (ad or kod).replace(",", " ").split() if w.upper() not in ("A.Ş.", "AŞ", "A.S.", "SAN.", "VE", "TİC.", "TIC."))[:60]
-    haber = marketaux(butce, search=f'"{temiz_ad}"') if temiz_ad else []
+    """Bir şirketin son günlerdeki haberleri: önce Marketaux (hisse koduyla, sonra kısa adla), yetmezse Tavily."""
+    temiz_ad = kisa_ad(ad) or kod
+    # tam unvanla tırnaklı arama neredeyse hiç sonuç vermiyordu; önce Borsa İstanbul sembolüyle ara
+    haber = marketaux(butce, symbols=f"{kod}.IS")
+    if not haber and temiz_ad:
+        haber = marketaux(butce, search=temiz_ad)
     if len(haber) < 2 and tavily_de:
         t = tavily(f"{temiz_ad} {kod} hisse haber", butce, gun=5, adet=4)
         if t:

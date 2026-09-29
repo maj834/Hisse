@@ -698,7 +698,11 @@ def main() -> int:
     bitis = cikis_zamani()
     log("döngü bitişi (UTC):", bitis.strftime("%H:%M"))
     if dt.datetime.now(dt.timezone.utc) >= bitis:
-        log("borsa kapandı, döngü gerekmiyor")
+        # GitHub zamanlayıcısı gecikince gelen tetikler boşa gitmesin: bir kez haber/fon/fiyat yenile
+        log("borsa kapalı, döngü yerine tek sefer yenileme")
+        b, h = bir_tur(0, True)
+        log(f"tek sefer: {b} hisse güncellendi, {h} hata")
+        gonder(f"veri {simdi():%d.%m %H:%M}")
         return 0
     sayac = 0
     toplam_basari = 0

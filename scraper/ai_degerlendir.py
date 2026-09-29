@@ -347,10 +347,35 @@ def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre
     return model, ch["message"]["content"] or ""
 
 
+_GROQ_MEVCUT: list[str] = []
+
+
+def groq_yedekli(istem, anahtar, tercih: list[str], en_cok=8000):
+    """Groq'ta her modelin ayrı günlük kotası var: biri dolunca (429) ya da kalkmışsa sıradakini dene."""
+    global _GROQ_MEVCUT
+    if not _GROQ_MEVCUT:
+        try:
+            r = requests.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {anahtar}"}, timeout=30)
+            _GROQ_MEVCUT = [m["id"] for m in r.json().get("data", [])]
+        except Exception:
+            _GROQ_MEVCUT = []
+    adaylar = [m for m in tercih if not _GROQ_MEVCUT or m in _GROQ_MEVCUT] or tercih[:1]
+    son = None
+    for m in adaylar:
+        try:
+            return openai_uyumlu("https://api.groq.com/openai/v1", anahtar, m, [], None, istem, en_cok=en_cok, tekrar=1)
+        except Exception as e:
+            son = e
+            if not any(x in str(e) for x in ("429", "413", "404", "400", "503")):
+                raise
+            log("Groq", m, "olmadı, sıradaki model:", str(e)[:90])
+    raise son  # type: ignore[misc]
+
+
 def groq(istem, anahtar):
-    return openai_uyumlu("https://api.groq.com/openai/v1", anahtar, os.environ.get("GROQ_MODEL"),
-                         ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "moonshotai/kimi-k2-instruct"],
-                         lambda a: ("70b" in a or "120b" in a) and "guard" not in a, istem)
+    tercih = ([os.environ["GROQ_MODEL"]] if os.environ.get("GROQ_MODEL") else []) + \
+        ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "moonshotai/kimi-k2-instruct-0905", "qwen/qwen3-32b"]
+    return groq_yedekli(istem, anahtar, tercih)
 
 
 def grok(istem, anahtar):
@@ -803,6 +828,18 @@ def gundem_guncelle(hisseler: dict) -> None:
         m = kaynaklar.av_makro(butce)
         if m.get("seriler") or m.get("haberler"):
             GUNDEM["makro"] = m
+    # petrol / dolar / faiz: Alpha Vantage günler geriden geliyor; Yahoo'dan her çalıştırmada taze al
+    try:
+        ys = kaynaklar.yahoo_makro()
+        if ys:
+            mk = GUNDEM.setdefault("makro", {})
+            eski = {s["ad"]: s for s in mk.get("seriler") or []}
+            for s in ys:
+                eski[s["ad"]] = s
+            mk["seriler"] = list(eski.values())
+            mk["seri_zaman"] = dt.datetime.now(IST).isoformat(timespec="seconds")
+    except Exception as e:
+        log("Yahoo makro alınamadı:", str(e)[:120])
     # 2) günün piyasa özeti: ~5 saatte bir (Tavily, 2 kredi) + her çalıştırmada Türkiye haberleri (Marketaux, 1 istek)
     piyasa = GUNDEM.get("piyasa") or {}
     if yas("piyasa") > 5 * 3600:
@@ -821,6 +858,19 @@ def gundem_guncelle(hisseler: dict) -> None:
     for k in sorted(hisseler, key=lambda k: (sirket.get(k) or {}).get("ts", 0))[:3]:
         hb = kaynaklar.sirket_haberleri(k, hisseler[k].get("ad", k), butce, tavily_de=False)
         sirket[k] = {"ts": int(simdi), "haberler": hb}
+    # ücretsiz: uygulamanın haber akışında (news.json) hisse kodu ya da şirket adı geçen başlıklar
+    yerel = oku(os.environ.get("NEWS", KOK / "data" / "news.json"), {}).get("items") or []
+    for k, h in hisseler.items():
+        ilk = kaynaklar.kisa_ad(h.get("ad", ""))
+        es = [n for n in yerel if n.get("sym") == k or re.search(rf"\b{re.escape(k)}\b", n.get("title", "")) or (ilk and ilk.lower() in n.get("title", "").lower())]
+        if es:
+            s = sirket.setdefault(k, {"ts": int(simdi), "haberler": []})
+            var = {x.get("baslik") for x in s.get("haberler") or []}
+            for n in es[:3]:
+                if n.get("title") not in var:
+                    s.setdefault("haberler", []).append({"baslik": n["title"][:160], "url": n.get("url") or n.get("link", ""),
+                                                          "kaynak": n.get("source") or n.get("kaynak", ""), "zaman": n.get("t", "")})
+            s["haberler"] = s["haberler"][-5:]
     # 4) HABER AI: bütün kaynaklardaki haberleri okuyup hisse/sektör etkisini çıkarır; analizci AI bunu kullanır
     try:
         haber_ai(hisseler)
