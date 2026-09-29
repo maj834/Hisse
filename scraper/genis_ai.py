@@ -1,0 +1,237 @@
+"""Hisse Radar - tüm BIST hisseleri için kademeli yapay zekâ değerlendirmesi.
+
+BIST 30 dışındaki ~600 hisseyi her çalıştırmada küçük gruplar hâlinde değerlendirir. Sıra popülerliğe göredir
+(piyasa değeri ve işlem hacmi): önce hiç değerlendirilmemiş en popüler hisseler, sonra en eski analizler yenilenir;
+popüler hisseler daha sık yenilenir. Böylece ücretsiz kotayı aşmadan bir günde bütün borsa taranır.
+
+Kalite kuralları ai_degerlendir.py ile aynıdır: model yalnızca verilen sayılara dayanır, yönü ya da büyüklüğü
+tutarsız hedefler atılır, fiyatı eski hisseye karar verilmez. Hacmi çok düşük hisselerde güven düşürülür.
+
+Girdiler: MARKET (market.json), GECMIS (gecmis.json), EK (ek.json, isteğe bağlı), SNAPSHOT (BIST 100 için), NEWS
+Çıktı: GENIS_CIKTI (varsayılan data/ai_genis.json). Anahtar: GROQ_API_KEY (GitHub Secrets). OPENROUTER_API_KEY isteğe bağlı.
+"""
+from __future__ import annotations
+
+import datetime as dt
+import json
+import os
+import re
+import statistics
+import sys
+import time
+from pathlib import Path
+
+import requests
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ai_degerlendir import (IST, HISSELER_BIST30, endeks_satiri, json_ayikla, log, oku, openai_uyumlu, openrouter,  # noqa: E402
+                            rsi, sma, temizle, GECERSIZ)
+
+KOK = Path(__file__).resolve().parent.parent
+CIKTI = Path(os.environ.get("GENIS_CIKTI", KOK / "data" / "ai_genis.json"))
+GRUP = int(os.environ.get("GENIS_GRUP", "12"))       # bir istekteki hisse sayısı
+ISTEK = int(os.environ.get("GENIS_ISTEK", "3"))      # bir çalıştırmadaki istek sayısı
+BEKLE = int(os.environ.get("GENIS_BEKLE", "65"))     # istekler arası bekleme (dakikalık token sınırı için)
+DUSUK_HACIM_TL = 20_000_000                          # günlük işlem hacmi bunun altındaysa sığ hisse
+
+# Groq'ta her modelin ayrı günlük kotası var; BIST 30 değerlendirmesi gpt-oss-120b kullandığı için burada önce başkaları denenir
+GROQ_TERCIH = ["qwen/qwen3-32b", "openai/gpt-oss-20b", "meta-llama/llama-4-maverick-17b-128e-instruct",
+               "moonshotai/kimi-k2-instruct-0905", "llama-3.3-70b-versatile", "openai/gpt-oss-120b"]
+
+
+def populerlik(satirlar: list) -> list[str]:
+    """Piyasa değeri sırası ile TL işlem hacmi sırasının ortalamasına göre (en popüler başta)."""
+    pd_sira = {r[0]: i for i, r in enumerate(sorted(satirlar, key=lambda r: -(r[6] or 0)))}
+    hc_sira = {r[0]: i for i, r in enumerate(sorted(satirlar, key=lambda r: -((r[4] or 0) * (r[2] or 0))))}
+    return sorted((r[0] for r in satirlar), key=lambda k: (pd_sira[k] + hc_sira[k]) / 2)
+
+
+def sira_sec(sirali: list[str], eski: dict, adet: int) -> list[str]:
+    simdi = time.time()
+    def oncelik(i_k):
+        i, k = i_k
+        agirlik = 4 if i < 100 else 2 if i < 300 else 1
+        t = (eski.get(k) or {}).get("ts")
+        if not t:
+            return (1, -i)  # hiç değerlendirilmemiş: popüler olan önce
+        yas = (simdi - t) / 3600
+        if yas < 6:
+            return (-1, 0)  # 6 saatten yeni analizi tekrar etme
+        return (0, yas * agirlik)
+    aday = sorted(enumerate(sirali), key=oncelik, reverse=True)
+    return [k for i, k in aday if oncelik((i, k))[0] >= 0][:adet]
+
+
+def satir(r: list, gecmis: dict, ek: dict, sektor_med: dict, xu: dict | None, sira: int) -> str:
+    k, ad, fiyat, deg, hacim, sektor, pd_, tv, rsi_tv, h1, a1, a3, yuk, dus, yb = (r + [None] * 15)[:15]
+    parca = [f"{k} ({ad}, {sektor or '-'}; popülerlik sırası {sira + 1}): son {fiyat:g} TL, bugün {deg or 0:+.2f}%"]
+    if h1 is not None:
+        parca.append(f"1 hafta {h1:+.1f}%")
+    if a1 is not None:
+        parca.append(f"1 ay {a1:+.1f}%" + (f" (sektör medyanı {sektor_med[sektor]:+.1f}%)" if sektor in sektor_med else ""))
+    if a3 is not None:
+        parca.append(f"3 ay {a3:+.1f}%")
+    if yb is not None:
+        parca.append(f"yılbaşından {yb:+.1f}%")
+    if xu and a1 is not None:
+        parca.append(f"BIST 100'e göre 1 ay {a1 - xu['a1']:+.1f} puan")
+    c = [x[1] for x in gecmis.get(k) or []]
+    if len(c) >= 21:
+        c = c + [fiyat]
+        parca.append(f"SMA20 {sma(c, 20):.4g} (fiyat {'üstünde' if fiyat > sma(c, 20) else 'altında'}), RSI14 {rsi(c):.0f}, "
+                     f"3 ay düşük/yüksek {min(c):g}/{max(c):g}")
+        gunluk = [abs(c[i] / c[i - 1] - 1) * 100 for i in range(1, len(c))]
+        parca.append(f"ortalama günlük hareket %{statistics.mean(gunluk[-20:]):.1f}")
+    elif rsi_tv is not None:
+        parca.append(f"RSI14 {rsi_tv:.0f}")
+    if tv is not None:
+        parca.append(f"TradingView teknik özet {tv:+.2f} (-1 güçlü sat, +1 güçlü al)")
+    e = ek.get(k) or {}
+    for alan, yazi in (("fk", "F/K"), ("pddd", "PD/DD"), ("roe", "özsermaye kârlılığı %"), ("borc", "borç/özsermaye")):
+        if e.get(alan) is not None and not (alan == "fk" and e[alan] <= 0):
+            parca.append(f"{yazi} {e[alan]:.1f}")
+    if e.get("sma200"):
+        parca.append(f"200 günlük ortalamanın {'üstünde' if fiyat > e['sma200'] else 'altında'}")
+    tl_hacim = (hacim or 0) * (fiyat or 0)
+    parca.append(f"günlük işlem hacmi {tl_hacim / 1e6:.0f} milyon TL" + (" (SIĞ HİSSE)" if tl_hacim < DUSUK_HACIM_TL else ""))
+    if pd_:
+        parca.append(f"piyasa değeri {pd_ / 1e9:.1f} milyar TL")
+    return ", ".join(parca)
+
+
+def istem(satirlar: str, snap: dict, basliklar: str) -> str:
+    return f"""Sen Borsa İstanbul'u takip eden temkinli ve dürüst bir analistsin. Bugün {dt.datetime.now(IST):%d.%m.%Y %H:%M}.
+Bu kararları sıradan yatırımcılar görecek; yanlış yönlendirmemek en önemli kural.
+KURALLAR:
+1) YALNIZCA aşağıda verilen sayılara ve haber başlıklarına dayan. Veride olmayan rakam, haber ya da olay uydurma.
+2) Her hisse için üç vade: 1 hafta (karar/hedef), 1 ay (karar1a/hedef1a), 3 ay (karar3a/hedef3a).
+3) Sinyaller çelişiyorsa ya da emin değilsen TUT de. AL/SAT yalnızca birden fazla gösterge (trend, momentum, sektöre ve endekse göre güç, değerleme) aynı yönü gösteriyorsa.
+4) Sert düşüş sonrası RSI 30 altındaysa kısa vadede SAT deme; sert yükseliş sonrası RSI 70 üstündeyse AL deme.
+5) "SIĞ HİSSE" yazanlarda fiyat kolay oynatılabilir: güveni en çok 45 ver, AL demekte çok temkinli ol.
+6) Hedefler gerçekçi olsun, ortalama günlük hareketi dikkate al: 1 hafta en çok ±%8, 1 ay ±%15, 3 ay ±%30.
+   AL ise hedef son fiyatın ÜSTÜNDE, SAT ise ALTINDA, TUT ise son fiyata yakın. Uymayan yanıt otomatik silinir.
+7) "guven" 0-100; karışık sinyalde 50 altı. Gerekçe en fazla 18 kelime, verideki somut bir sayıyı ansın.
+{endeks_satiri(snap)}
+Hisseler:
+{satirlar}
+
+Son haber başlıkları:
+{basliklar}
+
+Yalnızca şu biçimde geçerli JSON döndür, başka metin yazma:
+{{"hisseler":[{{"k":"KOD","karar":"TUT","guven":50,"hedef":10.2,"karar1a":"TUT","hedef1a":10.4,"karar3a":"AL","hedef3a":11.5,"neden":"..."}}]}}
+Listede yukarıdaki hisselerin hepsi olsun."""
+
+
+def groq_genis(i: str, anahtar: str):
+    """Tercih sırasındaki Groq modellerini dener; kota dolduysa ya da model yoksa sıradakine geçer."""
+    try:
+        r = requests.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {anahtar}"}, timeout=30)
+        mevcut = [m["id"] for m in r.json().get("data", [])]
+    except Exception:
+        mevcut = []
+    MODELLER["groq"] = mevcut
+    adaylar = ([os.environ["GROQ_GENIS_MODEL"]] if os.environ.get("GROQ_GENIS_MODEL") else []) + \
+        [m for m in GROQ_TERCIH if not mevcut or m in mevcut]
+    son = None
+    for m in adaylar:
+        try:
+            return openai_uyumlu("https://api.groq.com/openai/v1", anahtar, m, [], None, i, en_cok=3000, tekrar=1)
+        except Exception as e:
+            son = e
+            if not any(x in str(e) for x in ("429", "413", "404", "400", "503")):
+                raise
+            log("Groq", m, "olmadı:", str(e)[:100])
+    raise RuntimeError(f"Groq: hiçbir model yanıt vermedi ({son})")
+
+
+MODELLER: dict[str, list] = {}
+SAGLAYICILAR = [("groq", "Groq", "GROQ_API_KEY", groq_genis)]
+# OpenRouter'ın ücretsiz modelleri şu an sürekli 429 veriyor; düzelince GENIS_OPENROUTER=1 ile eklenebilir
+if os.environ.get("GENIS_OPENROUTER") == "1":
+    SAGLAYICILAR.append(("openrouter", "OpenRouter", "OPENROUTER_API_KEY", lambda i, a: openrouter(i, a, en_cok=3000)))
+
+
+def main() -> int:
+    market = oku(os.environ.get("MARKET", KOK / "data" / "market.json"), {})
+    gecmis = (oku(os.environ.get("GECMIS", KOK / "data" / "gecmis.json"), {}) or {}).get("g", {})
+    ek_ham = oku(os.environ.get("EK", KOK / "data" / "ek.json"), {}) or {}
+    snap = oku(os.environ.get("SNAPSHOT", KOK / "data" / "snapshot.json"), {})
+    news = oku(os.environ.get("NEWS", KOK / "data" / "news.json"), {})
+    satirlar = [r for r in market.get("hisseler") or [] if r[0] not in HISSELER_BIST30 and isinstance(r[2], (int, float))]
+    if not satirlar:
+        log("market.json boş")
+        return 1
+    ek = {k: dict(zip(ek_ham.get("sutun", []), v)) for k, v in (ek_ham.get("ek") or {}).items()}
+    sirali = populerlik(satirlar)
+    sira_no = {k: i for i, k in enumerate(sirali)}
+    by = {r[0]: r for r in satirlar}
+    # sektör medyanları ve BIST 100'ün 1 aylık getirisi (göreli güç için)
+    sek: dict[str, list] = {}
+    for r in satirlar:
+        if r[10] is not None and r[5]:
+            sek.setdefault(r[5], []).append(r[10])
+    sektor_med = {s: statistics.median(v) for s, v in sek.items() if len(v) >= 5}
+    xu = None
+    x = (snap.get("endeksler") or {}).get("XU100")
+    if x and len(x.get("g") or []) > 21:
+        xu = {"a1": (x["last"] / x["g"][-22][4] - 1) * 100}
+    cop = re.compile(r"hava durumu|hangi kanalda|\bmaç|canlı grafik|stock price today|resm[iî] gazete", re.I)
+    basliklar = "\n".join(f"- {n.get('t', '')}: {n.get('title', '')}" for n in
+                          [n for n in news.get("items") or [] if not cop.search(n.get("title", ""))][:20])
+
+    eski = oku(CIKTI, {})
+    hisseler = dict(eski.get("hisseler") or {})
+    # borsadan çıkan hisseleri at
+    for k in [k for k in hisseler if k not in by]:
+        hisseler.pop(k)
+    ts_market = dt.datetime.fromisoformat(market["updatedAt"]).timestamp() if market.get("updatedAt") else time.time()
+    fiyatlar = {k: {"last": r[2], "ts": ts_market} for k, r in by.items()}
+    secilen = sira_sec(sirali, hisseler, GRUP * ISTEK)
+    log("değerlendirilecek:", len(secilen), "hisse:", ", ".join(secilen[:12]), "...")
+    modeller = {m["id"]: m for m in eski.get("modeller") or []}
+    for kimlik, ad, env, fn in SAGLAYICILAR:
+        anahtar = os.environ.get(env, "").strip()
+        if not anahtar or not secilen:
+            continue
+        basari, atilan, model, son_hata = 0, 0, "", ""
+        for i in range(0, len(secilen), GRUP):
+            parca = secilen[i:i + GRUP]
+            metin_satir = "\n".join(satir(by[k], gecmis, ek, sektor_med, xu, sira_no[k]) for k in parca)
+            try:
+                GECERSIZ.pop(kimlik, None)
+                model, metin = fn(istem(metin_satir, snap, basliklar), anahtar)
+                sonuc = temizle(json_ayikla(metin), fiyatlar, kimlik)
+                atilan += GECERSIZ.get(kimlik, 0)
+                for k, v in sonuc.items():
+                    if (by[k][4] or 0) * (by[k][2] or 0) < DUSUK_HACIM_TL:
+                        v["guven"] = min(v.get("guven", 50), 45)
+                        v["sig"] = True
+                    kayit = dict(hisseler.get(k) or {})
+                    kayit[kimlik] = {**v, "model": model}
+                    kayit["ts"] = int(time.time())
+                    hisseler[k] = kayit
+                basari += len(sonuc)
+            except Exception as e:
+                son_hata = str(e).replace(anahtar, "***")[:160]
+                log(ad, "parça hatası:", son_hata)
+            if i + GRUP < len(secilen):
+                time.sleep(BEKLE)
+        onceki = modeller.get(kimlik, {})
+        modeller[kimlik] = {"id": kimlik, "ad": ad, "model": model or onceki.get("model", ""),
+                            "durum": "ok" if basari else ("eski" if onceki.get("durum") in ("ok", "eski") else "hata"),
+                            "son": basari, "atilan": atilan, "hata": son_hata if not basari else "",
+                            "zaman": dt.datetime.now(IST).isoformat(timespec="seconds")}
+        log(ad, model, basari, "hisse,", atilan, "tutarsız kayıt atıldı")
+    yapilan = sum(1 for k in sirali if k in hisseler)
+    cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"),
+             "ilerleme": {"yapilan": yapilan, "toplam": len(sirali)},
+             "modeller": list(modeller.values()), "groqModelleri": MODELLER.get("groq", [])[:40], "hisseler": hisseler}
+    CIKTI.parent.mkdir(parents=True, exist_ok=True)
+    CIKTI.write_text(json.dumps(cikti, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    log("yazıldı:", CIKTI, f"{yapilan}/{len(sirali)} hisse değerlendirildi")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

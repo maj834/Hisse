@@ -274,7 +274,7 @@ function toggleFav(k){FAV=isFav(k)?FAV.filter(x=>x!==k):[...FAV,k];store.set("fa
 let SNAP=seed("seed-snap"),NEWS=seed("seed-news"),OUT=seed("seed-outlook"),FUNDS=seed("seed-funds"),AI=seed("seed-ai"),TEMEL=seed("seed-temel");
 let ALL=[],BY={},cur=null,tab="piyasa";
 /* tüm BIST hisseleri (TradingView) ve geçmişleri */
-let MKD={},MK={},MKL=[],GEC=null,LITE={},gecYuk=0,KC={};
+let MKD={},MK={},MKL=[],GEC=null,LITE={},gecYuk=0,KC={},AIG={};
 function setMarket(d){MKD=d||{};MK={};MKL=(MKD.hisseler||[]).map(r=>{const o={k:r[0],ad:r[1],last:r[2],ch:r[3]||0,vol:r[4],sek:r[5],pd:r[6],tv:r[7],rsi:r[8],h1:r[9],a1:r[10],a3:r[11],hi:r[12],lo:r[13],yb:r[14]};MK[o.k]=o;return o});LITE={};KC={}}
 const tvKarar=v=>v==null?null:v>=.25?"AL":v<=-.25?"SAT":"TUT";
 const tvYazi=v=>v==null?"":v>=.5?"Güçlü al":v>=.1?"Al":v>-.1?"Nötr":v>-.5?"Sat":"Güçlü sat";
@@ -332,6 +332,8 @@ function votes(k){
   const a=getA(k),list=[],last=a?a.last:0;
   const m=(AI.hisseler||{})[k]||{};
   (AI.modeller||[]).forEach(md=>{const v=m[md.id],h=atHZ(v);if(h&&md.durum!=="hata")list.push({id:md.id,ad:md.ad,model:md.model,...v,...h,eski:md.durum==="eski"})});
+  // BIST 30 dışındaki hisseler: kademeli tarama (ai_genis.json); 3 günden eski analiz "önceki", 10 günden eskisi kullanılmaz
+  if(!BY[k]){const g=(AIG.hisseler||{})[k];if(g){const yas=(Date.now()/1000-(g.ts||0))/86400;if(yas<10)(AIG.modeller||[]).forEach(md=>{const v=g[md.id],h=atHZ(v);if(h)list.push({id:md.id,ad:"Yapay zekâ ("+String(v.model||md.ad).split("/").pop()+")",...v,...h,eski:yas>3,tarih:g.ts})})}}
   const ck=((OUT.kararlar||{})[k]),ch=atHZ(ck);if(ch)list.push({id:"claude",ad:"Claude",...ck,...ch});
   const tm=((TEMEL.hisseler||{})[k]);if(tm&&tm.ozet!==undefined){const p=tm.puan||0;list.push({id:"temel",ad:"Temel analiz ("+tm.ceyrek+")",karar:p>=2?"AL":p<=-2?"SAT":"TUT",guven:HZ==="1h"?35:Math.min(75,45+Math.abs(p)*10),neden:tm.ozet?tm.ozet.charAt(0).toLocaleUpperCase("tr")+tm.ozet.slice(1):"Finansallarda belirgin bir sinyal yok"})}
   const tv=MK[k]&&MK[k].tv;if(tv!=null&&HZ==="1h")list.push({id:"tv",ad:"TradingView göstergeleri",karar:tvKarar(tv),guven:Math.round(40+Math.abs(tv)*50),neden:tvYazi(tv)+" sinyali (hareketli ortalamalar ve osilatörler)"+(MK[k].rsi!=null?", RSI "+nf(MK[k].rsi,0):"")});
@@ -510,7 +512,7 @@ function renderRows(){
   else if(filt==="up")arr=arr.filter(k=>chOf(k)>0).sort((x,y)=>chOf(y)-chOf(x));
   else if(filt==="down")arr=arr.filter(k=>chOf(k)<0).sort((x,y)=>chOf(x)-chOf(y));
   else if(kd){const w=filt==="al"?"AL":"SAT";arr=arr.map(k=>({k,c:kararK(k)})).filter(o=>o.c&&o.c.karar===w).sort((x,y)=>w==="AL"?y.c.guc-x.c.guc||y.c.n-x.c.n:x.c.guc-y.c.guc||y.c.n-x.c.n).map(o=>o.k)}
-  const ki=$("#kinfo");if(ki)ki.innerHTML=kd?`<div class="card" style="padding:12px 14px">${hzSeg("hzM")}<p class="xs muted" style="margin-top:8px">${arr.length} hisse ${HZL[HZ]} vadesinde ${filt==="al"?"AL":"SAT"} diyor. Karar için kaynakların en az %60'ının aynı yönde olması gerekir; en güçlü sinyal en üstte. Ayrıntı için hisseye dokun.</p>${GEC?"":`<p class="xs faint" style="margin-top:4px">Tüm hisselerin geçmiş verisi yükleniyor, liste birazdan uzayacak…</p>`}</div>`:"";
+  const ki=$("#kinfo");if(ki)ki.innerHTML=kd?`<div class="card" style="padding:12px 14px">${hzSeg("hzM")}<p class="xs muted" style="margin-top:8px">${arr.length} hisse ${HZL[HZ]} vadesinde ${filt==="al"?"AL":"SAT"} diyor. Karar için kaynakların en az %60'ının aynı yönde olması gerekir; en güçlü sinyal en üstte. Ayrıntı için hisseye dokun.</p>${GEC?"":`<p class="xs faint" style="margin-top:4px">Tüm hisselerin geçmiş verisi yükleniyor, liste birazdan uzayacak…</p>`}${AIG.ilerleme?`<p class="xs faint" style="margin-top:4px">Yapay zekâ şu ana kadar ${AIG.ilerleme.yapilan} / ${AIG.ilerleme.toplam} hisseyi değerlendirdi (en popülerden başlayarak, saatte bir ~36 hisse). BIST 30 ayrıca her saat değerlendiriliyor.</p>`:""}</div>`:"";
   const n=arr.length;
   rows.innerHTML=(arr.slice(0,LIM).map(k=>anyRow(k,kd)).join("")||`<p class="muted" style="padding:18px">${!kod.length?"Hisse listesi yükleniyor…":filt==="fav"?"Henüz favori hisse yok. Hisse sayfasındaki ☆ ile ekle.":kd?"Şu an bu yönde güçlü sinyal veren hisse yok.":"Eşleşen hisse yok."}</p>`)+(n>LIM?`<button class="btn ghost" id="more" style="margin:12px;width:calc(100% - 24px)">Daha fazla göster (${n-LIM} hisse daha)</button>`:"");
   const mb=$("#more");if(mb)mb.onclick=()=>{LIM+=150;renderRows()};
@@ -547,7 +549,7 @@ function openDetail(k,keepScroll,fromPop){
     <div class="card-h"><h2>Yapay zekâ kararı</h2><span class="xs muted">${esc(fmtTime(AI.updatedAt||OUT.updatedAt))}</span></div>
     ${hzSeg("hzD")}<div style="height:12px"></div>
     <div class="ask" id="ask" ${asked?"hidden":""}>
-      <p class="small muted">${a.lite?(a.noHist?"TradingView göstergeleri":"TradingView göstergeleri ve teknik analiz"):aiNames.length?esc(aiNames.join(", "))+", Claude ve teknik analiz":"Claude ve teknik analiz"} bu hisseyi değerlendirdi. Kararı görmek için sor.</p>
+      <p class="small muted">${a.lite?((AIG.hisseler||{})[k]?"Yapay zekâ, ":"")+(a.noHist?"TradingView göstergeleri":"TradingView göstergeleri ve teknik analiz"):aiNames.length?esc(aiNames.join(", "))+", Claude ve teknik analiz":"Claude ve teknik analiz"} bu hisseyi değerlendirdi. Kararı görmek için sor.</p>
       <button class="btn primary" id="askBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Yapay zekâlara sor</button>
     </div>
     <div id="answer" ${asked?"":"hidden"}>
@@ -556,9 +558,9 @@ function openDetail(k,keepScroll,fromPop){
         <div class="votes">${vs.map(v=>`<i style="background:var(--${kCls(v.karar)==="up"?"up":kCls(v.karar)==="down"?"down":"hold"})" title="${esc(v.ad)}"></i>`).join("")}</div></div></div>
       ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--hold-a)">${esc(con.not)}</p>`:""}
       <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
-        <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null?`<span class="xs faint">Güven: ${gSev(v.guven)}${v.guven<50?" · yarım oy sayılır":""}</span>`:""}${isabetTxt(v.id)}</div>
+        <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null?`<span class="xs faint">Güven: ${gSev(v.guven)}${v.guven<50?" · yarım oy sayılır":""}${v.sig?" · işlem hacmi düşük hisse":""}${v.tarih?" · "+esc(fmtTime(new Date(v.tarih*1000).toISOString())):""}</span>`:""}${isabetTxt(v.id)}</div>
         <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.hedef?`<span class="tg">${HZL[HZ]}: ${px(v.hedef)}</span>`:""}</div></div>`).join("")}</div>
-      ${a.lite?`<p class="note">Yapay zekâ ve Claude değerlendirmesi BIST 30 hisselerinde yapılıyor. Bu hissede TradingView göstergeleri ve teknik analiz var; ikisi aynı yönde değilse karar TUT olur.</p>`:""}
+      ${a.lite?`<p class="note">${(AIG.hisseler||{})[k]?"Bu hisseyi yapay zekâ, borsadaki tüm hisseleri popülerlik sırasıyla tarayan döngüde değerlendirdi; TradingView göstergeleri ve teknik analiz de oy veriyor.":"Yapay zekâ borsadaki tüm hisseleri popülerlik sırasıyla tarıyor; bu hisse sırası gelince değerlendirilecek. Şimdilik TradingView göstergeleri ve teknik analiz var."}</p>`:""}
       <p class="note">AL ya da SAT için kaynakların en az %60'ının aynı yönde olması gerekir, yoksa karar TUT'tur. Bu bilgiler yatırım tavsiyesi değildir; yapay zekâ tahminleri yanılabilir.</p>
     </div>
   </div>
@@ -826,6 +828,7 @@ async function pollSlow(){
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/temel.json"));if(T(d.updatedAt)>T(TEMEL.updatedAt)){TEMEL=d;renderAll()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/ai_genis.json"));if(T(d.updatedAt)>T(AIG.updatedAt)){AIG=d;KC={};renderRows();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}
   try{const d=await getJ(RAW("main","data/fon_ai.json"));if(T(d.updatedAt)>T(FAI.updatedAt)){FAI=d;FKC={};renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}
   if(Date.now()-lastFunds>6e5){lastFunds=Date.now();try{const d=await getJ(RAW("data","funds.json"));if(T(d.updatedAt)>T(FUNDS.updatedAt)){FUNDS=d;renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}}
 }

@@ -99,6 +99,9 @@ ALIAS = {"AEFES": ["EFES"], "AKBNK": ["AKBANK"], "ASELS": ["ASELSAN", "SAVUNMA"]
          "VAKBN": ["VAKIFBANK"], "YKBNK": ["YAPI KREDİ"], "PGSUS": ["PEGASUS"], "ASTOR": ["ASTOR"], "DSTKF": ["FAKTORİNG"]}
 
 
+HISSELER_BIST30 = set(ALIAS)
+
+
 def ilgili_haber(kod, news, n=2):
     sonuc = []
     for it in news.get("items") or []:
@@ -160,11 +163,21 @@ def endeks_satiri(snap) -> str:
             f"20 günlük ortalamanın {'üstünde' if last > sma(c, 20) else 'altında'}, RSI14 {rsi(c):.0f}.\n")
 
 
+def goreli_guc(h, snap) -> str:
+    x = (snap.get("endeksler") or {}).get("XU100")
+    g = h.get("g") or []
+    if not x or len(x.get("g") or []) < 22 or len(g) < 22:
+        return ""
+    xi = (x["last"] / x["g"][-22][4] - 1) * 100
+    hi = (h["last"] / g[-22][4] - 1) * 100
+    return f", BIST 100'e göre 20 günde {hi - xi:+.1f} puan"
+
+
 def istem_olustur(snap, news, outlook, temel=None) -> str:
     temel = temel or {}
     hisseler = snap.get("hisseler", {})
     def satir(k, h):
-        s = ozet_satiri(k, h) + temel_ek(k, temel)
+        s = ozet_satiri(k, h) + goreli_guc(h, snap) + temel_ek(k, temel)
         hb = ilgili_haber(k, news)
         return s + (" | Haber: " + " / ".join(hb) if hb else "")
     satirlar = "\n".join(satir(k, h) for k, h in sorted(hisseler.items()) if h.get("g"))
@@ -202,7 +215,7 @@ Listede yukarıdaki hisselerin hepsi olsun."""
 
 # ------------------------------------------------------------ sağlayıcılar
 def json_ayikla(metin: str):
-    metin = metin.strip()
+    metin = re.sub(r"<think>.*?</think>", "", metin or "", flags=re.S).strip()
     m = re.search(r"```(?:json)?\s*(.*?)```", metin, re.S)
     if m:
         metin = m.group(1)
@@ -296,6 +309,8 @@ def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre
                           {"role": "user", "content": istem}]}
     if "gpt-oss" in model:  # düşünme payı yanıtı yarıda kesmesin
         govde["reasoning_effort"] = "low"
+    elif "qwen3" in model and "groq" in taban:
+        govde["reasoning_format"] = "hidden"
     if json_modu:
         govde["response_format"] = {"type": "json_object"}
     r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
@@ -308,8 +323,9 @@ def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre
     if r.status_code == 400 and json_modu:  # bazı modeller json modunu desteklemez
         govde.pop("response_format")
         r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
-    if r.status_code == 400 and "reasoning_effort" in govde:
-        govde.pop("reasoning_effort")
+    if r.status_code == 400 and ("reasoning_effort" in govde or "reasoning_format" in govde):
+        govde.pop("reasoning_effort", None)
+        govde.pop("reasoning_format", None)
         r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
     if not r.ok:
         raise RuntimeError(f"{model} {r.status_code}: {r.text[:160]}")

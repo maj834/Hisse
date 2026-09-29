@@ -374,6 +374,55 @@ def tum_hisseler(eski: dict) -> dict:
         return eski
 
 
+# Ek göstergeler (değerleme, oynaklık, uzun ortalamalar). Ayrı istekte çekilir: bir alan adı geçersizse ana liste bozulmasın.
+EK_ALANLAR = {"price_earnings_ttm": "fk", "price_book_fq": "pddd", "return_on_equity": "roe", "debt_to_equity": "borc",
+              "dividend_yield_recent": "temettu", "Volatility.M": "oyn", "relative_volume_10d_calc": "rhacim",
+              "SMA50": "sma50", "SMA200": "sma200", "average_volume_30d_calc": "ort_hacim"}
+_ek_gecerli: list[str] | None = None
+
+
+def _tv_tara(sutunlar: list[str]) -> list:
+    govde = {"filter": [{"left": "type", "operation": "equal", "right": "stock"},
+                        {"left": "exchange", "operation": "equal", "right": "BIST"}],
+             "markets": ["turkey"], "columns": ["name"] + sutunlar, "range": [0, 1500]}
+    r = yahoo_oturum.post("https://scanner.tradingview.com/turkey/scan", json=govde, timeout=30,
+                          headers={"Content-Type": "application/json", "Origin": "https://www.tradingview.com",
+                                   "Referer": "https://www.tradingview.com/"})
+    if r.status_code != 200:
+        raise RuntimeError(f"{r.status_code} {r.text[:100]}")
+    return r.json().get("data", [])
+
+
+def ek_gostergeler(eski: dict) -> dict:
+    global _ek_gecerli
+    try:
+        if _ek_gecerli is None:
+            try:
+                _tv_tara(list(EK_ALANLAR))
+                _ek_gecerli = list(EK_ALANLAR)
+            except Exception:
+                _ek_gecerli = []
+                for a in EK_ALANLAR:  # hangi alanların geçerli olduğunu bir kez bul
+                    try:
+                        _tv_tara([a])
+                        _ek_gecerli.append(a)
+                    except Exception as e:
+                        log("ek alan geçersiz:", a, str(e)[:60])
+        if not _ek_gecerli:
+            return eski
+        ek = {}
+        for x in _tv_tara(_ek_gecerli):
+            d = dict(zip(["name"] + _ek_gecerli, x.get("d", [])))
+            kod = str(d.get("name") or "").upper()
+            v = {EK_ALANLAR[a]: (round(d[a], 3) if isinstance(d.get(a), (int, float)) else None) for a in _ek_gecerli}
+            if kod:
+                ek[kod] = [v.get(EK_ALANLAR[a]) for a in EK_ALANLAR]
+        return {"updatedAt": simdi().isoformat(timespec="seconds"), "sutun": list(EK_ALANLAR.values()), "ek": ek} if ek else eski
+    except Exception as e:
+        log("piyasa alınamadı", "ek göstergeler", e)
+        return eski
+
+
 def gecmisleri_cek(kodlar: list[str], eski: dict) -> dict:
     """Bütün hisselerin son 3 aylık günlük kapanışları (Yahoo spark, 20'şerli istek)."""
     yahoo_isit()
@@ -582,6 +631,8 @@ def bir_tur(sayac: int, zorla_hepsi: bool) -> tuple[int, int]:
         })
         yaz_json("snapshot.json", snap)
     piyasa = tum_hisseler(oku_json("market.json", {}))
+    if piyasa and (zorla_hepsi or sayac % 30 == 0):
+        yaz_json("ek.json", ek_gostergeler(oku_json("ek.json", {})))
     if piyasa:
         yaz_json("market.json", piyasa)
     if piyasa and (zorla_hepsi or sayac % 60 == 0):

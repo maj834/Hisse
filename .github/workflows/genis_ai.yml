@@ -1,0 +1,62 @@
+name: Tum hisseler yapay zeka
+
+# BIST 30 dışındaki ~600 hisseyi popülerlik sırasıyla, her çalıştırmada ~36 hisse olacak şekilde değerlendirir.
+# Hafta içi saatte bir çalışır; bir günde bütün borsa taranır, popüler hisseler daha sık yenilenir.
+# Sonuç: data/ai_genis.json. Anahtar: GROQ_API_KEY (isteğe bağlı OPENROUTER_API_KEY).
+on:
+  schedule:
+    - cron: "35 * * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: genis-ai
+  cancel-in-progress: false
+
+jobs:
+  degerlendir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install --quiet requests
+
+      - name: güncel veriyi al
+        run: |
+          git fetch --quiet --depth 1 origin data
+          mkdir -p /tmp/veri
+          for f in market gecmis snapshot news ek; do
+            git show origin/data:$f.json > /tmp/veri/$f.json 2>/dev/null || echo '{}' > /tmp/veri/$f.json
+          done
+
+      - name: değerlendir
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_GENIS_MODEL: ${{ vars.GROQ_GENIS_MODEL }}
+          MARKET: /tmp/veri/market.json
+          GECMIS: /tmp/veri/gecmis.json
+          SNAPSHOT: /tmp/veri/snapshot.json
+          NEWS: /tmp/veri/news.json
+          EK: /tmp/veri/ek.json
+        run: python scraper/genis_ai.py
+
+      - name: kaydet
+        run: |
+          git config user.name "hisse-radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ai_genis.json
+          git diff --cached --quiet && exit 0
+          git commit --quiet -m "Tum hisseler yapay zeka $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
+          for i in 1 2 3; do
+            git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
