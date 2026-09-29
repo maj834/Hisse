@@ -33,7 +33,7 @@ Hisse Radar, Borsa İstanbul hisseleri ve TEFAS yatırım fonları hakkında her
 - **Değişiklikler:** Bu metin güncellenebilir; önemli değişikliklerde uygulama açılışında yeniden onayınız istenir.
 
 ## 4. Telif hakları
-- Hisse Radar'ın yazılımı, tasarımı, metinleri, analiz kuralları ve ürettiği veriler **© 2026 Cem Ulaş Eren**'a aittir; tüm hakları saklıdır.
+- Hisse Radar'ın yazılımı, tasarımı, metinleri, analiz kuralları ve ürettiği veriler **© 2026 Cem Ulaş Eren**'e aittir; tüm hakları saklıdır.
 - Uygulama ya da kodu izinsiz kopyalanamaz, değiştirilemez, başka bir yerde yayınlanamaz ve ticari amaçla kullanılamaz.
 - Uygulama yalnızca resmi APK'da ve resmi web adresinde (maj834.github.io/Hisse) çalışır.
 
