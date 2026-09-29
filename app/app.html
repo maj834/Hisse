@@ -387,8 +387,8 @@ function analyze(k,s){
 function rebuild(){ALL=Object.keys(SNAP.hisseler||{}).sort().map(k=>analyze(k,SNAP.hisseler[k]));BY={};ALL.forEach(a=>BY[a.k]=a);LITE={};KC={}}
 
 /* yapay zekâ kararları */
-const MODEL_RENK={momentum:"#F2B53A",gemini:"#4C8DFF",groq:"#F2B53A",grok:"#EAF0F7",openrouter:"#9B7CFF",gpt:"#10A37F",deepseek:"#4D6BFE",mistral:"#FA520F",claude:"#D97757",teknik:"#22C38E",temel:"#5AC8FA",tv:"#2962FF"};
-const MODEL_HARF={momentum:"%",gemini:"G",groq:"L",grok:"X",openrouter:"R",gpt:"O",deepseek:"D",mistral:"M",claude:"C",teknik:"T",temel:"F",tv:"V"};
+const MODEL_RENK={cerebras:"#F15A29",momentum:"#F2B53A",gemini:"#4C8DFF",groq:"#F2B53A",grok:"#EAF0F7",openrouter:"#9B7CFF",gpt:"#10A37F",deepseek:"#4D6BFE",mistral:"#FA520F",claude:"#D97757",teknik:"#22C38E",temel:"#5AC8FA",tv:"#2962FF"};
+const MODEL_HARF={cerebras:"B",momentum:"%",gemini:"G",groq:"L",grok:"X",openrouter:"R",gpt:"O",deepseek:"D",mistral:"M",claude:"C",teknik:"T",temel:"F",tv:"V"};
 const kCls=v=>v==="AL"?"up":v==="SAT"?"down":"hold";
 const kText={AL:"AL",TUT:"TUT",SAT:"SAT"};
 // Hedef, karar yönüyle çelişiyorsa ya da vadeye göre gerçek dışıysa gösterilmez
@@ -667,6 +667,7 @@ function openDetail(k,keepScroll,fromPop){
         <div><b>${con.karar==="AL"?"Alınır":con.karar==="SAT"?"Satılır":"Tutulur"} <span class="small muted">· ${HZL[HZ]} vadede</span></b><p class="small muted">${con.n} değerlendirmeden ${con.c.AL} AL, ${con.c.TUT} TUT, ${con.c.SAT} SAT${con.karar!=="TUT"?` · oyların %${nf(con.oran*100,0)}'i`:""}</p>
         <div class="votes">${vs.map(v=>`<i style="background:var(--${kCls(v.karar)==="up"?"up":kCls(v.karar)==="down"?"down":"hold"})" title="${esc(v.ad)}"></i>`).join("")}</div></div></div>
       ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--hold-a)">${esc(con.not)}</p>`:""}
+      ${(()=>{const x=((GUN.haber_ai||{}).hisseler||{})[k];return x?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--${x.etki==="olumlu"?"up":"down"}-a)"><b class="${x.etki==="olumlu"?"up":"down"}">Haber yapay zekâsı: ${x.etki==="olumlu"?"olumlu":"olumsuz"} haber</b> <span class="xs muted">(önem ${x.onem}/3)</span><br>${esc(x.neden)}</p>`:""})()}
       <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
         <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null?`<span class="xs faint">Güven: ${gSev(v.guven)}${v.guven<50?" · yarım oy sayılır":""}${v.sig?" · işlem hacmi düşük hisse":""}${v.tarih?" · "+esc(fmtTime(new Date(v.tarih*1000).toISOString())):""}</span>`:""}${isabetTxt(v.id)}</div>
         <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.hedef?`<span class="tg">${HZL[HZ]}: ${px(v.hedef)}</span>`:""}</div></div>`).join("")}</div>
@@ -777,10 +778,12 @@ function renderNews(){
 }
 
 /* piyasa gündemi: makro veriler (Alpha Vantage) + web özeti (Tavily) + Türkiye haberleri (Marketaux) */
-function gundemKart(){const m=GUN.makro||{},pz=GUN.piyasa||{},sr=m.seriler||[],kd=m.kuresel_duygu;if(!sr.length&&!pz.ozet&&!kd)return "";
+function gundemKart(){const m=GUN.makro||{},pz=GUN.piyasa||{},sr=m.seriler||[],kd=m.kuresel_duygu,ha=GUN.haber_ai||{};if(!sr.length&&!pz.ozet&&!kd&&!ha.ozet)return "";
   return `<div class="card"><div class="card-h"><h2>Piyasa gündemi</h2><span class="xs muted">${esc(fmtTime(pz.zaman||m.zaman||""))}</span></div>
     ${sr.length?`<div class="ratios" style="margin:0 0 12px;grid-template-columns:repeat(${Math.min(3,sr.length)},1fr)">${sr.map(x=>`<div><span>${esc(x.ad)}</span><b>${x.birim==="%"?"%"+nf(x.son,2):nf(x.son,x.son>=100?1:2)+" "+esc(x.birim)}</b><span class="${cls(x.d5)}">5 gün ${pct(x.d5)}</span></div>`).join("")}</div>`:""}
     ${kd?`<p class="small" style="margin-bottom:10px">Küresel piyasa haberlerinin genel havası: <b class="${kd.etiket==="olumlu"?"up":kd.etiket==="olumsuz"?"down":"hold"}">${esc(kd.etiket)}</b> <span class="xs muted">(${kd.haber_sayisi} haber)</span></p>`:""}
+    ${ha.ozet?`<div style="margin-bottom:12px;padding:12px;border-radius:12px;background:var(--s2)"><p class="label" style="margin-bottom:6px">Haber yapay zekâsının yorumu · <span class="${ha.piyasa_havasi==="olumlu"?"up":ha.piyasa_havasi==="olumsuz"?"down":"hold"}">${esc(ha.piyasa_havasi||"nötr")}</span></p><p class="small" style="line-height:1.55">${esc(ha.ozet)}</p>
+      ${(ha.sektorler||[]).length?`<div class="impacts">${ha.sektorler.map(x=>`<span class="imp ${x.etki==="olumlu"?"up up":"down down"}">${x.etki==="olumlu"?"▲":"▼"} ${esc(x.sektor)}</span>`).join("")}</div>`:""}</div>`:""}
     ${pz.ozet?`<p class="small" style="line-height:1.6">${esc(pz.ozet)}</p>`:""}
     ${(pz.basliklar||[]).length?`<div class="news" style="margin-top:6px">${pz.basliklar.slice(0,4).map(b=>`<div class="nw"><b style="font-size:14px">${esc(b)}</b></div>`).join("")}</div>`:""}
     <p class="note">Otomatik derlenmiştir: Alpha Vantage, web haber taraması ve Marketaux. Yatırım tavsiyesi değildir.</p></div>`}

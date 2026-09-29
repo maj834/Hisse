@@ -44,6 +44,7 @@ jobs:
           mkdir -p /tmp/veri
           git show origin/data:snapshot.json > /tmp/veri/snapshot.json 2>/dev/null || cp data/snapshot.json /tmp/veri/snapshot.json
           git show origin/data:news.json > /tmp/veri/news.json 2>/dev/null || cp data/news.json /tmp/veri/news.json
+          git show origin/data:market.json > /tmp/veri/market.json 2>/dev/null || echo '{}' > /tmp/veri/market.json
 
       - name: değerlendir
         env:
@@ -60,6 +61,8 @@ jobs:
           OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL }}
           SNAPSHOT: /tmp/veri/snapshot.json
           NEWS: /tmp/veri/news.json
+          MARKET: /tmp/veri/market.json
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
         run: python scraper/ai_degerlendir.py
 
       - name: kaydet

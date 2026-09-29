@@ -27,6 +27,7 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ai_degerlendir  # noqa: E402
 import kaynaklar  # noqa: E402
 from ai_degerlendir import (IST, HISSELER_BIST30, endeks_satiri, json_ayikla, log, oku, openai_uyumlu, openrouter,  # noqa: E402
                             rsi, sma, temizle, GECERSIZ)
@@ -129,7 +130,7 @@ def satir(r: list, gecmis: dict, ek: dict, sektor_med: dict, xu: dict | None, si
     if pd_:
         parca.append(f"piyasa değeri {pd_ / 1e9:.1f} milyar TL")
     hb = HABER.get(k)
-    return ", ".join(parca) + (" | Şirket haberleri: " + kaynaklar.haber_satiri(hb, 3) if hb else "")
+    return ", ".join(parca) + ai_degerlendir.haber_ai_satiri(k, sektor or "") + (" | Şirket haberleri: " + kaynaklar.haber_satiri(hb, 3) if hb else "")
 
 
 def istem(satirlar: str, snap: dict, basliklar: str) -> str:
@@ -144,7 +145,7 @@ KURALLAR:
 6) Hedefler gerçekçi olsun, ortalama günlük hareketi dikkate al: 1 hafta en çok ±%8, 1 ay ±%15, 3 ay ±%30.
    AL ise hedef son fiyatın ÜSTÜNDE, SAT ise ALTINDA, TUT ise son fiyata yakın. Uymayan yanıt otomatik silinir.
 7) "guven" 0-100; karışık sinyalde 50 altı. Gerekçe en fazla 18 kelime, verideki somut bir sayıyı ansın.
-{endeks_satiri(snap)}{kaynaklar.makro_satiri(GUNDEM.get("makro") or {}, GUNDEM.get("piyasa"))}
+{endeks_satiri(snap)}{kaynaklar.makro_satiri(GUNDEM.get("makro") or {}, GUNDEM.get("piyasa"))}{ai_degerlendir.haber_ai_genel()}
 Hisseler:
 {satirlar}
 
@@ -179,7 +180,8 @@ def groq_genis(i: str, anahtar: str):
 
 
 MODELLER: dict[str, list] = {}
-SAGLAYICILAR = [("groq", "Groq", "GROQ_API_KEY", groq_genis)]
+SAGLAYICILAR = [("groq", "Groq", "GROQ_API_KEY", groq_genis),
+                ("cerebras", "Cerebras", "CEREBRAS_API_KEY", lambda i, a: ai_degerlendir.cerebras(i, a, en_cok=3000))]
 # OpenRouter'ın ücretsiz modelleri şu an sürekli 429 veriyor; düzelince GENIS_OPENROUTER=1 ile eklenebilir
 if os.environ.get("GENIS_OPENROUTER") == "1":
     SAGLAYICILAR.append(("openrouter", "OpenRouter", "OPENROUTER_API_KEY", lambda i, a: openrouter(i, a, en_cok=3000)))
@@ -240,6 +242,7 @@ def main() -> int:
     log("değerlendirilecek:", len(secilen), "hisse:", ", ".join(secilen[:12]), "...")
     global GUNDEM
     GUNDEM = oku(KOK / "data" / "gundem.json", {})
+    ai_degerlendir.GUNDEM = GUNDEM
     # istek üzerine analizde şirketin güncel haberleri de toplanır (kota sınırlı)
     butce = kaynaklar.Butce(eski.setdefault("kullanim", {}), {"tavily": ("ay", 600), "marketaux": ("gun", 45)})
     if MOD == "talep":

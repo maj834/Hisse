@@ -12,6 +12,7 @@ Girdiler: SNAPSHOT (varsayılan data/snapshot.json), NEWS (data/news.json), OUTL
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import os
 import re
@@ -181,7 +182,7 @@ def istem_olustur(snap, news, outlook, temel=None) -> str:
     temel = temel or {}
     hisseler = snap.get("hisseler", {})
     def satir(k, h):
-        s = ozet_satiri(k, h) + goreli_guc(h, snap) + temel_ek(k, temel)
+        s = ozet_satiri(k, h) + goreli_guc(h, snap) + temel_ek(k, temel) + haber_ai_satiri(k, h.get("sektor", ""))
         hb = ilgili_haber(k, news)
         sh = (GUNDEM.get("sirket") or {}).get(k) or {}
         if sh.get("haberler") and time.time() - sh.get("ts", 0) < 4 * 86400:
@@ -207,7 +208,8 @@ KURALLAR:
    AL ise hedef son fiyatın ÜSTÜNDE, SAT ise ALTINDA, TUT ise son fiyata yakın olmalı. Bu kurala uymayan yanıtlar otomatik silinir.
 6) "guven" 0-100: sinyaller net ve birbirini destekliyorsa 65 üstü, karışıksa 50 altı ver. Aşırı güvenme.
 7) Gerekçe en fazla 18 kelime, Türkçe; mutlaka yukarıdaki veriden somut bir sayı ya da haberi ansın.
-{endeks_satiri(snap)}{kaynaklar.makro_satiri(GUNDEM.get("makro") or {}, GUNDEM.get("piyasa"))}
+{endeks_satiri(snap)}{kaynaklar.makro_satiri(GUNDEM.get("makro") or {}, GUNDEM.get("piyasa"))}{haber_ai_genel()}
+"Haber AI" satırları ayrı bir haber analistinin tespitidir; teknik ve temel verilerle çelişiyorsa ikisini tart, haberi tek başına karar sebebi yapma.
 Hisseler:
 {satirlar}
 
@@ -444,12 +446,20 @@ def mistral(istem, anahtar):
 
 
 # Ücretsiz katmanda dakikalık metin sınırı düşük olanlara hisseler küçük gruplar hâlinde gönderilir
-PARCA = {"groq": 6, "openrouter": 15, "mistral": 15}
+def cerebras(istem, anahtar, en_cok=8000):
+    """Cerebras: ücretsiz katmanda günde ~1 milyon token, çok hızlı."""
+    return openai_uyumlu("https://api.cerebras.ai/v1", anahtar, os.environ.get("CEREBRAS_MODEL"),
+                         ["gpt-oss-120b", "qwen-3-235b-a22b-instruct-2507", "llama-3.3-70b"],
+                         lambda a: "gpt-oss" in a or "qwen-3-235" in a or "70b" in a, istem, en_cok=en_cok)
+
+
+PARCA = {"groq": 6, "openrouter": 15, "mistral": 15, "cerebras": 10}
 # Günlük ücretsiz kotası dar olanlar her saat değil, N saatte bir çalışır (arada önceki analiz gösterilir)
 PERIYOT = {"groq": 2}
 
 SAGLAYICILAR = [
     ("groq", "Llama (Groq)", "GROQ_API_KEY", groq),
+    ("cerebras", "Cerebras", "CEREBRAS_API_KEY", cerebras),
     ("grok", "Grok", "XAI_API_KEY", grok),
     ("openrouter", "OpenRouter", "OPENROUTER_API_KEY", openrouter),
     ("gpt", "GPT (OpenAI)", "GH_MODELS_TOKEN", gpt),
@@ -586,6 +596,93 @@ def isabet_guncelle(cikti: dict, snap: dict, outlook: dict) -> dict:
 GUNDEM_DOSYA = Path(os.environ.get("GUNDEM", KOK / "data" / "gundem.json"))
 
 
+def haber_modeli(istem: str):
+    """Haber AI için model: Cerebras varsa o (Groq kotasını korur), yoksa Groq'un küçük modeli."""
+    if os.environ.get("CEREBRAS_API_KEY"):
+        try:
+            return cerebras(istem, os.environ["CEREBRAS_API_KEY"], en_cok=4000)
+        except Exception as e:
+            log("Cerebras haber AI olmadı:", str(e)[:100])
+    anahtar = os.environ.get("GROQ_API_KEY", "")
+    son = None
+    for m in ("openai/gpt-oss-20b", "openai/gpt-oss-120b"):
+        try:
+            return openai_uyumlu("https://api.groq.com/openai/v1", anahtar, m, [], None, istem, en_cok=4000, tekrar=1)
+        except Exception as e:
+            son = e
+    raise RuntimeError(f"haber modeli yok: {son}")
+
+
+def haber_ai(hisseler: dict) -> None:
+    """Saatte bir: tüm haber kaynaklarını tek bir yapay zekâya okutup hangi hisse ve sektörü nasıl etkilediğini çıkarır."""
+    news = oku(os.environ.get("NEWS", KOK / "data" / "news.json"), {})
+    market = oku(os.environ.get("MARKET", KOK / "data" / "market.json"), {})
+    basliklar = [f"[{n.get('kat', '')}] {n.get('title', '')}" for n in (news.get("items") or [])[:45]]
+    pz = GUNDEM.get("piyasa") or {}
+    basliklar += [f"[Türkiye] {b}" for b in (pz.get("basliklar") or [])[:8]]
+    basliklar += [f"[Küresel, duygu {h.get('duygu', '')}] {h['baslik']}" for h in ((GUNDEM.get("makro") or {}).get("haberler") or [])[:8]]
+    for k, v in (GUNDEM.get("sirket") or {}).items():
+        basliklar += [f"[{k}] {h['baslik']}" for h in (v.get("haberler") or [])[:2]]
+    imza = hashlib.md5("|".join(basliklar).encode()).hexdigest()
+    eski = GUNDEM.get("haber_ai") or {}
+    if not basliklar or (eski.get("imza") == imza and time.time() - eski.get("ts", 0) < 3 * 3600):
+        return  # haberler değişmediyse tekrar çalıştırma
+    adlar = {r[0]: r[1] for r in market.get("hisseler") or []} or {k: h.get("ad", k) for k, h in hisseler.items()}
+    sektorler = sorted({r[5] for r in market.get("hisseler") or [] if r[5]})
+    en_cok = sorted(market.get("hisseler") or [], key=lambda r: -(r[6] or 0))[:120]
+    kod_listesi = ", ".join(f"{r[0]}={r[1][:22]}" for r in en_cok) or ", ".join(f"{k}={h.get('ad', '')}" for k, h in hisseler.items())
+    istem_ = f"""Sen Borsa İstanbul için çalışan bir HABER ANALİSTİSİN. Görevin haberleri okuyup piyasaya etkisini çıkarmak; al/sat kararı vermiyorsun.
+Bugün {dt.datetime.now(IST):%d.%m.%Y %H:%M}. {pz.get('ozet', '')[:600]}
+KURALLAR: Yalnızca aşağıdaki başlıklara dayan, uydurma. Bir hisseyi ancak haber o şirketi ya da doğrudan sektörünü ilgilendiriyorsa yaz.
+Etkiyi abartma; belirsizse yazma. "onem": 1 zayıf, 2 orta, 3 güçlü etki.
+Hisse kodlarını yalnızca şu listeden kullan (kod=şirket): {kod_listesi}
+Sektör adlarını yalnızca şu listeden kullan: {", ".join(sektorler) or "Bankacılık, Enerji, Ulaştırma, Savunma, Perakende, Holding, Demir-Çelik"}
+
+Haberler:
+""" + "\n".join(f"- {b}" for b in basliklar[:80]) + """
+
+Yalnızca geçerli JSON döndür:
+{"piyasa_havasi":"olumlu|olumsuz|nötr","ozet":"en fazla 3 cümle Türkçe","sektorler":[{"sektor":"...","etki":"olumlu|olumsuz","onem":2,"neden":"en fazla 15 kelime"}],"hisseler":[{"k":"THYAO","etki":"olumlu|olumsuz","onem":2,"neden":"en fazla 15 kelime, hangi habere dayandığı"}]}"""
+    model, metin = haber_modeli(istem_)
+    m = re.search(r"\{.*\}", re.sub(r"<think>.*?</think>", "", metin, flags=re.S), re.S)
+    d = json.loads(m.group(0)) if m else {}
+    gecerli = set(adlar) | set(hisseler)
+    hs = [x for x in d.get("hisseler") or [] if isinstance(x, dict) and str(x.get("k", "")).upper() in gecerli
+          and x.get("etki") in ("olumlu", "olumsuz")]
+    sk = [x for x in d.get("sektorler") or [] if isinstance(x, dict) and x.get("etki") in ("olumlu", "olumsuz")
+          and (not sektorler or x.get("sektor") in sektorler)]
+    GUNDEM["haber_ai"] = {"ts": int(time.time()), "zaman": dt.datetime.now(IST).isoformat(timespec="seconds"), "imza": imza,
+                          "model": model, "piyasa_havasi": d.get("piyasa_havasi", "nötr"), "ozet": str(d.get("ozet", ""))[:500],
+                          "sektorler": sk[:12],
+                          "hisseler": {str(x["k"]).upper(): {"etki": x["etki"], "onem": int(x.get("onem") or 1), "neden": str(x.get("neden", ""))[:160]}
+                                       for x in hs[:60]}}
+    log("haber AI:", model, len(hs), "hisse,", len(sk), "sektör etkisi")
+
+
+def haber_ai_satiri(kod: str, sektor: str = "") -> str:
+    """Analizci AI'ın istemine eklenecek: haber AI'ın bu hisse ve sektörü için bulduğu etki."""
+    h = GUNDEM.get("haber_ai") or {}
+    if not h or time.time() - h.get("ts", 0) > 12 * 3600:
+        return ""
+    parca = []
+    x = (h.get("hisseler") or {}).get(kod)
+    if x:
+        parca.append(f"şirket haberi {x['etki']} (önem {x['onem']}/3: {x['neden']})")
+    for s_ in h.get("sektorler") or []:
+        if sektor and s_.get("sektor") and s_["sektor"].lower() in sektor.lower():
+            parca.append(f"sektör haberi {s_['etki']} ({s_['neden']})")
+            break
+    return (" | Haber AI: " + "; ".join(parca)) if parca else ""
+
+
+def haber_ai_genel() -> str:
+    h = GUNDEM.get("haber_ai") or {}
+    if not h or time.time() - h.get("ts", 0) > 12 * 3600:
+        return ""
+    sk = "; ".join(f"{x['sektor']} {x['etki']}" for x in (h.get("sektorler") or [])[:8])
+    return f"\nHaber AI değerlendirmesi: piyasa havası {h.get('piyasa_havasi', 'nötr')}. {h.get('ozet', '')}" + (f" Sektör etkileri: {sk}." if sk else "") + "\n"
+
+
 def gundem_guncelle(hisseler: dict) -> None:
     """Ek kaynaklardan bilgi topla; kotaları aşmamak için her parça kendi aralığında yenilenir."""
     global GUNDEM
@@ -622,6 +719,11 @@ def gundem_guncelle(hisseler: dict) -> None:
     for k in sorted(hisseler, key=lambda k: (sirket.get(k) or {}).get("ts", 0))[:3]:
         hb = kaynaklar.sirket_haberleri(k, hisseler[k].get("ad", k), butce, tavily_de=False)
         sirket[k] = {"ts": int(simdi), "haberler": hb}
+    # 4) HABER AI: bütün kaynaklardaki haberleri okuyup hisse/sektör etkisini çıkarır; analizci AI bunu kullanır
+    try:
+        haber_ai(hisseler)
+    except Exception as e:
+        log("haber AI çalışmadı:", str(e)[:160])
     GUNDEM["updatedAt"] = dt.datetime.now(IST).isoformat(timespec="seconds")
     GUNDEM_DOSYA.write_text(json.dumps(GUNDEM, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     log("gündem:", {k: butce.kalan(k) for k in ("tavily", "alphavantage", "marketaux")}, "kalan kredi")
