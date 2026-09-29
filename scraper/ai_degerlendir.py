@@ -327,6 +327,8 @@ def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre
     for _ in range(tekrar):
         if r.status_code != 429:
             break
+        if any(x in r.text for x in ("per day", "TPD", "RPD", "daily")):  # günlük kota doldu: beklemek boşuna
+            break
         bekle = min(65, float(r.headers.get("retry-after") or 30) + 2)
         time.sleep(bekle)
         r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)

@@ -235,6 +235,8 @@ def main() -> int:
                 except Exception as e:  # tek parça başarısızsa diğerlerine devam et
                     son_hata = str(e).replace(anahtar, "***")[:160]
                     log(ad, "parça hatası:", son_hata)
+                    if "per day" in str(e) or "kota" in str(e):
+                        break
                 if i + PARCA < len(kodlar):
                     time.sleep(25)
             if len(kararlar) < len(kodlar) * 0.4:

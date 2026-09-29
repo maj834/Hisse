@@ -291,6 +291,8 @@ def main() -> int:
             except Exception as e:
                 son_hata = str(e).replace(anahtar, "***")[:160]
                 log(ad, "parça hatası:", son_hata)
+                if "per day" in str(e) or "kota" in str(e):
+                    break
             if i + GRUP < len(secilen):
                 time.sleep(BEKLE)
         onceki = modeller.get(kimlik, {})
