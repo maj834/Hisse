@@ -1,5 +1,5 @@
 {
- "zaman": "2026-09-29T16:33:50",
+ "zaman": "2026-09-29T16:48:10",
  "sonuc": [
   {
    "ad": "cohere command-a",
@@ -7,7 +7,7 @@
    "durum": 200,
    "tur": "application/json",
    "yonlendirme": "",
-   "govde": "{\"id\":\"04b2bdaf-fc01-4f94-a612-52ffab9cb34d\",\"choices\":[{\"index\":0,\"finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":\"TAMAM\"},\"logprobs\":null}],\"created\":1790699630,\"model\":\"command-a-03-2025\",\"object\":\"chat.completion\",\"usage\":{\"prompt_tokens\":6,\"completion_tokens\":2,\"total_tokens\":8,\"prompt_tokens_details\":{\"cached_tokens\":0,\"audio_tokens\":0},\"completion_tokens_details\":{\"reasoning_",
+   "govde": "{\"id\":\"bef9097e-9645-4acd-ac09-0e87e763fdf6\",\"choices\":[{\"index\":0,\"finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":\"TAMAM\"},\"logprobs\":null}],\"created\":1790700490,\"model\":\"command-a-03-2025\",\"object\":\"chat.completion\",\"usage\":{\"prompt_tokens\":6,\"completion_tokens\":2,\"total_tokens\":8,\"prompt_tokens_details\":{\"cached_tokens\":0,\"audio_tokens\":0},\"completion_tokens_details\":{\"reasoning_",
    "limit": {}
   },
   {
@@ -30,6 +30,15 @@
     "Ratelimit": "\"default\";r=1199;t=1",
     "Ratelimit-Policy": "\"default\";q=1200;w=300"
    }
+  },
+  {
+   "ad": "cloudflare gpt-oss-120b",
+   "url": "https://api.cloudflare.com/client/v4/accounts/a9a196aec61a76cabec0cc18edc30876/ai/v1/chat/completions",
+   "durum": 200,
+   "tur": "application/json",
+   "yonlendirme": "",
+   "govde": "{\"id\":\"id-1790700492266\",\"object\":\"chat.completion\",\"created\":1790700492,\"model\":\"@cf/openai/gpt-oss-120b\",\"choices\":[{\"finish_reason\":\"length\",\"index\":0,\"logprobs\":null,\"message\":{\"annotations\":null,\"audio\":null,\"content\":null,\"function_call\":null,\"reasoning\":\"The user wrote in Turkish: \\\"Sadece TAMAM yaz.\\\" Means \\\"Just write\",\"reasoning_content\":\"The user wrote in Turkish: \\\"Sadece TAMAM yaz.\\\"",
+   "limit": {}
   }
  ],
  "gh_token_uzunluk": 0,
