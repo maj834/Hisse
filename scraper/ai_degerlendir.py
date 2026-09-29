@@ -28,6 +28,7 @@ import kaynaklar  # noqa: E402
 
 IST = ZoneInfo("Europe/Istanbul")
 GUNDEM: dict = {}  # makro veriler, piyasa özeti ve şirket haberleri (data/gundem.json)
+BUTCE = None       # kaynaklar.Butce: kotası dar sağlayıcıların (Cohere, Cloudflare) sayacı
 KOK = Path(__file__).resolve().parent.parent
 CIKTI = Path(os.environ.get("AI_CIKTI", KOK / "data" / "ai.json"))
 ZAMAN_ASIMI = 150
@@ -473,16 +474,54 @@ def sambanova(istem, anahtar, en_cok=8000):
                          lambda a: "DeepSeek-V3" in a or "70B" in a or "gpt-oss-120b" in a, istem, en_cok=en_cok)
 
 
+def cohere(istem, anahtar, en_cok=4000):
+    """Cohere Command A (OpenAI uyumlu uç nokta). Deneme anahtarı: ayda 1000 istek; sayaçla sınırlanır."""
+    if BUTCE is not None and not BUTCE.harca("cohere"):
+        raise RuntimeError("Cohere aylık kotası doldu")
+    return openai_uyumlu("https://api.cohere.ai/compatibility/v1", anahtar, os.environ.get("COHERE_MODEL") or "command-a-03-2025",
+                         [], None, istem, en_cok=en_cok)
+
+
+_CF_HESAP = ""
+
+
+def cloudflare(istem, anahtar, en_cok=4000):
+    """Cloudflare Workers AI (günde 10.000 'nöron' ücretsiz). Hesap kimliği verilmezse token ile bulunur."""
+    global _CF_HESAP
+    if BUTCE is not None and not BUTCE.harca("cloudflare"):
+        raise RuntimeError("Cloudflare günlük kotası doldu")
+    if not _CF_HESAP:
+        _CF_HESAP = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+    if not _CF_HESAP:
+        r = requests.get("https://api.cloudflare.com/client/v4/accounts", headers={"Authorization": f"Bearer {anahtar}"}, timeout=30)
+        hesaplar = (r.json() or {}).get("result") or []
+        if not hesaplar:
+            raise RuntimeError(f"Cloudflare hesap kimliği bulunamadı ({r.status_code}); CLOUDFLARE_ACCOUNT_ID ekleyin")
+        _CF_HESAP = hesaplar[0]["id"]
+    taban = f"https://api.cloudflare.com/client/v4/accounts/{_CF_HESAP}/ai/v1"
+    son = None
+    for m in ([os.environ["CLOUDFLARE_MODEL"]] if os.environ.get("CLOUDFLARE_MODEL") else []) + \
+            ["@cf/openai/gpt-oss-120b", "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/qwen/qwen3-30b-a3b-fp8"]:
+        try:
+            return openai_uyumlu(taban, anahtar, m, [], None, istem, en_cok=en_cok, tekrar=1)
+        except Exception as e:
+            son = e
+            if not any(x in str(e) for x in ("400", "404", "429", "503", "5007", "No such model")):
+                raise
+    raise RuntimeError(f"Cloudflare: model yanıt vermedi ({son})")
+
+
 # Ücretsiz katmanda istek başına token sınırı düşük olanlara hisseler küçük gruplar hâlinde gönderilir
 # (GitHub Models: istek başına ~8 bin token girdi, GPT-4.1 günde 50 istek)
-PARCA = {"groq": 6, "openrouter": 15, "mistral": 15, "cerebras": 10, "sambanova": 10, "gpt": 8, "deepseek": 8}
+PARCA = {"cohere": 15, "groq": 6, "openrouter": 15, "mistral": 15, "cerebras": 10, "sambanova": 10, "gpt": 8, "deepseek": 8}
 # Günlük ücretsiz kotası dar olanlar her saat değil, N saatte bir çalışır (arada önceki analiz gösterilir)
-PERIYOT = {"groq": 2, "gpt": 2, "sambanova": 2}
+PERIYOT = {"groq": 2, "gpt": 2, "sambanova": 2, "cohere": 2}
 
 SAGLAYICILAR = [
     ("groq", "Llama (Groq)", "GROQ_API_KEY", groq),
     ("cerebras", "Cerebras", "CEREBRAS_API_KEY", cerebras),
     ("sambanova", "SambaNova", "SAMBANOVA_API_KEY", sambanova),
+    ("cohere", "Cohere", "COHERE_API_KEY", cohere),
     ("grok", "Grok", "XAI_API_KEY", grok),
     ("openrouter", "OpenRouter", "OPENROUTER_API_KEY", openrouter),
     # GitHub Models 30 Temmuz 2026'da kapatıldı (github.blog/changelog/2026-07-30-github-models-is-now-retired);
@@ -620,7 +659,12 @@ GUNDEM_DOSYA = Path(os.environ.get("GUNDEM", KOK / "data" / "gundem.json"))
 
 
 def haber_modeli(istem: str):
-    """Haber AI için model: SambaNova ya da Cerebras varsa onlar (Groq kotasını korur), yoksa Groq."""
+    """Haber AI için model: Cloudflare, SambaNova ya da Cerebras varsa onlar (Groq kotasını korur), yoksa Groq."""
+    if os.environ.get("CLOUDFLARE_API_TOKEN"):
+        try:
+            return cloudflare(istem, os.environ["CLOUDFLARE_API_TOKEN"], en_cok=4000)
+        except Exception as e:
+            log("Cloudflare haber AI olmadı:", str(e)[:100])
     if os.environ.get("SAMBANOVA_API_KEY"):
         try:
             return sambanova(istem, os.environ["SAMBANOVA_API_KEY"], en_cok=4000)
@@ -730,8 +774,11 @@ def gundem_guncelle(hisseler: dict) -> None:
     """Ek kaynaklardan bilgi topla; kotaları aşmamak için her parça kendi aralığında yenilenir."""
     global GUNDEM
     GUNDEM = oku(GUNDEM_DOSYA, {})
+    global BUTCE
     butce = kaynaklar.Butce(GUNDEM.setdefault("kullanim", {}),
-                            {"tavily": ("ay", 300), "alphavantage": ("gun", 8), "marketaux": ("gun", 45)})
+                            {"tavily": ("ay", 300), "alphavantage": ("gun", 8), "marketaux": ("gun", 45),
+                             "cohere": ("ay", 500), "cloudflare": ("gun", 40)})
+    BUTCE = butce
     simdi = time.time()
     def yas(alan):
         z = (GUNDEM.get(alan) or {}).get("zaman") or ""
@@ -844,6 +891,11 @@ def main() -> int:
             else:
                 cikti["modeller"].append({"id": kimlik, "ad": ad, "durum": "hata", "hata": mesaj[:120]})
     CIKTI.parent.mkdir(parents=True, exist_ok=True)
+    if GUNDEM:  # sağlayıcı sayaçları (Cohere, Cloudflare) analiz sırasında arttı; kaydet
+        try:
+            GUNDEM_DOSYA.write_text(json.dumps(GUNDEM, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        except Exception:
+            pass
     try:
         cikti["isabet"] = isabet_guncelle(cikti, snap, outlook)
     except Exception as e:

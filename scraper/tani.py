@@ -50,6 +50,26 @@ def main():
         out["sonuc"].append(dene("github eski uç", "POST", "https://models.inference.ai.azure.com/chat/completions", k, headers=h,
                                  json={"model": "gpt-4.1-mini", "messages": MESAJ, "max_tokens": 10}))
         out["sonuc"].append(dene("github kullanıcı", "GET", "https://api.github.com/user", k, headers=h))
+    k = os.environ.get("COHERE_API_KEY", "").strip()
+    if k:
+        h = {"Authorization": f"Bearer {k}", "Content-Type": "application/json"}
+        out["sonuc"].append(dene("cohere command-a", "POST", "https://api.cohere.ai/compatibility/v1/chat/completions", k, headers=h,
+                                 json={"model": "command-a-03-2025", "messages": MESAJ, "max_tokens": 10}))
+    k = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+    if k:
+        h = {"Authorization": f"Bearer {k}", "Content-Type": "application/json"}
+        out["sonuc"].append(dene("cloudflare doğrula", "GET", "https://api.cloudflare.com/client/v4/user/tokens/verify", k, headers=h))
+        acc = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+        r = dene("cloudflare hesaplar", "GET", "https://api.cloudflare.com/client/v4/accounts", k, headers=h)
+        out["sonuc"].append(r)
+        if not acc:
+            try:
+                acc = json.loads(r.get("govde") or "{}")["result"][0]["id"]
+            except Exception:
+                acc = ""
+        if acc:
+            out["sonuc"].append(dene("cloudflare gpt-oss-120b", "POST", f"https://api.cloudflare.com/client/v4/accounts/{acc}/ai/v1/chat/completions", k,
+                                     headers=h, json={"model": "@cf/openai/gpt-oss-120b", "messages": MESAJ, "max_tokens": 20}))
     for s in out["sonuc"]:
         for x in ("govde",):
             if s.get(x) and len(s[x]) > 400:

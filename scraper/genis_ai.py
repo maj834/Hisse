@@ -182,7 +182,8 @@ def groq_genis(i: str, anahtar: str):
 MODELLER: dict[str, list] = {}
 SAGLAYICILAR = [("groq", "Groq", "GROQ_API_KEY", groq_genis),
                 ("cerebras", "Cerebras", "CEREBRAS_API_KEY", lambda i, a: ai_degerlendir.cerebras(i, a, en_cok=3000)),
-                ("mistral", "Mistral", "MISTRAL_API_KEY", ai_degerlendir.mistral)]
+                ("mistral", "Mistral", "MISTRAL_API_KEY", ai_degerlendir.mistral),
+                ("cohere", "Cohere", "COHERE_API_KEY", lambda i, a: ai_degerlendir.cohere(i, a, en_cok=3000))]
 # OpenRouter'ın ücretsiz modelleri şu an sürekli 429 veriyor; düzelince GENIS_OPENROUTER=1 ile eklenebilir
 if os.environ.get("GENIS_OPENROUTER") == "1":
     SAGLAYICILAR.append(("openrouter", "OpenRouter", "OPENROUTER_API_KEY", lambda i, a: openrouter(i, a, en_cok=3000)))
@@ -246,7 +247,8 @@ def main() -> int:
     GUNDEM = oku(KOK / "data" / "gundem.json", {})
     ai_degerlendir.GUNDEM = GUNDEM
     # istek üzerine analizde şirketin güncel haberleri de toplanır (kota sınırlı)
-    butce = kaynaklar.Butce(eski.setdefault("kullanim", {}), {"tavily": ("ay", 600), "marketaux": ("gun", 45)})
+    butce = kaynaklar.Butce(eski.setdefault("kullanim", {}), {"tavily": ("ay", 600), "marketaux": ("gun", 45), "cohere": ("ay", 400)})
+    ai_degerlendir.BUTCE = butce
     if MOD == "talep":
         for k in secilen[:6]:
             try:
@@ -260,6 +262,8 @@ def main() -> int:
             continue
         # popüler taramayı Mistral/Cerebras yapar; Groq'un günlük kotası BIST 30 ve kullanıcı istekleri için kalır
         if MOD == "populer" and kimlik == "groq" and (os.environ.get("MISTRAL_API_KEY") or os.environ.get("CEREBRAS_API_KEY")):
+            continue
+        if MOD == "populer" and kimlik == "cohere":  # Cohere'nin aylık kotası yalnızca kullanıcı isteklerine
             continue
         basari, atilan, model, son_hata = 0, 0, "", ""
         for i in range(0, len(secilen), GRUP):
