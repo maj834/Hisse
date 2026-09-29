@@ -697,6 +697,9 @@ def main() -> int:
         return 0
     bitis = cikis_zamani()
     log("döngü bitişi (UTC):", bitis.strftime("%H:%M"))
+    if dt.datetime.now(dt.timezone.utc) >= bitis:
+        log("borsa kapandı, döngü gerekmiyor")
+        return 0
     sayac = 0
     toplam_basari = 0
     while dt.datetime.now(dt.timezone.utc) < bitis:
@@ -707,7 +710,24 @@ def main() -> int:
         gonder(f"veri {simdi():%d.%m %H:%M}")
         sayac += 1
         time.sleep(max(5, 60 - (time.time() - bas)))
+    dongu_devam()
     return 0 if toplam_basari else 1
+
+
+def dongu_devam() -> None:
+    """GitHub'ın zamanlayıcısı bazen saatlerce gecikiyor; borsa hâlâ açıksa sıradaki döngüyü hemen kendimiz başlatırız."""
+    su = dt.datetime.now(dt.timezone.utc)
+    token = os.environ.get("GH_TOKEN")
+    if not token or su.weekday() >= 5 or su.hour * 60 + su.minute >= 15 * 60 + 10:
+        return
+    repo = os.environ.get("GITHUB_REPOSITORY", "maj834/Hisse")
+    try:
+        r = oturum.post(f"https://api.github.com/repos/{repo}/actions/workflows/veri.yml/dispatches",
+                        json={"ref": "main", "inputs": {"mod": "dongu"}},
+                        headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}, timeout=15)
+        log("sıradaki döngü başlatıldı", r.status_code)
+    except Exception as e:
+        log("hata", "sıradaki döngü başlatılamadı", e)
 
 
 if __name__ == "__main__":

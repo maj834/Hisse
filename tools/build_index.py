@@ -17,5 +17,35 @@ for yer, dosya in [("__SNAP__", "snapshot"), ("__NEWS__", "news"), ("__OUTLOOK__
         except Exception:
             pass
     t = t.replace(yer, veri.replace("</", "<\\/"))
+
+
+def md_html(md: str) -> str:
+    """gizlilik.md için basit Markdown → HTML (başlık, madde, kalın, paragraf)."""
+    import html, re
+    out, liste = [], False
+    for satir in md.splitlines():
+        s = html.escape(satir.strip())
+        s = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", s)
+        if s.startswith("- "):
+            if not liste:
+                out.append("<ul>")
+                liste = True
+            out.append(f"<li>{s[2:]}</li>")
+            continue
+        if liste:
+            out.append("</ul>")
+            liste = False
+        if s.startswith("## "):
+            out.append(f"<h3>{s[3:]}</h3>")
+        elif s.startswith("# "):
+            out.append(f"<h2>{s[2:]}</h2>")
+        elif s:
+            out.append(f"<p>{s}</p>")
+    if liste:
+        out.append("</ul>")
+    return "".join(out)
+
+
+t = t.replace("__YASAL__", md_html((KOK / "gizlilik.md").read_text(encoding="utf-8")))
 (KOK / "index.html").write_text(t, encoding="utf-8")
 print("index.html", len(t), "bayt")

@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: "50 6 * * 1-5"   # 09:50 TSİ, döngü 12:00 UTC'ye kadar
     - cron: "57 11 * * 1-5"  # 14:57 TSİ, döngü 15:25 UTC'ye kadar
+    # GitHub zamanlayıcısı saatlerce gecikebildiği için yedek başlatıcılar: döngü zaten çalışıyorsa sıraya girer,
+    # biten döngü de borsa açıksa sıradakini kendisi başlatır (scraper/guncelle.py -> dongu_devam)
+    - cron: "*/20 7-14 * * 1-5"
     - cron: "40 */2 * * *"   # tek seferlik yenileme
   workflow_dispatch:
     inputs:
