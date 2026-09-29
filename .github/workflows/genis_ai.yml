@@ -1,21 +1,15 @@
 name: Tum hisseler yapay zeka
 
-# BIST 30 dışındaki hisseler:
-#  - populer: borsa açıkken saatte bir en popüler 100 hisseden en eski analizli 24'ü yenilenir.
-#  - talep: uygulamadaki "Yapay zekâya analiz ettir" istekleri (ntfy.sh) 5 dakikada bir işlenir;
-#    borsa açıkken veri döngüsü de yeni istek görünce bu iş akışını hemen başlatır.
-# Sonuç: data/ai_genis.json. Anahtar: GROQ_API_KEY.
+# BIST 30 dışındaki hisseler için yapay zekâ (data/ai_genis.json). Tek bir "dinleyici" iş akışı:
+#  - Uygulamadaki "Yapay zekâya analiz ettir" isteklerini (ntfy.sh) 15 saniyede bir kontrol eder ve hemen değerlendirir.
+#  - Borsa açıkken (07-15 UTC, hafta içi) saatte bir en popüler 100 hisseden en eski analizli 24'ünü yeniler.
+# Her çalıştırma ~5 saat 45 dakika sürer; 6 saatte bir yeniden başlar, böylece sürekli açık kalır.
+# Tek yazıcı olduğu için ai_genis.json'da çakışma olmaz. Anahtar: GROQ_API_KEY.
 on:
   schedule:
-    - cron: "35 7-15 * * 1-5"
-    - cron: "*/5 * * * *"
+    - cron: "2 */6 * * *"
   workflow_dispatch:
     inputs:
-      mod:
-        description: "talep = kullanıcı istekleri, populer = en popüler 100 hisse"
-        default: "talep"
-        type: choice
-        options: [talep, populer]
       test_kod:
         description: "Deneme: bu hisse kodu için uygulamadaki gibi istek gönder (boş bırak)"
         default: ""
@@ -28,9 +22,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  degerlendir:
+  dinle:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 358
     steps:
       - uses: actions/checkout@v4
 
@@ -40,41 +34,46 @@ jobs:
 
       - run: pip install --quiet requests
 
-      - name: güncel veriyi al
-        run: |
-          git pull --quiet origin main || true
-          git fetch --quiet --depth 1 origin data
-          mkdir -p /tmp/veri
-          for f in market gecmis snapshot news ek; do
-            git show origin/data:$f.json > /tmp/veri/$f.json 2>/dev/null || echo '{}' > /tmp/veri/$f.json
-          done
-
       - name: deneme isteği
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_kod != '' }}
         run: curl -s -d "${{ inputs.test_kod }}" https://ntfy.sh/hisseradar-analiz-istek-7k3q && sleep 3
 
-      - name: değerlendir
+      - name: dinle ve değerlendir
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GROQ_GENIS_MODEL: ${{ vars.GROQ_GENIS_MODEL }}
           MARKET: /tmp/veri/market.json
           GECMIS: /tmp/veri/gecmis.json
           SNAPSHOT: /tmp/veri/snapshot.json
           NEWS: /tmp/veri/news.json
           EK: /tmp/veri/ek.json
-          MOD: ${{ (github.event.schedule == '35 7-15 * * 1-5' || (github.event_name == 'workflow_dispatch' && inputs.mod == 'populer')) && 'populer' || 'talep' }}
-        run: python scraper/genis_ai.py
-
-      - name: kaydet
+          SURE_DK: ${{ github.event_name == 'workflow_dispatch' && '300' || '345' }}
         run: |
           git config user.name "hisse-radar-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/ai_genis.json
-          git diff --cached --quiet && exit 0
-          git commit --quiet -m "Tum hisseler yapay zeka $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
-          for i in 1 2 3; do
-            git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0
-            sleep 5
+          mkdir -p /tmp/veri
+          veri_al() {
+            git fetch --quiet --depth 1 origin data || return
+            for f in market gecmis snapshot news ek; do
+              git show origin/data:$f.json > /tmp/veri/$f.json 2>/dev/null || echo '{}' > /tmp/veri/$f.json
+            done
+          }
+          veri_al
+          BITIS=$(( $(date +%s) + SURE_DK * 60 ))
+          SON_VERI=$(date +%s); SON_POPULER=""
+          while [ "$(date +%s)" -lt "$BITIS" ]; do
+            git fetch --quiet --depth 1 origin main && git reset --quiet --hard origin/main
+            if [ $(( $(date +%s) - SON_VERI )) -ge 300 ]; then veri_al; SON_VERI=$(date +%s); fi
+            MOD=talep python scraper/genis_ai.py || true
+            SAAT=$(date -u +%H); GUN=$(date -u +%u); DK=$(date -u +%M)
+            if [ "$GUN" -le 5 ] && [ "$SAAT" -ge 7 ] && [ "$SAAT" -le 15 ] && [ "$DK" -ge 35 ] && [ "$SON_POPULER" != "$SAAT" ]; then
+              MOD=populer python scraper/genis_ai.py || true
+              SON_POPULER=$SAAT
+            fi
+            if ! git diff --quiet -- data/ai_genis.json 2>/dev/null || [ -n "$(git status --porcelain data/ai_genis.json)" ]; then
+              git add data/ai_genis.json
+              git commit --quiet -m "Tum hisseler yapay zeka $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
+              git push --quiet origin HEAD:main || echo "gönderilemedi, sonraki turda yeniden denenecek"
+            fi
+            sleep 15
           done
-          exit 1

@@ -705,7 +705,6 @@ def main() -> int:
         toplam_basari += b
         log(f"tur {sayac}: {b} hisse, {h} hata")
         gonder(f"veri {simdi():%d.%m %H:%M}")
-        talep_tetikle()
         sayac += 1
         time.sleep(max(5, 60 - (time.time() - bas)))
     return 0 if toplam_basari else 1
