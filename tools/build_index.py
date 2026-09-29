@@ -47,5 +47,32 @@ def md_html(md: str) -> str:
 
 
 t = t.replace("__YASAL__", md_html((KOK / "gizlilik.md").read_text(encoding="utf-8")))
+
+
+def karistir(html: str) -> str:
+    """Ana <script> bloğunu okunamaz hâle getirir (javascript-obfuscator, tools/karistir.js).
+    Başarısız olursa HATA verir: karıştırılmamış ekran asla yayınlanmaz.
+    Yalnızca yerel deneme için KARISTIRMA=0 ile atlanır (o çıktı commit edilmez; GitHub 'Ekranı derle' yeniden üretir)."""
+    import os, re, subprocess, tempfile
+    if os.environ.get("KARISTIRMA") == "0":
+        print("UYARI: karıştırma atlandı (yalnızca yerel deneme)")
+        return html
+    m = list(re.finditer(r"<script>(.*?)</script>", html, re.S))
+    if len(m) != 1:
+        raise SystemExit(f"ana script bulunamadı ({len(m)})")
+    araclar = KOK / "tools"
+    if not (araclar / "node_modules" / "javascript-obfuscator").exists():
+        subprocess.run(["npm", "install", "--no-audit", "--no-fund", "--silent"], cwd=araclar, check=True)
+    with tempfile.TemporaryDirectory() as d:
+        g, c = Path(d) / "g.js", Path(d) / "c.js"
+        g.write_text(m[0].group(1), encoding="utf-8")
+        subprocess.run(["node", str(araclar / "karistir.js"), str(g), str(c)], check=True)
+        kod = c.read_text(encoding="utf-8")
+    if len(kod) < 1000 or "secimKart" in kod or "renderOutlook" in kod:  # iç fonksiyon adları görünmemeli
+        raise SystemExit("karıştırma doğrulanamadı")
+    return html[:m[0].start(1)] + kod + html[m[0].end(1):]
+
+
+t = karistir(t)
 (KOK / "index.html").write_text(t, encoding="utf-8")
 print("index.html", len(t), "bayt")

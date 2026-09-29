@@ -41,3 +41,9 @@ Fiyatlar kaynağında yaklaşık 15 dakika gecikmelidir. Uygulamadaki sinyaller 
 ## Gereksinim
 
 Depo **herkese açık (public)** olmalı: GitHub Pages ücretsiz planda yalnızca açık depolarda çalışır, Actions dakikaları da açık depolarda sınırsızdır.
+
+
+## Telif hakkı ve lisans
+© 2026 Cem Ulaş. **Tüm hakları saklıdır.** Bu depo yalnızca görüntülemeye açıktır; kod, uygulama, APK, tasarım,
+analiz kuralları, yapay zekâ istemleri ve veriler izinsiz kopyalanamaz, değiştirilemez, yayınlanamaz ve kullanılamaz.
+Ayrıntılar: [LICENSE](LICENSE). Uygulama ekranı yalnızca resmi APK'da ve https://maj834.github.io/Hisse/ adresinde çalışır.
