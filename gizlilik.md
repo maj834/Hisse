@@ -28,7 +28,7 @@ Hisse Radar, Borsa İstanbul hisseleri ve TEFAS yatırım fonları hakkında her
 - **"Yapay zekâya analiz ettir" düğmesi:** Bu düğmeye bastığınızda yalnızca hisse kodu (ör. "THYAO") herkese açık ntfy.sh bildirim hizmetine gönderilir. Adınız, hesap ya da cihaz bilgisi gönderilmez; ancak ntfy.sh, IP adresinizi kendi politikasına göre işleyebilir. İstenen hissenin analizi herkes tarafından görülebilen ortak bir dosyaya kaydedilir.
 - **Dış bağlantılar:** Haberler, TradingView ve TEFAS bağlantıları telefonunuzun tarayıcısında açılır; bu sitelerin kendi gizlilik politikaları geçerlidir.
 - **Haklarınız (6698 sayılı KVKK):** Uygulama sizi tanımlayan bir veri tutmadığı için silinecek bir hesap yoktur. Telefonunuzdaki tüm uygulama verilerini (favoriler, onaylar, tercihler) istediğiniz an Ayarlar → Uygulamalar → Hisse Radar → Depolama → Verileri temizle ile ya da uygulamayı kaldırarak silebilirsiniz. Verdiğiniz onayı geri almak için de aynı yolu kullanabilir ve uygulamayı kullanmayı bırakabilirsiniz; bir sonraki açılışta onay yeniden sorulur.
-- **İzinler:** Uygulama yalnızca internet erişimi izni kullanır; konum, kişiler, kamera, mikrofon, dosyalar gibi izinler istemez.
+- **İzinler:** Uygulama yalnızca internet erişimi ve bağlantı durumunu görme (internet var mı) izinlerini kullanır; konum, kişiler, kamera, mikrofon, dosyalar gibi izinler istemez.
 - **Çocuklar:** Uygulama 18 yaş altındaki kişilere yönelik değildir.
 - **Değişiklikler:** Bu metin güncellenebilir; önemli değişikliklerde uygulama açılışında yeniden onayınız istenir.
 
