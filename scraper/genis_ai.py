@@ -258,6 +258,9 @@ def main() -> int:
         anahtar = os.environ.get(env, "").strip()
         if not anahtar or not secilen:
             continue
+        # popüler taramayı Mistral/Cerebras yapar; Groq'un günlük kotası BIST 30 ve kullanıcı istekleri için kalır
+        if MOD == "populer" and kimlik == "groq" and (os.environ.get("MISTRAL_API_KEY") or os.environ.get("CEREBRAS_API_KEY")):
+            continue
         basari, atilan, model, son_hata = 0, 0, "", ""
         for i in range(0, len(secilen), GRUP):
             parca = secilen[i:i + GRUP]

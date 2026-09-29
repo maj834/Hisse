@@ -418,7 +418,8 @@ def github_models(istem, anahtar, tercihler, filtre):
     if r.status_code == 400:
         r = gonder(govde)
     if "json" not in r.headers.get("content-type", ""):
-        raise RuntimeError("GitHub Models yanıt vermedi; GH_MODELS_TOKEN anahtarında 'Models: Read' izni olmalı")
+        raise RuntimeError(f"GitHub Models {r.status_code} {r.headers.get('content-type', '')} {r.text[:120]!r} "
+                           "(GH_MODELS_TOKEN'da 'Models: Read' izni olmalı)")
     if not r.ok:
         raise RuntimeError(f"{model} {r.status_code} {r.text[:150]}")
     try:
@@ -440,6 +441,7 @@ def deepseek_gh(istem, anahtar):
 
 
 def mistral(istem, anahtar):
+    time.sleep(2)  # ücretsiz katman: saniyede 1 istek
     return openai_uyumlu("https://api.mistral.ai/v1", anahtar, os.environ.get("MISTRAL_MODEL"),
                          ["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest"],
                          lambda a: a.endswith("-latest") and ("large" in a or "medium" in a), istem)
@@ -456,7 +458,7 @@ def cerebras(istem, anahtar, en_cok=8000):
 def sambanova(istem, anahtar, en_cok=8000):
     """SambaNova Cloud: ücretsiz katman, DeepSeek / Llama 70B / gpt-oss."""
     return openai_uyumlu("https://api.sambanova.ai/v1", anahtar, os.environ.get("SAMBANOVA_MODEL"),
-                         ["DeepSeek-V3.1", "DeepSeek-V3-0324", "gpt-oss-120b", "Meta-Llama-3.3-70B-Instruct", "Llama-4-Maverick-17B-128E-Instruct"],
+                         ["gpt-oss-120b", "Meta-Llama-3.3-70B-Instruct", "DeepSeek-V3.1", "DeepSeek-V3-0324", "Llama-4-Maverick-17B-128E-Instruct"],
                          lambda a: "DeepSeek-V3" in a or "70B" in a or "gpt-oss-120b" in a, istem, en_cok=en_cok)
 
 
@@ -620,7 +622,12 @@ def haber_modeli(istem: str):
             log("Cerebras haber AI olmadı:", str(e)[:100])
     anahtar = os.environ.get("GROQ_API_KEY", "")
     son = None
-    for m in ("openai/gpt-oss-120b", "openai/gpt-oss-20b"):
+    if os.environ.get("MISTRAL_API_KEY"):
+        try:
+            return mistral(istem, os.environ["MISTRAL_API_KEY"])
+        except Exception as e:
+            log("Mistral haber AI olmadı:", str(e)[:100])
+    for m in ("openai/gpt-oss-20b", "openai/gpt-oss-120b"):
         try:
             return openai_uyumlu("https://api.groq.com/openai/v1", anahtar, m, [], None, istem, en_cok=4000, tekrar=1)
         except Exception as e:
