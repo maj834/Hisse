@@ -395,6 +395,9 @@ const kText={AL:"AL",TUT:"TUT",SAT:"SAT"};
 const HLIM={"1h":.10,"1a":.20,"3a":.35};
 function hedefOk(karar,h,last){if(!h||!last)return false;const r=h/last-1;if(Math.abs(r)>HLIM[HZ])return false;if(karar==="AL"&&r<=0)return false;if(karar==="SAT"&&r>=0)return false;return true}
 function atHZ(v){if(!v)return null;if(HZ==="1h")return v.karar?{karar:v.karar,hedef:v.hedef}:null;const kk=v["karar"+HZ];return kk?{karar:kk,hedef:v["hedef"+HZ]}:null}
+// Claude'un saatlik yorumu: 8 saatten eskiyse "önceki analiz", 36 saatten eskiyse hiç kullanılmaz (bayat haber yanıltmasın)
+const outYas=()=>(Date.now()-T(OUT.updatedAt))/36e5;
+const outTaze=()=>outYas()<36;
 const gSev=g=>g==null?"":g>=70?"yüksek":g>=50?"orta":"düşük";
 function isabetTxt(id){const x=((AI.isabet||{})[id]||{})[HZ];if(!x)return "";return x.n>=20?`<span class="xs faint" style="display:block">Son 30 gün isabet: %${nf(x.oran,0)} (${x.n} karar)</span>`:`<span class="xs faint" style="display:block">İsabet ölçülüyor (${x.n}/20 karar)</span>`}
 function votes(k){
@@ -403,7 +406,7 @@ function votes(k){
   (AI.modeller||[]).forEach(md=>{const v=m[md.id],h=atHZ(v);if(h&&md.durum!=="hata")list.push({id:md.id,ad:md.ad,model:md.model,...v,...h,eski:md.durum==="eski"})});
   // BIST 30 dışındaki hisseler: kademeli tarama (ai_genis.json); 3 günden eski analiz "önceki", 10 günden eskisi kullanılmaz
   if(!BY[k]){const g=(AIG.hisseler||{})[k];if(g){const yas=(Date.now()/1000-(g.ts||0))/86400;if(yas<10)(AIG.modeller||[]).forEach(md=>{const v=g[md.id],h=atHZ(v);if(h)list.push({id:md.id,ad:"Yapay zekâ ("+String(v.model||md.ad).split("/").pop()+")",...v,...h,eski:yas>3,tarih:g.ts})})}}
-  const ck=((OUT.kararlar||{})[k]),ch=atHZ(ck);if(ch)list.push({id:"claude",ad:"Claude",...ck,...ch});
+  const ck=outTaze()?((OUT.kararlar||{})[k]):null,ch=atHZ(ck);if(ch)list.push({id:"claude",ad:"Claude",...ck,...ch,eski:outYas()>8,tarih:T(OUT.updatedAt)/1000});
   const tm=((TEMEL.hisseler||{})[k]);if(tm&&tm.ozet!==undefined){const p=tm.puan||0;list.push({id:"temel",ad:"Temel analiz ("+tm.ceyrek+")",karar:p>=2?"AL":p<=-2?"SAT":"TUT",guven:HZ==="1h"?35:Math.min(75,45+Math.abs(p)*10),neden:tm.ozet?tm.ozet.charAt(0).toLocaleUpperCase("tr")+tm.ozet.slice(1):"Finansallarda belirgin bir sinyal yok"})}
   const tv=MK[k]&&MK[k].tv;if(tv!=null&&HZ==="1h")list.push({id:"tv",ad:"TradingView göstergeleri",karar:tvKarar(tv),guven:Math.round(40+Math.abs(tv)*50),neden:tvYazi(tv)+" sinyali (hareketli ortalamalar ve osilatörler)"+(MK[k].rsi!=null?", RSI "+nf(MK[k].rsi,0):"")});
   if(a&&!a.noHist)list.push({id:"teknik",ad:"Teknik analiz",karar:HZ==="1h"?a.tone:HZ==="1a"?a.tone1a:a.tone3a,guven:Math.min(85,35+Math.abs(a.sc)*12),hedef:Math.round((HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc)*100)/100,neden:a.why.slice(0,2).map((w,i)=>i?w.charAt(0).toLocaleLowerCase("tr")+w.slice(1):w).join(", ")});
@@ -455,7 +458,7 @@ function kararK(k){const key=HZ+k;if(KC[key])return KC[key];const a=getA(k);if(!
 function targets(k){
   const a=getA(k);if(!a)return [];
   const t=[];votes(k).forEach(v=>{if(v.hedef)t.push({ad:v.ad,id:v.id,v:+v.hedef})});
-  const e=HZ==="1h"&&[...(OUT.yukselis||[]),...(OUT.dusus||[])].find(x=>x.sembol===k&&x.hedef);if(e)t.push({ad:"Haber beklentisi",id:"haber",v:+e.hedef});
+  const e=HZ==="1h"&&outTaze()&&[...(OUT.yukselis||[]),...(OUT.dusus||[])].find(x=>x.sembol===k&&x.hedef);if(e)t.push({ad:"Haber beklentisi",id:"haber",v:+e.hedef});
   return t.filter(x=>x.v>0);
 }
 
@@ -632,7 +635,7 @@ function openDetail(k,keepScroll,fromPop){
   const vs=votes(k),con=hisseKarar(k,vs),tg=targets(k);
   const avg=tg.length?tg.reduce((s,t)=>s+t.v,0)/tg.length:(HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc);
   const lo=Math.min(a.last,...tg.map(t=>t.v)),hi=Math.max(a.last,...tg.map(t=>t.v)),span=(hi-lo)||a.last*.02,pos=v=>((v-lo+span*.08)/(span*1.16))*100;
-  const exp=[...(OUT.yukselis||[]).map(x=>({...x,yon:"up"})),...(OUT.dusus||[]).map(x=>({...x,yon:"down"}))].find(x=>x.sembol===k);
+  const exp=!outTaze()?null:[...(OUT.yukselis||[]).map(x=>({...x,yon:"up"})),...(OUT.dusus||[]).map(x=>({...x,yon:"down"}))].find(x=>x.sembol===k);
   const gh=(((AIG.hisseler||{})[k]||{}).haber||[]).map(h=>({title:h.baslik,url:h.url,kaynak:h.kaynak==="web"?"Web":h.kaynak,kat:h.duygu!=null?(h.duygu>=.15?"Olumlu":h.duygu<=-.15?"Olumsuz":"Nötr"):""}));
   const ghs=((GUN.sirket||{})[k]||{}).haberler||[];
   const rel=[...newsFor(k),...gh,...ghs.map(h=>({title:h.baslik,url:h.url,kaynak:h.kaynak,kat:h.duygu!=null?(h.duygu>=.15?"Olumlu":h.duygu<=-.15?"Olumsuz":"Nötr"):""}))].filter((n,i,a)=>a.findIndex(x=>x.title===n.title)===i).slice(0,5);
@@ -669,7 +672,7 @@ function openDetail(k,keepScroll,fromPop){
       ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--hold-a)">${esc(con.not)}</p>`:""}
       ${(()=>{const x=((GUN.haber_ai||{}).hisseler||{})[k];return x?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--${x.etki==="olumlu"?"up":"down"}-a)"><b class="${x.etki==="olumlu"?"up":"down"}">Haber yapay zekâsı: ${x.etki==="olumlu"?"olumlu":"olumsuz"} haber</b> <span class="xs muted">(önem ${x.onem}/3)</span><br>${esc(x.neden)}</p>`:""})()}
       <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
-        <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null?`<span class="xs faint">Güven: ${gSev(v.guven)}${v.guven<50?" · yarım oy sayılır":""}${v.sig?" · işlem hacmi düşük hisse":""}${v.tarih?" · "+esc(fmtTime(new Date(v.tarih*1000).toISOString())):""}</span>`:""}${isabetTxt(v.id)}</div>
+        <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null||v.tarih?`<span class="xs faint">${v.guven!=null?"Güven: "+gSev(v.guven)+(v.guven<50?" · yarım oy sayılır":"")+(v.sig?" · işlem hacmi düşük hisse":""):""}${v.tarih?(v.guven!=null?" · ":"")+esc(fmtTime(new Date(v.tarih*1000).toISOString())):""}</span>`:""}${isabetTxt(v.id)}</div>
         <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.hedef?`<span class="tg">${HZL[HZ]}: ${px(v.hedef)}</span>`:""}</div></div>`).join("")}</div>
       ${a.lite?`<p class="note">Yapay zekâ en popüler 100 hisseyi borsa açıkken düzenli olarak, diğerlerini istek üzerine değerlendirir. TradingView göstergeleri ve teknik analiz de oy verir.</p>`:""}
       <p class="note">AL ya da SAT için kaynakların en az %60'ının aynı yönde olması gerekir, yoksa karar TUT'tur. Bu bilgiler yatırım tavsiyesi değildir; yapay zekâ tahminleri yanılabilir.</p>
@@ -790,11 +793,11 @@ function gundemKart(){const m=GUN.makro||{},pz=GUN.piyasa||{},sr=(m.seriler||[])
 /* beklenti */
 let ex=store.get("ex","up");
 function renderOutlook(){
-  const up=(OUT.yukselis||[]),dn=(OUT.dusus||[]),list=ex==="up"?up:dn;
+  const taze=outTaze(),up=taze?(OUT.yukselis||[]):[],dn=taze?(OUT.dusus||[]):[],list=ex==="up"?up:dn;
   const cons=ALL.map(a=>({a,c:kararK(a.k)}));
   const topAL=cons.filter(o=>o.c.karar==="AL").sort((x,y)=>y.c.c.AL-x.c.c.AL).slice(0,5),topSAT=cons.filter(o=>o.c.karar==="SAT").sort((x,y)=>y.c.c.SAT-x.c.c.SAT).slice(0,5);
   $("#p-beklenti").innerHTML=`
-  <div class="card"><div class="card-h"><h2>Günün özeti</h2><span class="xs muted">${esc(OUT.guncelleme||"")}</span></div><p style="line-height:1.6">${esc(OUT.ozet||"")}</p></div>
+  ${taze?`<div class="card"><div class="card-h"><h2>Günün özeti</h2><span class="xs muted">${esc(OUT.guncelleme||"")}</span></div><p style="line-height:1.6">${esc(OUT.ozet||"")}</p></div>`:`<div class="card"><div class="card-h"><h2>Claude'un haber yorumu</h2></div><p class="small muted" style="line-height:1.6">Claude'un son yorumu ${OUT.updatedAt?"çok eski ("+esc(OUT.guncelleme||"")+")":"henüz yok"}, bu yüzden yanıltmamak için gösterilmiyor. Yeni yorum geldiğinde burada görünecek. Aşağıdaki piyasa gündemi ve yapay zekâ kararları güncel verilerle hesaplanıyor.</p></div>`}
   ${gundemKart()}
   <div class="seg" id="ex"><button data-e="up" aria-pressed="${ex==="up"}">▲ Yükselecekler</button><button data-e="down" aria-pressed="${ex==="down"}">▼ Düşecekler</button></div>
   ${list.map(o=>{const a=BY[o.sembol],h=o.hedef||(a?null:null);return `<button class="exp" data-k="${esc(o.sembol)}">
@@ -812,7 +815,8 @@ function renderOutlook(){
 $("#p-beklenti").addEventListener("click",e=>{const b=e.target.closest("[data-k]");if(b&&BY[b.dataset.k])openDetail(b.dataset.k)});
 
 /* fonlar */
-let myF=store.get("funds2",null),fq="",fsort=store.get("fsort","g1a"),curF=null,ffilt=store.get("ffilt","all"),FLIM=40,FAI=seed("seed-fai");
+// Takip listesi boş başlar; fonlar yalnızca kullanıcı "Takip et" deyince eklenir (eskiden 10 fon otomatik takipteydi)
+let myF=(a=>Array.isArray(a)?a:[])(store.get("funds2",[])),fq="",fsort=store.get("fsort","g1a"),curF=null,ffilt=store.get("ffilt","all"),FLIM=40,FAI=seed("seed-fai");
 const FSORT=[["g1a","1 ay"],["g3a","3 ay"],["gyb","Yılbaşı"],["g1y","1 yıl"]];
 const allFunds=()=>FUNDS.tum||[];
 let FMAP=null,FMAPsrc=null,FRANK=null,FKC={};
@@ -826,7 +830,7 @@ function fundVotes(k){
   const m=(FAI.fonlar||{})[k]||{};
   const at=v=>{if(!v)return null;const kk=HZ==="1h"?v.karar:v["karar"+HZ];if(!kk)return null;return {karar:kk,getiri:HZ==="1h"?v.getiri:v["getiri"+HZ]}};
   (FAI.modeller||[]).forEach(md=>{const v=m[md.id],h=at(v);if(h&&md.durum!=="hata")list.push({id:md.id,ad:md.ad,...v,...h,eski:md.durum==="eski"})});
-  const cv=(OUT.fonlar||{})[k],ch=at(cv);if(ch)list.push({id:"claude",ad:"Claude",...cv,...ch});
+  const cv=outTaze()?(OUT.fonlar||{})[k]:null,ch=at(cv);if(ch)list.push({id:"claude",ad:"Claude",...cv,...ch,eski:outYas()>8,tarih:T(OUT.updatedAt)/1000});
   const r=fRank()[k];
   if(r&&r.n>=5){const ms=FMW[HZ].filter(x=>r[x]!=null&&g[x]!=null);if(ms.length){const p=ms.reduce((s,x)=>s+r[x],0)/ms.length,ret=g[ms[ms.length-1]];
     let karar=p>=.7&&ret>0?"AL":p<=.3&&ret<0?"SAT":"TUT";
@@ -848,7 +852,6 @@ const fInfo=k=>{const t=fMap()[k]||{},d=(FUNDS.fonlar||{})[k]||{};return {k,...t
 const gp=v=>v==null?`<span class="faint">–</span>`:`<span class="${cls(v)}">${v>=0?"+":"−"}%${nf(Math.abs(v),Math.abs(v)>=100?0:1)}</span>`;
 function fSpark(g){if(!g||g.length<3)return "";const c=g.map(r=>r[1]),W=76,H=30,lo=Math.min(...c),hi=Math.max(...c);const P=c.map((v,i)=>[i*(W-4)/(c.length-1)+2,H-4-(v-lo)/(hi-lo||1)*(H-8)]);const col=c[c.length-1]>=c[0]?"#22C38E":"#F4475C";return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smoothPath(P)}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round"/></svg>`}
 function renderFunds(){
-  const tracked=Object.keys(FUNDS.fonlar||{});if(!myF)myF=["AES","AFT","YAY","TTE","IPB","MAC","NNF","TI2","GSP","IHK"].filter(k=>tracked.includes(k)||!tracked.length);
   const t=nrm(fq.trim());
   let list=allFunds();const fk=ffilt==="al"||ffilt==="sat";
   if(t)list=list.filter(f=>nrm(f.k).includes(t)||nrm(f.ad).includes(t)||nrm(f.tur).includes(t));
@@ -859,7 +862,7 @@ function renderFunds(){
   <div class="card"><div class="card-h"><h2>Takip ettiğim fonlar</h2><span class="xs muted">${allFunds().length?allFunds().length+" fon içinde":""}</span></div>
     <div class="list" style="border:0;background:none">${myF.map(k=>{const f=fInfo(k),g1=(f.getiri||{}).g1a;return `<button class="row" data-f="${esc(k)}" style="padding-inline:0">
       <span style="min-width:0"><span class="code">${esc(k)}</span><span class="name">${esc(f.ad||"TEFAS fonu")}</span></span>${fSpark(f.g)}
-      <span class="r"><span class="px">${f.fiyat?nf(f.fiyat,4):"–"}</span>${f.gunluk!=null?`<span class="ch ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:g1!=null?`<span class="xs muted">1 ay ${gp(g1)}</span>`:""}</span></button>`}).join("")||`<p class="muted small">Aşağıdan fon seçip takip et.</p>`}</div></div>
+      <span class="r"><span class="px">${f.fiyat?nf(f.fiyat,4):"–"}</span>${f.gunluk!=null?`<span class="ch ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:g1!=null?`<span class="xs muted">1 ay ${gp(g1)}</span>`:""}</span></button>`}).join("")||`<p class="muted small" style="padding:6px 0 10px">Henüz takip ettiğin fon yok. Aşağıdan bir fona girip <b>Takip et</b>'e basarak buraya ekleyebilirsin.</p>`}</div></div>
   <input class="search" id="fq" type="search" placeholder="${allFunds().length?allFunds().length+" fon içinde ara: kod, isim ya da tür":"Fon ara: kod, isim ya da tür (ör. altın, teknoloji)"}" value="${esc(fq)}" aria-label="Fon ara">
   <div class="seg" id="ff">${[["all","Tümü"],["al","AL"],["sat","SAT"]].map(([k,l])=>`<button data-ff="${k}" aria-pressed="${k===ffilt}">${l}</button>`).join("")}</div>
   ${fk?`<div class="card" style="padding:12px 14px">${hzSeg("hzFL")}<p class="xs muted" style="margin-top:8px">${fn} fon ${HZL[HZ]} vadesinde ${ffilt==="al"?"AL":"SAT"} diyor. Yapay zekâ, Claude, kategori içi getiri momentumu ve grafik oylarının en az %60'ı aynı yönde olmalı. Ayrıntı için fona dokun.</p></div>`:`<div class="seg" id="fs">${FSORT.map(([k,l])=>`<button data-s="${k}" aria-pressed="${k===fsort}">${l}</button>`).join("")}</div>`}

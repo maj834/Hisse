@@ -225,6 +225,7 @@ def main() -> int:
     ts_market = dt.datetime.fromisoformat(market["updatedAt"]).timestamp() if market.get("updatedAt") else time.time()
     fiyatlar = {k: {"last": r[2], "ts": ts_market} for k, r in by.items()}
     talep_son = int(eski.get("talepSon") or 0)
+    baslangic = int(time.time())
     if MOD == "talep":
         try:
             istenen, talep_son = talepleri_oku(talep_son, set(by))
@@ -232,13 +233,20 @@ def main() -> int:
             log("istekler okunamadı:", e)
             return 0
         simdi = time.time()
-        secilen = [k for k in istenen if simdi - ((hisseler.get(k) or {}).get("ts") or 0) > TALEP_TAZE_SAAT * 3600][:GRUP * ISTEK]
-        log("istenen:", istenen, "değerlendirilecek:", secilen)
+        # Başarısız analizler kaybolmasın: her istek "bekleyen" listesine girer, sonuç gelince çıkar; en çok 3 deneme, denemeler arası 4 dk
+        bekleyen = {k: v for k, v in (eski.get("bekleyen") or {}).items() if k in by and v.get("n", 0) < 3}
+        for k in istenen:
+            if simdi - ((hisseler.get(k) or {}).get("ts") or 0) > TALEP_TAZE_SAAT * 3600:
+                bekleyen[k] = {"n": 0, "ts": 0}
+        secilen = [k for k, v in bekleyen.items() if simdi - v.get("ts", 0) >= 240][:GRUP * ISTEK]
+        log("istenen:", istenen, "bekleyen:", list(bekleyen), "değerlendirilecek:", secilen)
         if not secilen:
-            if talep_son != int(eski.get("talepSon") or 0):
+            if talep_son != int(eski.get("talepSon") or 0) or bekleyen != (eski.get("bekleyen") or {}):
                 eski["talepSon"] = talep_son
+                eski["bekleyen"] = bekleyen
                 CIKTI.write_text(json.dumps(eski, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
             return 0
+        eski["bekleyen"] = bekleyen
     else:
         # popüler taramada saatte tek istek (12 hisse): Groq'un günlük kotası BIST 30 ve kullanıcı istekleri için korunur
         secilen = sira_sec(sirali[:POPULER_N], hisseler, GRUP)
@@ -301,8 +309,16 @@ def main() -> int:
                             "son": basari, "atilan": atilan, "hata": son_hata if not basari else "",
                             "zaman": dt.datetime.now(IST).isoformat(timespec="seconds")}
         log(ad, model, basari, "hisse,", atilan, "tutarsız kayıt atıldı")
+    if MOD == "talep":  # sonucu gelenleri bekleyenlerden çıkar, gelmeyenlerin deneme sayısını artır
+        bek = eski.get("bekleyen") or {}
+        for k in secilen:
+            if (hisseler.get(k) or {}).get("ts", 0) >= baslangic:
+                bek.pop(k, None)
+            elif k in bek:
+                bek[k] = {"n": bek[k].get("n", 0) + 1, "ts": int(time.time())}
+        eski["bekleyen"] = {k: v for k, v in bek.items() if v.get("n", 0) < 3}
     yapilan = sum(1 for k in sirali if k in hisseler)
-    cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"), "talepSon": talep_son, "kullanim": eski.get("kullanim", {}),
+    cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"), "talepSon": talep_son, "bekleyen": eski.get("bekleyen", {}), "kullanim": eski.get("kullanim", {}),
              "ilerleme": {"yapilan": yapilan, "toplam": len(sirali), "populer": POPULER_N},
              "modeller": list(modeller.values()), "groqModelleri": MODELLER.get("groq", [])[:40], "hisseler": hisseler}
     CIKTI.parent.mkdir(parents=True, exist_ok=True)
