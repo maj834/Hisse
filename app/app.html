@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="tr">
-<!-- © 2026 Cem Ulaş — Hisse Radar. Tüm hakları saklıdır. Bu yazılım, tasarımı ve içeriği izinsiz kopyalanamaz, çoğaltılamaz, değiştirilemez ve yayınlanamaz. Ayrıntılar: https://github.com/maj834/Hisse/blob/main/LICENSE -->
+<!-- © 2026 Cem Ulaş Eren — Hisse Radar. Tüm hakları saklıdır. Bu yazılım, tasarımı ve içeriği izinsiz kopyalanamaz, çoğaltılamaz, değiştirilemez ve yayınlanamaz. Ayrıntılar: https://github.com/maj834/Hisse/blob/main/LICENSE -->
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Hisse Radar">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<meta name="copyright" content="© 2026 Cem Ulaş. Tüm hakları saklıdır.">
+<meta name="copyright" content="© 2026 Cem Ulaş Eren. Tüm hakları saklıdır.">
 <meta name="description" content="Borsa İstanbul hisseleri ve fonları için grafikler, yapay zekâ kararları, 1 hafta / 1 ay / 3 ay hedefler ve haberler.">
 <title>Hisse Radar</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -327,7 +327,7 @@ nav button[aria-selected="true"] svg{animation:zipla .45s ease}
 "use strict";
 /* ================= kopya koruması: ekran yalnızca resmi APK'da ve resmi web adresinde çalışır ================= */
 const IZIN=(()=>{const ua=navigator.userAgent||"",apk=/HisseRadarApp\/\d+/.test(ua),h=location.hostname;let ust=true;try{ust=window.top===window.self}catch(e){ust=false}return apk||(h==="maj834.github.io"&&ust)})();
-if(!IZIN){document.title="Hisse Radar";document.body.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0A0F16;color:#EAF0F7;font-family:system-ui,sans-serif;text-align:center"><div><h2 style="margin:0 0 12px">Bu sayfa yetkisiz bir kopya</h2><p style="color:#8B9AAE;line-height:1.6;max-width:420px">Hisse Radar yalnızca resmi uygulamada ve resmi web adresinde çalışır. © 2026 Cem Ulaş, tüm hakları saklıdır.</p><p><a style="color:#4C8DFF" href="https://maj834.github.io/Hisse/">Resmi Hisse Radar\'a git</a></p></div></div>';throw new Error("yetkisiz kopya")}
+if(!IZIN){document.title="Hisse Radar";document.body.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0A0F16;color:#EAF0F7;font-family:system-ui,sans-serif;text-align:center"><div><h2 style="margin:0 0 12px">Bu sayfa yetkisiz bir kopya</h2><p style="color:#8B9AAE;line-height:1.6;max-width:420px">Hisse Radar yalnızca resmi uygulamada ve resmi web adresinde çalışır. © 2026 Cem Ulaş Eren, tüm hakları saklıdır.</p><p><a style="color:#4C8DFF" href="https://maj834.github.io/Hisse/">Resmi Hisse Radar\'a git</a></p></div></div>';throw new Error("yetkisiz kopya")}
 /* ================= yardımcılar ================= */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
