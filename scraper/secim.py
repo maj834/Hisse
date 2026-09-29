@@ -272,9 +272,11 @@ def main():
         temiz = [{k: v for k, v in a.items() if k != "_puan"} for a in adaylar]
         secilen, cer_not = cerebras_sec(temiz, cer, bugun)
         log("Cerebras:", cer_not, secilen)
-        if secilen is None and eski.get("tarih") == tarih and eski.get("guclu_not") == "ok":
-            # aynı gün yeniden çalıştı: Cerebras'ın bugünkü seçimini koru (krediyi tekrar harcama)
-            secilen = [{"kod": x["kod"], "neden": x.get("neden", "")} for x in eski.get("guclu", []) if x["kod"] in {a["kod"] for a in adaylar}]
+        bugunku = [s for s in gecmis if s["tur"] == "guclu" and s["tarih"] == tarih]
+        if secilen is None and bugunku:
+            # aynı gün yeniden çalıştı: bugün kaydedilen seçimi koru (Cerebras kredisini tekrar harcama)
+            amap0 = {a["kod"] for a in adaylar}
+            secilen = [{"kod": s["kod"], "neden": s.get("neden", "")} for s in bugunku if s["kod"] in amap0]
             cer_not = "ok"
         if secilen is None:
             # yedek: yalnızca en az 2 kaynağın AL dediği adaylar, en çok 2 tane
@@ -293,7 +295,7 @@ def main():
         for x in liste:
             if (x["kod"], tur) in acik or x["kod"] not in fiyat or tarih not in fiyat[x["kod"]]:
                 continue
-            gecmis.append({"tarih": tarih, "kod": x["kod"], "tur": tur, "vade_gun": VADE_GUN,
+            gecmis.append({"tarih": tarih, "kod": x["kod"], "tur": tur, "vade_gun": VADE_GUN, "neden": (x.get("neden") or "")[:240],
                            "fiyat": fiyat[x["kod"]][tarih], "bist100": xu.get(tarih)})
     gecmis = gecmis[-600:]
 
