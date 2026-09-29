@@ -75,6 +75,12 @@ def secilen_fonlar(funds: dict) -> list[str]:
     except Exception:
         takip = []
     detay = funds.get("fonlar") or {}
+    # soruşturma / temerrüt / tasfiye yaşayan kurumların fonları analize sokulmaz (data/riskli.json)
+    try:
+        riskli = {x["ad"].upper() for x in json.loads((KOK / "data" / "riskli.json").read_text(encoding="utf-8")).get("kurumlar", [])}
+    except Exception:
+        riskli = set()
+    detay = {k: v for k, v in detay.items() if (v.get("ad") or "").split(" ")[0].upper() not in riskli}
     liste = [k for k in takip if k in detay]
     for k, f in sorted(detay.items(), key=lambda kv: -(kv[1].get("yatirimci") or 0)):
         if len(liste) >= EN_FAZLA:

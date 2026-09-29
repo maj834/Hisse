@@ -52,7 +52,7 @@ jobs:
           SNAPSHOT: /tmp/veri/snapshot.json
           NEWS: /tmp/veri/news.json
           EK: /tmp/veri/ek.json
-          SURE_DK: ${{ github.event_name == 'workflow_dispatch' && '300' || '345' }}
+          SURE_DK: "345"
         run: |
           git config user.name "hisse-radar-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

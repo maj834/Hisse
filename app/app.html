@@ -978,13 +978,14 @@ function renderFunds(){
 }
 $("#p-fon").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(b)openFund(b.dataset.f)});
 function fundAICard(k){
-  const vs=fundVotes(k);if(!vs.length)return "";const con=consensus(vs);
+  const vs=fundVotes(k);if(!vs.length)return "";const con=fKarar(k);
   const gs=vs.filter(v=>v.getiri!=null).map(v=>+v.getiri),ort=gs.length?gs.reduce((a,b)=>a+b,0)/gs.length:null;
   return `<div class="card"><div class="card-h"><h2>Yapay zekâ kararı</h2><span class="xs muted">${esc(fmtTime(FAI.updatedAt||""))}</span></div>
     ${hzSeg("hzF")}<div style="height:12px"></div>
     <div class="verdict"><span class="v ${kCls(con.karar)} ${kCls(con.karar)}">${con.karar}</span>
       <div><b>${con.karar==="AL"?"Alınır":con.karar==="SAT"?"Satılır":"Tutulur"} <span class="small muted">· ${HZL[HZ]} vadede</span></b><p class="small muted">${con.n} değerlendirmeden ${con.c.AL} AL, ${con.c.TUT} TUT, ${con.c.SAT} SAT</p>
-      ${ort!=null?`<p class="small">Beklenen getiri ortalaması: <b class="${cls(ort)}">${pct(ort)}</b></p>`:""}</div></div>
+      ${ort!=null&&!con.not?`<p class="small">Beklenen getiri ortalaması: <b class="${cls(ort)}">${pct(ort)}</b></p>`:""}</div></div>
+    ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--down-a)">${esc(con.not)} Bu yüzden AL verilmiyor.</p>`:""}
     <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
       <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null?`<span class="xs faint">Güven: ${gSev(v.guven)}${v.guven<50?" · yarım oy sayılır":""}</span>`:""}</div>
       <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.getiri!=null?`<span class="tg">${HZL[HZ]}: ${pct(+v.getiri)}</span>`:""}</div></div>`).join("")}</div>
