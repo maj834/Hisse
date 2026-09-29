@@ -453,13 +453,23 @@ def cerebras(istem, anahtar, en_cok=8000):
                          lambda a: "gpt-oss" in a or "qwen-3-235" in a or "70b" in a, istem, en_cok=en_cok)
 
 
-PARCA = {"groq": 6, "openrouter": 15, "mistral": 15, "cerebras": 10}
+def sambanova(istem, anahtar, en_cok=8000):
+    """SambaNova Cloud: ücretsiz katman, DeepSeek / Llama 70B / gpt-oss."""
+    return openai_uyumlu("https://api.sambanova.ai/v1", anahtar, os.environ.get("SAMBANOVA_MODEL"),
+                         ["DeepSeek-V3.1", "DeepSeek-V3-0324", "gpt-oss-120b", "Meta-Llama-3.3-70B-Instruct", "Llama-4-Maverick-17B-128E-Instruct"],
+                         lambda a: "DeepSeek-V3" in a or "70B" in a or "gpt-oss-120b" in a, istem, en_cok=en_cok)
+
+
+# Ücretsiz katmanda istek başına token sınırı düşük olanlara hisseler küçük gruplar hâlinde gönderilir
+# (GitHub Models: istek başına ~8 bin token girdi, GPT-4.1 günde 50 istek)
+PARCA = {"groq": 6, "openrouter": 15, "mistral": 15, "cerebras": 10, "sambanova": 10, "gpt": 8, "deepseek": 8}
 # Günlük ücretsiz kotası dar olanlar her saat değil, N saatte bir çalışır (arada önceki analiz gösterilir)
-PERIYOT = {"groq": 2}
+PERIYOT = {"groq": 2, "gpt": 2, "sambanova": 2}
 
 SAGLAYICILAR = [
     ("groq", "Llama (Groq)", "GROQ_API_KEY", groq),
     ("cerebras", "Cerebras", "CEREBRAS_API_KEY", cerebras),
+    ("sambanova", "SambaNova", "SAMBANOVA_API_KEY", sambanova),
     ("grok", "Grok", "XAI_API_KEY", grok),
     ("openrouter", "OpenRouter", "OPENROUTER_API_KEY", openrouter),
     ("gpt", "GPT (OpenAI)", "GH_MODELS_TOKEN", gpt),
@@ -597,7 +607,12 @@ GUNDEM_DOSYA = Path(os.environ.get("GUNDEM", KOK / "data" / "gundem.json"))
 
 
 def haber_modeli(istem: str):
-    """Haber AI için model: Cerebras varsa o (Groq kotasını korur), yoksa Groq'un küçük modeli."""
+    """Haber AI için model: SambaNova ya da Cerebras varsa onlar (Groq kotasını korur), yoksa Groq."""
+    if os.environ.get("SAMBANOVA_API_KEY"):
+        try:
+            return sambanova(istem, os.environ["SAMBANOVA_API_KEY"], en_cok=4000)
+        except Exception as e:
+            log("SambaNova haber AI olmadı:", str(e)[:100])
     if os.environ.get("CEREBRAS_API_KEY"):
         try:
             return cerebras(istem, os.environ["CEREBRAS_API_KEY"], en_cok=4000)

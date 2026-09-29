@@ -387,8 +387,8 @@ function analyze(k,s){
 function rebuild(){ALL=Object.keys(SNAP.hisseler||{}).sort().map(k=>analyze(k,SNAP.hisseler[k]));BY={};ALL.forEach(a=>BY[a.k]=a);LITE={};KC={}}
 
 /* yapay zekâ kararları */
-const MODEL_RENK={cerebras:"#F15A29",momentum:"#F2B53A",gemini:"#4C8DFF",groq:"#F2B53A",grok:"#EAF0F7",openrouter:"#9B7CFF",gpt:"#10A37F",deepseek:"#4D6BFE",mistral:"#FA520F",claude:"#D97757",teknik:"#22C38E",temel:"#5AC8FA",tv:"#2962FF"};
-const MODEL_HARF={cerebras:"B",momentum:"%",gemini:"G",groq:"L",grok:"X",openrouter:"R",gpt:"O",deepseek:"D",mistral:"M",claude:"C",teknik:"T",temel:"F",tv:"V"};
+const MODEL_RENK={sambanova:"#EE7624",cerebras:"#F15A29",momentum:"#F2B53A",gemini:"#4C8DFF",groq:"#F2B53A",grok:"#EAF0F7",openrouter:"#9B7CFF",gpt:"#10A37F",deepseek:"#4D6BFE",mistral:"#FA520F",claude:"#D97757",teknik:"#22C38E",temel:"#5AC8FA",tv:"#2962FF"};
+const MODEL_HARF={sambanova:"S",cerebras:"B",momentum:"%",gemini:"G",groq:"L",grok:"X",openrouter:"R",gpt:"O",deepseek:"D",mistral:"M",claude:"C",teknik:"T",temel:"F",tv:"V"};
 const kCls=v=>v==="AL"?"up":v==="SAT"?"down":"hold";
 const kText={AL:"AL",TUT:"TUT",SAT:"SAT"};
 // Hedef, karar yönüyle çelişiyorsa ya da vadeye göre gerçek dışıysa gösterilmez

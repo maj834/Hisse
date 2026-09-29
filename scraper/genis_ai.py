@@ -181,7 +181,8 @@ def groq_genis(i: str, anahtar: str):
 
 MODELLER: dict[str, list] = {}
 SAGLAYICILAR = [("groq", "Groq", "GROQ_API_KEY", groq_genis),
-                ("cerebras", "Cerebras", "CEREBRAS_API_KEY", lambda i, a: ai_degerlendir.cerebras(i, a, en_cok=3000))]
+                ("cerebras", "Cerebras", "CEREBRAS_API_KEY", lambda i, a: ai_degerlendir.cerebras(i, a, en_cok=3000)),
+                ("mistral", "Mistral", "MISTRAL_API_KEY", ai_degerlendir.mistral)]
 # OpenRouter'ın ücretsiz modelleri şu an sürekli 429 veriyor; düzelince GENIS_OPENROUTER=1 ile eklenebilir
 if os.environ.get("GENIS_OPENROUTER") == "1":
     SAGLAYICILAR.append(("openrouter", "OpenRouter", "OPENROUTER_API_KEY", lambda i, a: openrouter(i, a, en_cok=3000)))
