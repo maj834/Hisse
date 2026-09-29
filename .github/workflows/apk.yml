@@ -52,8 +52,11 @@ jobs:
           fi
 
       - name: web dosyalarını uygulamaya kopyala
+        # APK'nın içindeki çevrimdışı yedek ekran da karıştırılmış olmalı (APK açılıp içi okunabilir)
         run: |
+          (cd tools && npm install --no-audit --no-fund --silent)
           python3 tools/build_index.py
+          ! grep -q "function secimKart" index.html
           mkdir -p android/app/src/main/assets
           cp index.html icon.svg manifest.webmanifest android/app/src/main/assets/
 
