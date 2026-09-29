@@ -551,10 +551,15 @@ def _hedef(x, alan, last, vade, karar):
         return None, True
     r = v / last - 1
     buyuk, tut = SINIR[vade]
+    # yönü çelişen karar (AL deyip düşüş hedeflemek gibi) tamamen geçersizdir
+    if (karar == "AL" and r <= 0) or (karar == "SAT" and r >= 0):
+        return None, False
+    # TUT deyip büyük hareket beklemek tutarsız: kararı koru, hedefi gösterme
+    if karar == "TUT" and abs(r) > tut:
+        return None, True
+    # aşırı iyimser/kötümser hedef: vadenin sınırına kırp
     if abs(r) > buyuk:
-        return None, False
-    if (karar == "AL" and r <= 0) or (karar == "SAT" and r >= 0) or (karar == "TUT" and abs(r) > tut):
-        return None, False
+        v = last * (1 + buyuk if r > 0 else 1 - buyuk)
     return round(v, 2), True
 
 
