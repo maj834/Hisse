@@ -22,7 +22,11 @@ from zoneinfo import ZoneInfo
 
 import requests
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import kaynaklar  # noqa: E402
+
 IST = ZoneInfo("Europe/Istanbul")
+GUNDEM: dict = {}  # makro veriler, piyasa özeti ve şirket haberleri (data/gundem.json)
 KOK = Path(__file__).resolve().parent.parent
 CIKTI = Path(os.environ.get("AI_CIKTI", KOK / "data" / "ai.json"))
 ZAMAN_ASIMI = 150
@@ -179,6 +183,9 @@ def istem_olustur(snap, news, outlook, temel=None) -> str:
     def satir(k, h):
         s = ozet_satiri(k, h) + goreli_guc(h, snap) + temel_ek(k, temel)
         hb = ilgili_haber(k, news)
+        sh = (GUNDEM.get("sirket") or {}).get(k) or {}
+        if sh.get("haberler") and time.time() - sh.get("ts", 0) < 4 * 86400:
+            hb = hb + [kaynaklar.haber_satiri(sh["haberler"], 2)]
         return s + (" | Haber: " + " / ".join(hb) if hb else "")
     satirlar = "\n".join(satir(k, h) for k, h in sorted(hisseler.items()) if h.get("g"))
     cop = re.compile(r"hava durumu|hangi kanalda|\bdizi\b|\bmaç|burç|canlı grafik|stock price today|hisse senedi canlı|resmî gazete|resmi gazete", re.I)
@@ -200,7 +207,7 @@ KURALLAR:
    AL ise hedef son fiyatın ÜSTÜNDE, SAT ise ALTINDA, TUT ise son fiyata yakın olmalı. Bu kurala uymayan yanıtlar otomatik silinir.
 6) "guven" 0-100: sinyaller net ve birbirini destekliyorsa 65 üstü, karışıksa 50 altı ver. Aşırı güvenme.
 7) Gerekçe en fazla 18 kelime, Türkçe; mutlaka yukarıdaki veriden somut bir sayı ya da haberi ansın.
-{endeks_satiri(snap)}
+{endeks_satiri(snap)}{kaynaklar.makro_satiri(GUNDEM.get("makro") or {}, GUNDEM.get("piyasa"))}
 Hisseler:
 {satirlar}
 
@@ -576,6 +583,50 @@ def isabet_guncelle(cikti: dict, snap: dict, outlook: dict) -> dict:
     return sonuc
 
 
+GUNDEM_DOSYA = Path(os.environ.get("GUNDEM", KOK / "data" / "gundem.json"))
+
+
+def gundem_guncelle(hisseler: dict) -> None:
+    """Ek kaynaklardan bilgi topla; kotaları aşmamak için her parça kendi aralığında yenilenir."""
+    global GUNDEM
+    GUNDEM = oku(GUNDEM_DOSYA, {})
+    butce = kaynaklar.Butce(GUNDEM.setdefault("kullanim", {}),
+                            {"tavily": ("ay", 300), "alphavantage": ("gun", 8), "marketaux": ("gun", 45)})
+    simdi = time.time()
+    def yas(alan):
+        z = (GUNDEM.get(alan) or {}).get("zaman") or ""
+        try:
+            return simdi - dt.datetime.fromisoformat(z).timestamp()
+        except ValueError:
+            return 1e9
+    # 1) makro veriler: günde bir kez (Alpha Vantage, 4 istek)
+    if yas("makro") > 18 * 3600:
+        m = kaynaklar.av_makro(butce)
+        if m.get("seriler") or m.get("haberler"):
+            GUNDEM["makro"] = m
+    # 2) günün piyasa özeti: ~5 saatte bir (Tavily, 2 kredi) + her çalıştırmada Türkiye haberleri (Marketaux, 1 istek)
+    piyasa = GUNDEM.get("piyasa") or {}
+    if yas("piyasa") > 5 * 3600:
+        t1 = kaynaklar.tavily("Borsa İstanbul BIST 100 bugün hisseler neden yükseldi düştü", butce, gun=1)
+        t2 = kaynaklar.tavily("küresel piyasalar bugün petrol altın Fed dolar", butce, gun=1)
+        ozet = " ".join(x["ozet"] for x in (t1, t2) if x and x.get("ozet"))
+        if ozet:
+            piyasa = {"zaman": dt.datetime.now(IST).isoformat(timespec="seconds"), "ozet": ozet[:1200],
+                      "kaynaklar": [r for x in (t1, t2) if x for r in x["sonuclar"][:3]]}
+    tr = kaynaklar.marketaux(butce, countries="tr", filter_entities="true")
+    if tr:
+        piyasa["basliklar"] = list(dict.fromkeys([h["baslik"] for h in tr] + (piyasa.get("basliklar") or [])))[:10]
+    GUNDEM["piyasa"] = piyasa
+    # 3) şirket haberleri: her çalıştırmada en eski 3 BIST 30 şirketi (Marketaux)
+    sirket = GUNDEM.setdefault("sirket", {})
+    for k in sorted(hisseler, key=lambda k: (sirket.get(k) or {}).get("ts", 0))[:3]:
+        hb = kaynaklar.sirket_haberleri(k, hisseler[k].get("ad", k), butce, tavily_de=False)
+        sirket[k] = {"ts": int(simdi), "haberler": hb}
+    GUNDEM["updatedAt"] = dt.datetime.now(IST).isoformat(timespec="seconds")
+    GUNDEM_DOSYA.write_text(json.dumps(GUNDEM, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    log("gündem:", {k: butce.kalan(k) for k in ("tavily", "alphavantage", "marketaux")}, "kalan kredi")
+
+
 def main() -> int:
     snap = oku(os.environ.get("SNAPSHOT", KOK / "data" / "snapshot.json"), {})
     news = oku(os.environ.get("NEWS", KOK / "data" / "news.json"), {})
@@ -585,6 +636,10 @@ def main() -> int:
         log("snapshot boş")
         return 1
     temel = oku(os.environ.get("TEMEL", KOK / "data" / "temel.json"), {})
+    try:
+        gundem_guncelle(hisseler)
+    except Exception as e:
+        log("gündem alınamadı:", e)
     istem = istem_olustur(snap, news, outlook, temel)
     eski = oku(CIKTI, {})
     cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"),

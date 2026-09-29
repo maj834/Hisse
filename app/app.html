@@ -343,7 +343,7 @@ function toggleFav(k){FAV=isFav(k)?FAV.filter(x=>x!==k):[...FAV,k];store.set("fa
 let SNAP=seed("seed-snap"),NEWS=seed("seed-news"),OUT=seed("seed-outlook"),FUNDS=seed("seed-funds"),AI=seed("seed-ai"),TEMEL=seed("seed-temel");
 let ALL=[],BY={},cur=null,tab="piyasa";
 /* tüm BIST hisseleri (TradingView) ve geçmişleri */
-let MKD={},MK={},MKL=[],GEC=null,LITE={},gecYuk=0,KC={},AIG={};
+let MKD={},MK={},MKL=[],GEC=null,LITE={},gecYuk=0,KC={},AIG={},GUN={};
 function setMarket(d){MKD=d||{};MK={};MKL=(MKD.hisseler||[]).map(r=>{const o={k:r[0],ad:r[1],last:r[2],ch:r[3]||0,vol:r[4],sek:r[5],pd:r[6],tv:r[7],rsi:r[8],h1:r[9],a1:r[10],a3:r[11],hi:r[12],lo:r[13],yb:r[14]};MK[o.k]=o;return o});LITE={};KC={}}
 const tvKarar=v=>v==null?null:v>=.25?"AL":v<=-.25?"SAT":"TUT";
 const tvYazi=v=>v==null?"":v>=.5?"Güçlü al":v>=.1?"Al":v>-.1?"Nötr":v>-.5?"Sat":"Güçlü sat";
@@ -633,7 +633,9 @@ function openDetail(k,keepScroll,fromPop){
   const avg=tg.length?tg.reduce((s,t)=>s+t.v,0)/tg.length:(HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc);
   const lo=Math.min(a.last,...tg.map(t=>t.v)),hi=Math.max(a.last,...tg.map(t=>t.v)),span=(hi-lo)||a.last*.02,pos=v=>((v-lo+span*.08)/(span*1.16))*100;
   const exp=[...(OUT.yukselis||[]).map(x=>({...x,yon:"up"})),...(OUT.dusus||[]).map(x=>({...x,yon:"down"}))].find(x=>x.sembol===k);
-  const rel=newsFor(k).slice(0,4);
+  const gh=(((AIG.hisseler||{})[k]||{}).haber||[]).map(h=>({title:h.baslik,url:h.url,kaynak:h.kaynak==="web"?"Web":h.kaynak,kat:h.duygu!=null?(h.duygu>=.15?"Olumlu":h.duygu<=-.15?"Olumsuz":"Nötr"):""}));
+  const ghs=((GUN.sirket||{})[k]||{}).haberler||[];
+  const rel=[...newsFor(k),...gh,...ghs.map(h=>({title:h.baslik,url:h.url,kaynak:h.kaynak,kat:h.duygu!=null?(h.duygu>=.15?"Olumlu":h.duygu<=-.15?"Olumsuz":"Nötr"):""}))].filter((n,i,a)=>a.findIndex(x=>x.title===n.title)===i).slice(0,5);
   const aiNames=a.lite?[]:(AI.modeller||[]).filter(m=>m.durum!=="hata").map(m=>m.ad);
   $("#p-detay").innerHTML=`
   <div class="dtop"><button class="back" id="back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Piyasa</button><span class="sp"></span>
@@ -774,6 +776,14 @@ function renderNews(){
   $("#nf").onclick=e=>{const b=e.target.closest("[data-n]");if(!b)return;nf2=b.dataset.n;store.set("nf",nf2);renderNews()};
 }
 
+/* piyasa gündemi: makro veriler (Alpha Vantage) + web özeti (Tavily) + Türkiye haberleri (Marketaux) */
+function gundemKart(){const m=GUN.makro||{},pz=GUN.piyasa||{},sr=m.seriler||[],kd=m.kuresel_duygu;if(!sr.length&&!pz.ozet&&!kd)return "";
+  return `<div class="card"><div class="card-h"><h2>Piyasa gündemi</h2><span class="xs muted">${esc(fmtTime(pz.zaman||m.zaman||""))}</span></div>
+    ${sr.length?`<div class="ratios" style="margin:0 0 12px;grid-template-columns:repeat(${Math.min(3,sr.length)},1fr)">${sr.map(x=>`<div><span>${esc(x.ad)}</span><b>${x.birim==="%"?"%"+nf(x.son,2):nf(x.son,x.son>=100?1:2)+" "+esc(x.birim)}</b><span class="${cls(x.d5)}">5 gün ${pct(x.d5)}</span></div>`).join("")}</div>`:""}
+    ${kd?`<p class="small" style="margin-bottom:10px">Küresel piyasa haberlerinin genel havası: <b class="${kd.etiket==="olumlu"?"up":kd.etiket==="olumsuz"?"down":"hold"}">${esc(kd.etiket)}</b> <span class="xs muted">(${kd.haber_sayisi} haber)</span></p>`:""}
+    ${pz.ozet?`<p class="small" style="line-height:1.6">${esc(pz.ozet)}</p>`:""}
+    ${(pz.basliklar||[]).length?`<div class="news" style="margin-top:6px">${pz.basliklar.slice(0,4).map(b=>`<div class="nw"><b style="font-size:14px">${esc(b)}</b></div>`).join("")}</div>`:""}
+    <p class="note">Otomatik derlenmiştir: Alpha Vantage, web haber taraması ve Marketaux. Yatırım tavsiyesi değildir.</p></div>`}
 /* beklenti */
 let ex=store.get("ex","up");
 function renderOutlook(){
@@ -782,6 +792,7 @@ function renderOutlook(){
   const topAL=cons.filter(o=>o.c.karar==="AL").sort((x,y)=>y.c.c.AL-x.c.c.AL).slice(0,5),topSAT=cons.filter(o=>o.c.karar==="SAT").sort((x,y)=>y.c.c.SAT-x.c.c.SAT).slice(0,5);
   $("#p-beklenti").innerHTML=`
   <div class="card"><div class="card-h"><h2>Günün özeti</h2><span class="xs muted">${esc(OUT.guncelleme||"")}</span></div><p style="line-height:1.6">${esc(OUT.ozet||"")}</p></div>
+  ${gundemKart()}
   <div class="seg" id="ex"><button data-e="up" aria-pressed="${ex==="up"}">▲ Yükselecekler</button><button data-e="down" aria-pressed="${ex==="down"}">▼ Düşecekler</button></div>
   ${list.map(o=>{const a=BY[o.sembol],h=o.hedef||(a?null:null);return `<button class="exp" data-k="${esc(o.sembol)}">
     <div class="top"><div><span class="code">${esc(o.sembol)}</span> <span class="small muted">${a?esc(a.s.ad):""}</span></div>${a?`<div style="text-align:right"><b>${px(a.last)}</b><br><span class="xs ${cls(a.ch)}">${pct(a.ch)}</span></div>`:""}</div>
@@ -961,6 +972,7 @@ async function pollSlow(){
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/temel.json"));if(T(d.updatedAt)>T(TEMEL.updatedAt)){TEMEL=d;renderAll()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/gundem.json"));if(T(d.updatedAt)>T(GUN.updatedAt)){GUN=d;renderOutlook()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai_genis.json"));if(T(d.updatedAt)>T(AIG.updatedAt)){AIG=d;KC={};renderRows();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}
   try{const d=await getJ(RAW("main","data/fon_ai.json"));if(T(d.updatedAt)>T(FAI.updatedAt)){FAI=d;FKC={};renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}
   if(Date.now()-lastFunds>6e5){lastFunds=Date.now();try{const d=await getJ(RAW("data","funds.json"));if(T(d.updatedAt)>T(FUNDS.updatedAt)){FUNDS=d;renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}}

@@ -27,6 +27,7 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import kaynaklar  # noqa: E402
 from ai_degerlendir import (IST, HISSELER_BIST30, endeks_satiri, json_ayikla, log, oku, openai_uyumlu, openrouter,  # noqa: E402
                             rsi, sma, temizle, GECERSIZ)
 
@@ -89,6 +90,10 @@ def sira_sec(sirali: list[str], eski: dict, adet: int) -> list[str]:
     return [k for i, k in aday if oncelik((i, k))[0] >= 0][:adet]
 
 
+HABER: dict = {}   # istek üzerine analizde şirket haberleri (Marketaux / Tavily)
+GUNDEM: dict = {}  # BIST 30 değerlendirmesinin topladığı makro veriler ve piyasa özeti (data/gundem.json)
+
+
 def satir(r: list, gecmis: dict, ek: dict, sektor_med: dict, xu: dict | None, sira: int) -> str:
     k, ad, fiyat, deg, hacim, sektor, pd_, tv, rsi_tv, h1, a1, a3, yuk, dus, yb = (r + [None] * 15)[:15]
     parca = [f"{k} ({ad}, {sektor or '-'}; popülerlik sırası {sira + 1}): son {fiyat:g} TL, bugün {deg or 0:+.2f}%"]
@@ -123,7 +128,8 @@ def satir(r: list, gecmis: dict, ek: dict, sektor_med: dict, xu: dict | None, si
     parca.append(f"günlük işlem hacmi {tl_hacim / 1e6:.0f} milyon TL" + (" (SIĞ HİSSE)" if tl_hacim < DUSUK_HACIM_TL else ""))
     if pd_:
         parca.append(f"piyasa değeri {pd_ / 1e9:.1f} milyar TL")
-    return ", ".join(parca)
+    hb = HABER.get(k)
+    return ", ".join(parca) + (" | Şirket haberleri: " + kaynaklar.haber_satiri(hb, 3) if hb else "")
 
 
 def istem(satirlar: str, snap: dict, basliklar: str) -> str:
@@ -138,7 +144,7 @@ KURALLAR:
 6) Hedefler gerçekçi olsun, ortalama günlük hareketi dikkate al: 1 hafta en çok ±%8, 1 ay ±%15, 3 ay ±%30.
    AL ise hedef son fiyatın ÜSTÜNDE, SAT ise ALTINDA, TUT ise son fiyata yakın. Uymayan yanıt otomatik silinir.
 7) "guven" 0-100; karışık sinyalde 50 altı. Gerekçe en fazla 18 kelime, verideki somut bir sayıyı ansın.
-{endeks_satiri(snap)}
+{endeks_satiri(snap)}{kaynaklar.makro_satiri(GUNDEM.get("makro") or {}, GUNDEM.get("piyasa"))}
 Hisseler:
 {satirlar}
 
@@ -232,6 +238,16 @@ def main() -> int:
     else:
         secilen = sira_sec(sirali[:POPULER_N], hisseler, GRUP * ISTEK)
     log("değerlendirilecek:", len(secilen), "hisse:", ", ".join(secilen[:12]), "...")
+    global GUNDEM
+    GUNDEM = oku(KOK / "data" / "gundem.json", {})
+    # istek üzerine analizde şirketin güncel haberleri de toplanır (kota sınırlı)
+    butce = kaynaklar.Butce(eski.setdefault("kullanim", {}), {"tavily": ("ay", 600), "marketaux": ("gun", 45)})
+    if MOD == "talep":
+        for k in secilen[:6]:
+            try:
+                HABER[k] = kaynaklar.sirket_haberleri(k, by[k][1], butce, tavily_de=butce.kalan("tavily") > 0)
+            except Exception as e:
+                log("haber alınamadı:", k, e)
     modeller = {m["id"]: m for m in eski.get("modeller") or []}
     for kimlik, ad, env, fn in SAGLAYICILAR:
         anahtar = os.environ.get(env, "").strip()
@@ -255,6 +271,9 @@ def main() -> int:
                     kayit = dict(hisseler.get(k) or {})
                     kayit[kimlik] = {**v, "model": model}
                     kayit["ts"] = int(time.time())
+                    if HABER.get(k):
+                        kayit["haber"] = [{"baslik": h["baslik"], "url": h["url"], "kaynak": h.get("kaynak", ""), "duygu": h.get("duygu")}
+                                          for h in HABER[k][:4]]
                     hisseler[k] = kayit
                 basari += len(sonuc)
             except Exception as e:
@@ -269,7 +288,7 @@ def main() -> int:
                             "zaman": dt.datetime.now(IST).isoformat(timespec="seconds")}
         log(ad, model, basari, "hisse,", atilan, "tutarsız kayıt atıldı")
     yapilan = sum(1 for k in sirali if k in hisseler)
-    cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"), "talepSon": talep_son,
+    cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"), "talepSon": talep_son, "kullanim": eski.get("kullanim", {}),
              "ilerleme": {"yapilan": yapilan, "toplam": len(sirali), "populer": POPULER_N},
              "modeller": list(modeller.values()), "groqModelleri": MODELLER.get("groq", [])[:40], "hisseler": hisseler}
     CIKTI.parent.mkdir(parents=True, exist_ok=True)

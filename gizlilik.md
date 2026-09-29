@@ -34,4 +34,4 @@ Hisse Radar, Borsa İstanbul hisseleri ve TEFAS yatırım fonları hakkında her
 
 ## 4. İletişim
 
-Sorularınız ve talepleriniz için Google Play mağaza sayfasında yer alan geliştirici e-posta adresine yazabilirsiniz.
+Sorularınız ve talepleriniz için uygulamanın mağaza sayfasında yer alan geliştirici e-posta adresine yazabilirsiniz.
