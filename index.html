@@ -6,6 +6,9 @@
 <meta name="theme-color" content="#0A0F16">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hisse Radar">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="description" content="Borsa İstanbul hisseleri ve fonları için grafikler, yapay zekâ kararları, 1 hafta / 1 ay / 3 ay hedefler ve haberler.">
 <title>Hisse Radar</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -960,6 +963,14 @@ document.addEventListener("click",e=>{const a=e.target.closest("[data-yasal]");i
 const APK_MIN=9;
 (function(){const m=navigator.userAgent.match(/HisseRadarApp\/(\d+)/);if(!m)return;const mine=+m[1];if(mine>=APK_MIN)return;
   fetch("https://api.github.com/repos/maj834/Hisse/releases/latest",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;const n=+((d.tag_name||"").split(".").pop()||0);if(n>mine){const b=document.createElement("a");b.className="update";b.href="https://github.com/maj834/Hisse/releases/latest";b.innerHTML=`<b>Yeni güncelleme var · 1.${n}</b><span>Dokun, güncelleme sayfasında HisseRadar.apk'yı indirip kur. Favorilerin silinmez.</span>`;document.querySelector("main").prepend(b)}}).catch(()=>{})})();
+
+/* ================= iPhone: Safari'de "Ana Ekrana Ekle" ipucu ================= */
+(function(){const ua=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  const kurulu=navigator.standalone||matchMedia("(display-mode: standalone)").matches;
+  if(!ios||kurulu||store.get("iosIpucu",0)>2)return;store.set("iosIpucu",store.get("iosIpucu",0)+1);
+  const b=document.createElement("div");b.className="update";b.id="iosIpucu";
+  b.innerHTML=`<b>iPhone'a uygulama olarak ekle</b><span>Safari'de alttaki <b>Paylaş</b> düğmesine (kare ve yukarı ok) dokun → <b>Ana Ekrana Ekle</b>. Hisse Radar ana ekranında uygulama gibi açılır.</span><span style="margin-top:6px;text-decoration:underline">Kapat</span>`;
+  b.onclick=()=>{b.remove();store.set("iosIpucu",9)};document.querySelector("main").prepend(b)})();
 
 /* ================= canlılık ================= */
 function isOpen(){const n=new Date(),d=n.getUTCDay(),m=n.getUTCHours()*60+n.getUTCMinutes();return d>=1&&d<=5&&m>=420&&m<=915}
