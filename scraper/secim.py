@@ -227,7 +227,9 @@ def main():
         sek = market.get(b["kod"], {}).get("sektor", "")
         if haber_etkisi(b["kod"], sek, gundem, outlook) == "olumlu":
             continue   # haber tersini söylüyorsa gösterme
+        grup = next((u for u in uyum if u["en_az"] == min(b["kural_sayisi"], len(uyum))), None)
         zayif.append({**b, "ad": market.get(b["kod"], {}).get("ad", ""),
+                      "grup_isabet": grup["test"][0] if grup else None, "grup_n": grup["test"][1] if grup else None,
                       "r20": g.get("r20"), "zirve": g.get("zirve")})
     zayif.sort(key=lambda x: (-x["kural_sayisi"], -x["isabet"], (x.get("rsi") or 50)))
     zayif = zayif[:EN_COK_ZAYIF]

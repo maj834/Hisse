@@ -815,7 +815,7 @@ function secimKart(){
   ${eski?`<p class="small muted">Seçim ${esc(dLbl(SEC.tarih||""))} tarihinden, eski olduğu için gösterilmiyor.</p>`:""}
   <span class="label down">▼ Piyasadan zayıf kalması beklenenler</span>
   <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Geçmiş testte hiç görmediği ${o.donem?esc(o.donem.test_basi.slice(0,4)):"2025"}–bugün verisinde doğrulandı. Tahminsiz taban: ${o.taban?yuzde(o.taban):"–"}. ${canli("zayif")}</p>
-  ${z.map(x=>satir(x,"down",`${esc(kosulYaz(x.kosul))}<br><span class="xs faint">Geçmiş testte <b>${yuzde(x.isabet)}</b> doğru (${x.n} örnek)${x.kural_sayisi>1?` · ${x.kural_sayisi} kural aynı yönde`:""}</span>`)).join("")||`<p class="small muted" style="padding:6px 0 12px">Bugün yeterince güçlü sinyal yok.</p>`}
+  ${z.map(x=>satir(x,"down",`${esc(kosulYaz(x.kosul))}<br><span class="xs faint">${x.grup_isabet&&x.kural_sayisi>1?`${x.kural_sayisi} kural birden uyuyor: geçmiş testte <b>${yuzde(x.grup_isabet)}</b> doğru (${x.grup_n} örnek)`:`Geçmiş testte <b>${yuzde(x.isabet)}</b> doğru (${x.n} örnek)`}</span>`)).join("")||`<p class="small muted" style="padding:6px 0 12px">Bugün yeterince güçlü sinyal yok.</p>`}
   <div style="height:14px"></div>
   <span class="label up">▲ Piyasadan güçlü gitmesi beklenenler</span>
   <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Yükseliş tarafında geçmiş testte tutan kural bulunamadı. Burada yalnızca yapay zekâ, trend ve haberin aynı yönü gösterdiği en çok 3 hisse var. <b>Ölçüm sürüyor.</b> ${canli("guclu")}</p>
