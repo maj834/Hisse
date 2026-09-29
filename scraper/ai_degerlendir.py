@@ -594,6 +594,8 @@ def temizle(liste, hisseler, kimlik="") -> dict:
             continue
         k = {"karar": karar, "guven": guven, "hedef": hedef,
              "neden": str(x.get("neden") or x.get("reason") or "")[:200]}
+        if x.get("aciklama"):
+            k["aciklama"] = str(x["aciklama"])[:420]
         for vade in ("1a", "3a"):
             kv = KARAR.get(str(x.get("karar" + vade) or "").upper())
             if kv:

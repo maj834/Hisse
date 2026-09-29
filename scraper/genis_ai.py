@@ -144,7 +144,9 @@ KURALLAR:
 5) "SIĞ HİSSE" yazanlarda fiyat kolay oynatılabilir: güveni en çok 45 ver, AL demekte çok temkinli ol.
 6) Hedefler gerçekçi olsun, ortalama günlük hareketi dikkate al: 1 hafta en çok ±%8, 1 ay ±%15, 3 ay ±%30.
    AL ise hedef son fiyatın ÜSTÜNDE, SAT ise ALTINDA, TUT ise son fiyata yakın. Uymayan yanıt otomatik silinir.
-7) "guven" 0-100; karışık sinyalde 50 altı. Gerekçe en fazla 18 kelime, verideki somut bir sayıyı ansın.
+7) "guven" 0-100; karışık sinyalde 50 altı. Gerekçe ("neden") en fazla 18 kelime, verideki somut bir sayıyı ansın.
+8) "aciklama": en fazla 40 kelime, sade Türkçe. 1 aylık kararı neden verdiğini VE neden diğer iki kararı vermediğini
+   verideki sayılarla anlat. Örnek (TUT için): "Neden AL değil: ... Neden SAT değil: ...". Uydurma bilgi yazma.
 {endeks_satiri(snap)}{kaynaklar.makro_satiri(GUNDEM.get("makro") or {}, GUNDEM.get("piyasa"))}{ai_degerlendir.haber_ai_genel()}
 Hisseler:
 {satirlar}
@@ -153,7 +155,7 @@ Son haber başlıkları:
 {basliklar}
 
 Yalnızca şu biçimde geçerli JSON döndür, başka metin yazma:
-{{"hisseler":[{{"k":"KOD","karar":"TUT","guven":50,"hedef":10.2,"karar1a":"TUT","hedef1a":10.4,"karar3a":"AL","hedef3a":11.5,"neden":"..."}}]}}
+{{"hisseler":[{{"k":"KOD","karar":"TUT","guven":50,"hedef":10.2,"karar1a":"TUT","hedef1a":10.4,"karar3a":"AL","hedef3a":11.5,"neden":"...","aciklama":"Neden AL değil: ... Neden SAT değil: ..."}}]}}
 Listede yukarıdaki hisselerin hepsi olsun."""
 
 
@@ -235,13 +237,17 @@ def main() -> int:
         simdi = time.time()
         # Başarısız analizler kaybolmasın: her istek "bekleyen" listesine girer, sonuç gelince çıkar; en çok 3 deneme, denemeler arası 4 dk
         bekleyen = {k: v for k, v in (eski.get("bekleyen") or {}).items() if k in by and v.get("n", 0) < 3}
+        sonuclar = {k: v for k, v in (eski.get("sonuclar") or {}).items() if simdi - v.get("ts", 0) < 86400}
+        eski["sonuclar"] = sonuclar
         for k in istenen:
             if simdi - ((hisseler.get(k) or {}).get("ts") or 0) > TALEP_TAZE_SAAT * 3600:
                 bekleyen[k] = {"n": 0, "ts": 0}
+            else:  # zaten taze analiz var: kullanıcıya "yapıldı" de
+                sonuclar[k] = {"ts": int(simdi), "durum": "ok"}
         secilen = [k for k, v in bekleyen.items() if simdi - v.get("ts", 0) >= 240][:GRUP * ISTEK]
         log("istenen:", istenen, "bekleyen:", list(bekleyen), "değerlendirilecek:", secilen)
         if not secilen:
-            if talep_son != int(eski.get("talepSon") or 0) or bekleyen != (eski.get("bekleyen") or {}):
+            if talep_son != int(eski.get("talepSon") or 0) or bekleyen != (eski.get("bekleyen") or {}) or istenen:
                 eski["talepSon"] = talep_son
                 eski["bekleyen"] = bekleyen
                 CIKTI.write_text(json.dumps(eski, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -264,6 +270,7 @@ def main() -> int:
             except Exception as e:
                 log("haber alınamadı:", k, e)
     modeller = {m["id"]: m for m in eski.get("modeller") or []}
+    hatalar_bu_tur: list[str] = []
     for kimlik, ad, env, fn in SAGLAYICILAR:
         anahtar = os.environ.get(env, "").strip()
         if not anahtar or not secilen:
@@ -298,6 +305,7 @@ def main() -> int:
                 basari += len(sonuc)
             except Exception as e:
                 son_hata = str(e).replace(anahtar, "***")[:160]
+                hatalar_bu_tur.append(son_hata)
                 log(ad, "parça hatası:", son_hata)
                 if "per day" in str(e) or "kota" in str(e):
                     break
@@ -311,14 +319,22 @@ def main() -> int:
         log(ad, model, basari, "hisse,", atilan, "tutarsız kayıt atıldı")
     if MOD == "talep":  # sonucu gelenleri bekleyenlerden çıkar, gelmeyenlerin deneme sayısını artır
         bek = eski.get("bekleyen") or {}
+        sonuclar = eski.setdefault("sonuclar", {})
+        # tüm sağlayıcılar limit/kota yüzünden yanıt vermediyse tekrar denemek boşuna: kullanıcıya hemen söyle
+        limit = bool(hatalar_bu_tur) and all(re.search(r"429|rate|limit|kota|quota|per day|402|credit", h, re.I) for h in hatalar_bu_tur)
         for k in secilen:
             if (hisseler.get(k) or {}).get("ts", 0) >= baslangic:
                 bek.pop(k, None)
+                sonuclar[k] = {"ts": int(time.time()), "durum": "ok"}
             elif k in bek:
                 bek[k] = {"n": bek[k].get("n", 0) + 1, "ts": int(time.time())}
+                if limit or bek[k]["n"] >= 3:
+                    bek.pop(k, None)
+                    sonuclar[k] = {"ts": int(time.time()), "durum": "hata", "neden": "limit" if limit else "yanit_yok"}
         eski["bekleyen"] = {k: v for k, v in bek.items() if v.get("n", 0) < 3}
     yapilan = sum(1 for k in sirali if k in hisseler)
-    cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"), "talepSon": talep_son, "bekleyen": eski.get("bekleyen", {}), "kullanim": eski.get("kullanim", {}),
+    cikti = {"updatedAt": dt.datetime.now(IST).isoformat(timespec="seconds"), "talepSon": talep_son, "bekleyen": eski.get("bekleyen", {}),
+             "sonuclar": eski.get("sonuclar", {}), "kullanim": eski.get("kullanim", {}),
              "ilerleme": {"yapilan": yapilan, "toplam": len(sirali), "populer": POPULER_N},
              "modeller": list(modeller.values()), "groqModelleri": MODELLER.get("groq", [])[:40], "hisseler": hisseler}
     CIKTI.parent.mkdir(parents=True, exist_ok=True)

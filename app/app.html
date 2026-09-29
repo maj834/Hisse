@@ -213,6 +213,9 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 .chip[aria-pressed="true"]{background:var(--s3);color:var(--ink);border-color:var(--s3)}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .sgrid div{display:flex;flex-direction:column;gap:3px;background:var(--s1);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.shead{display:block;font-size:14px;font-weight:800;color:var(--ink);letter-spacing:0;text-transform:none;margin-top:4px}
+.shead i{font-style:normal;margin-right:6px}
+.shead.up i{color:var(--up)}.shead.down i{color:var(--down)}
 .secneden{border-color:rgba(76,141,255,.35)}
 .disc{font-size:12px;color:var(--faint);text-align:center;padding:8px 12px 0}
 .disc a{color:var(--muted)}
@@ -434,22 +437,34 @@ let TALEP=store.get("talep",{}),talepTimer=null;
 const bugun=()=>new Date().toLocaleDateString("sv-SE",{timeZone:"Europe/Istanbul"});
 function hakKalan(){const h=store.get("hak",{d:"",n:0});return h.d===bugun()?Math.max(0,GUNLUK_HAK-h.n):GUNLUK_HAK}
 function hakKullan(){const h=store.get("hak",{d:"",n:0}),d=bugun();store.set("hak",{d,n:(h.d===d?h.n:0)+1})}
+// analiz yapılamazsa (limit dolu, yanıt yok) hak geri verilir; her istek için bir kez
+function hakIade(k){const IADE=store.get("iade",{});if(IADE[k]===TALEP[k])return;IADE[k]=TALEP[k];store.set("iade",IADE);
+  const h=store.get("hak",{d:"",n:0});if(h.d===bugun()&&h.n>0)store.set("hak",{d:h.d,n:h.n-1})}
+function talepSonuc(k){const t=TALEP[k],s=((AIG.sonuclar||{})[k]);if(!t)return null;if(s&&s.ts*1000>=t-5000)return s;return null}
 function aigTs(k){return ((AIG.hisseler||{})[k]||{}).ts||0}
-function talepDurum(k){const t=TALEP[k];if(!t)return null;if(aigTs(k)*1000>=t)return null;return Date.now()-t<20*60e3?"bekliyor":"gecikti"}
+function talepDurum(k){const t=TALEP[k];if(!t)return null;const s=talepSonuc(k);
+  if(s&&s.durum==="hata")return "hata";if(aigTs(k)*1000>=t||(s&&s.durum==="ok"))return Date.now()-t<45*60e3?"yapildi":null;
+  return Date.now()-t<20*60e3?"bekliyor":"gecikti"}
 function talepHtml(k){
   const yas=(Date.now()/1000-aigTs(k))/3600,d=talepDurum(k);
   if(d==="bekliyor")return `<p class="small" style="margin-bottom:12px;padding:12px;border-radius:12px;background:var(--blue-a)"><b>İsteğin alındı.</b> Yapay zekâ bu hisseyi birkaç dakika içinde değerlendirecek, sonuç burada kendiliğinden görünecek.</p>`;
+  if(d==="yapildi")return `<p class="small" style="margin-bottom:12px;padding:12px;border-radius:12px;background:var(--up-a)"><b class="up">✓ Analiz yapıldı.</b> Yapay zekânın kararı ve açıklaması aşağıda.</p>`;
+  if(d==="hata"||d==="gecikti"){hakIade(k);const lim=d==="hata"&&(talepSonuc(k)||{}).neden==="limit";
+    if(aigTs(k)&&yas<TAZE_SAAT)return `<p class="small" style="margin-bottom:12px;padding:12px;border-radius:12px;background:var(--hold-a)">Yeni analiz yapılamadı; aşağıda ${nf(Math.max(1,Math.floor(yas*60)),0)} dakika önceki analiz görünüyor. Hakkın iade edildi.</p>`;
+    const n0=hakKalan();return `<div style="margin-bottom:12px;padding:12px;border-radius:12px;background:var(--hold-a)"><p class="small" style="margin-bottom:10px"><b>Analiz şu an yapılamadı.</b> ${lim?"Yapay zekâların kullanım sınırı doldu.":"Yapay zekâdan yanıt gelmedi."} Bir süre sonra tekrar dene. <b>Hakkın iade edildi.</b></p>
+      <button class="btn ${n0?"primary":"ghost"}" id="talepBtn" ${n0?"":"disabled"} style="width:100%">${n0?"Tekrar dene":"Bugünkü hakkın bitti"}</button>
+      <p class="xs faint" style="margin-top:8px;text-align:center">Günde ${GUNLUK_HAK} hak · bugün ${n0} hakkın kaldı</p></div>`}
   if(aigTs(k)&&yas<TAZE_SAAT)return "";
   const n=hakKalan();
   return `<div style="margin-bottom:12px;padding:12px;border-radius:12px;background:var(--s2)">
-    <p class="small muted" style="margin-bottom:10px">${d==="gecikti"?"Önceki isteğe yanıt gelmedi; tekrar deneyebilirsin. ":""}${aigTs(k)?"Bu hissenin yapay zekâ analizi "+nf(Math.floor(yas),0)+" saat önce yapıldı.":"Bu hisse henüz yapay zekâya sorulmadı."} İstersen şimdi analiz ettirebilirsin; sonuç herkes için kaydedilir.</p>
+    <p class="small muted" style="margin-bottom:10px">${aigTs(k)?"Bu hissenin yapay zekâ analizi "+nf(Math.floor(yas),0)+" saat önce yapıldı.":"Bu hisse henüz yapay zekâya sorulmadı."} İstersen şimdi analiz ettirebilirsin; sonuç herkes için kaydedilir.</p>
     <button class="btn ${n?"primary":"ghost"}" id="talepBtn" ${n?"":"disabled"} style="width:100%">${n?"Yapay zekâya analiz ettir":"Bugünkü hakkın bitti"}</button>
     <p class="xs faint" style="margin-top:8px;text-align:center">Günde ${GUNLUK_HAK} hak · bugün ${n} hakkın kaldı</p></div>`;
 }
 async function talepGonder(k){
   if(!hakKalan())return;const b=$("#talepBtn");if(b){b.disabled=true;b.textContent="Gönderiliyor…"}
   try{const r=await fetch("https://ntfy.sh/"+TALEP_KONU,{method:"POST",body:k});if(!r.ok)throw new Error(r.status);
-    const eski=talepDurum(k)==="gecikti";if(!eski)hakKullan();TALEP[k]=Date.now();store.set("talep",TALEP);talepIzle()}
+    hakKullan();TALEP[k]=Date.now();store.set("talep",TALEP);talepIzle()}
   catch(e){if(b){b.disabled=false;b.textContent="Gönderilemedi, tekrar dene"}return}
   if(cur&&cur.k===k)openDetail(k,true);
 }
@@ -460,6 +475,12 @@ function hisseKarar(k,vs){const a=getA(k),c=consensus(vs||votes(k));if(!a||HZ!==
   if(r!=null&&c.karar==="SAT"&&r<30)return {...c,karar:"TUT",not:`Oylar SAT yönünde ama RSI ${nf(r,0)} ile aşırı satım bölgesinde; bu seviyeden satmak geç kalmış olabilir, tepki alımı da gelebilir. Bu yüzden TUT.`};
   if(r!=null&&c.karar==="AL"&&r>75)return {...c,karar:"TUT",not:`Oylar AL yönünde ama RSI ${nf(r,0)} ile aşırı alım bölgesinde; bu seviyeden almak riskli, düzeltme gelebilir. Bu yüzden TUT.`};
   return c}
+function nedenKutu(con,vs){
+  const c=con.c,kr=con.karar,ai=vs.filter(v=>v.aciklama);let s;
+  if(kr==="TUT")s=c.AL||c.SAT?`AL diyen ${c.AL}, SAT diyen ${c.SAT} kaynak var. AL ya da SAT demek için en az 2 kaynağın ve oyların %60'ının aynı yönde olması gerekiyor; bu sağlanmadığı için yön belirsiz, karar TUT.`
+    :`Kaynakların hepsi TUT diyor: belirgin bir yükseliş ya da düşüş sinyali yok.`;
+  else s=`Kaynakların %${nf(con.oran*100,0)}'i ${kr} diyor (${c[kr]}/${con.n}); en az 2 kaynağın ve oyların %60'ının aynı yönde olması şartı sağlandı.${c[kr==="AL"?"SAT":"AL"]?` ${c[kr==="AL"?"SAT":"AL"]} kaynak ters yönde, bunu risk olarak düşün.`:""}`;
+  return `<div class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--s2);line-height:1.6"><b>Neden ${kr}?</b> ${s}${ai.map(v=>`<br><span class="muted">${esc(v.ad)} (1 aylık karar):</span> ${esc(v.aciklama)}`).join("")}</div>`}
 function kararK(k){const key=HZ+k;if(KC[key])return KC[key];const a=getA(k);if(!a)return null;return KC[key]=hisseKarar(k)}
 function targets(k){
   const a=getA(k);if(!a)return [];
@@ -637,7 +658,7 @@ $("#p-piyasa").addEventListener("click",e=>{const b=e.target.closest(".row[data-
 
 let asked=store.get("asked",false);
 function openDetail(k,keepScroll,fromPop){
-  const a=getA(k);if(!a)return;cur=a;if(a.lite){if(!GEC)loadGec();if(mode==="mum")mode="line"}
+  const a=getA(k);if(!a)return;if(!keepScroll&&!fromPop)kaydirSakla();cur=a;if(a.lite){if(!GEC)loadGec();if(mode==="mum")mode="line"}
   const vs=votes(k),con=hisseKarar(k,vs),tg=targets(k);
   const avg=tg.length?tg.reduce((s,t)=>s+t.v,0)/tg.length:(HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc);
   const lo=Math.min(a.last,...tg.map(t=>t.v)),hi=Math.max(a.last,...tg.map(t=>t.v)),span=(hi-lo)||a.last*.02,pos=v=>((v-lo+span*.08)/(span*1.16))*100;
@@ -647,7 +668,7 @@ function openDetail(k,keepScroll,fromPop){
   const rel=[...newsFor(k),...gh,...ghs.map(h=>({title:h.baslik,url:h.url,kaynak:h.kaynak,kat:h.duygu!=null?(h.duygu>=.15?"Olumlu":h.duygu<=-.15?"Olumsuz":"Nötr"):""}))].filter((n,i,a)=>a.findIndex(x=>x.title===n.title)===i).slice(0,5);
   const aiNames=a.lite?[]:(AI.modeller||[]).filter(m=>m.durum!=="hata").map(m=>m.ad);
   $("#p-detay").innerHTML=`
-  <div class="dtop"><button class="back" id="back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Piyasa</button><span class="sp"></span>
+  <div class="dtop"><button class="back" id="back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>${GERI_AD[tab]||"Piyasa"}</button><span class="sp"></span>
     <button class="iconbtn favbtn ${isFav(k)?"on":""}" id="favbtn" aria-label="${isFav(k)?"Favorilerden çıkar":"Favorilere ekle"}">${isFav(k)?"★":"☆"}</button>
     <a class="iconbtn" href="${tvUrl(k)}" target="_blank" rel="noopener" aria-label="TradingView'da aç"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a></div>
   <div class="price-block">
@@ -676,7 +697,7 @@ function openDetail(k,keepScroll,fromPop){
       <div class="verdict"><span class="v ${kCls(con.karar)} ${kCls(con.karar)}">${con.karar}</span>
         <div><b>${con.karar==="AL"?"Alınır":con.karar==="SAT"?"Satılır":"Tutulur"} <span class="small muted">· ${HZL[HZ]} vadede</span></b><p class="small muted">${con.n} değerlendirmeden ${con.c.AL} AL, ${con.c.TUT} TUT, ${con.c.SAT} SAT${con.karar!=="TUT"?` · oyların %${nf(con.oran*100,0)}'i`:""}</p>
         <div class="votes">${vs.map(v=>`<i style="background:var(--${kCls(v.karar)==="up"?"up":kCls(v.karar)==="down"?"down":"hold"})" title="${esc(v.ad)}"></i>`).join("")}</div></div></div>
-      ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--hold-a)">${esc(con.not)}</p>`:""}
+      ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--hold-a)">${esc(con.not)}</p>`:nedenKutu(con,vs)}
       ${(()=>{const x=((GUN.haber_ai||{}).hisseler||{})[k];return x?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--${x.etki==="olumlu"?"up":"down"}-a)"><b class="${x.etki==="olumlu"?"up":"down"}">Haber yapay zekâsı: ${x.etki==="olumlu"?"olumlu":"olumsuz"} haber</b> <span class="xs muted">(önem ${x.onem}/3)</span><br>${esc(x.neden)}</p>`:""})()}
       <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
         <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null||v.tarih?`<span class="xs faint">${v.guven!=null?"Güven: "+gSev(v.guven)+(v.guven<50?" · yarım oy sayılır":"")+(v.sig?" · işlem hacmi düşük hisse":""):""}${v.tarih?(v.guven!=null?" · ":"")+esc(fmtTime(new Date(v.tarih*1000).toISOString())):""}</span>`:""}${isabetTxt(v.id)}</div>
@@ -822,19 +843,19 @@ function secimNeden(k){const s=secimBul(k);if(!s)return "";const x=s.x,z=s.tur==
   const olcum=z?(x.grup_isabet&&x.kural_sayisi>1?`${x.kural_sayisi} doğrulanmış kural birden uyuyor. Bu durumdaki hisseler geçmiş testte <b>${yuzde(x.grup_isabet)}</b> doğru çıktı (${x.grup_n} örnek).`:`Bu kural geçmiş testte <b>${yuzde(x.isabet)}</b> doğru çıktı (${x.n} örnek).`)
     :`Yapay zekâ AL oyu ${esc(x.oy||"")}. Bu tür için geçmiş testte doğrulanmış kural yok, <b>ölçüm sürüyor</b>.`;
   return `<div class="card secneden"><div class="card-h"><h2>Neden Beklenti listesinde?</h2></div>
-    <span class="label ${z?"down":"up"}">${z?"▼ 1 ayda piyasadan zayıf kalması bekleniyor":"▲ 1 ayda piyasadan güçlü gitmesi bekleniyor"}</span>
+    <span class="shead ${z?"down":"up"}"><i>${z?"▼":"▲"}</i>${z?"1 ayda piyasadan zayıf kalması bekleniyor":"1 ayda piyasadan güçlü gitmesi bekleniyor"}</span>
     <p style="line-height:1.6;margin:10px 0 6px">${esc(z?kosulYaz(x.kosul):(x.neden||""))}</p>
     <p class="small muted" style="line-height:1.55">${olcum}</p>
     <p class="xs faint" style="margin-top:6px;line-height:1.5">${takipYaz(k,s.tur)}</p>
-    <div style="height:12px"></div><span class="label">Genel durum</span>${durumIzgara(x.durum)}</div>`}
+    <div style="height:12px"></div><span class="shead">Genel durum</span>${durumIzgara(x.durum)}</div>`}
 function fonNeden(k){if(!secimTaze())return "";const x=(SEC.fon||[]).find(f=>f.kod===k);if(!x)return "";
   const s=(SEC.gecmis||[]).filter(g=>g.kod===k&&g.tur==="fon").pop();
   return `<div class="card secneden"><div class="card-h"><h2>Neden Beklenti listesinde?</h2></div>
-    <span class="label up">▲ 1 ayda kendi türünden iyi gitmesi bekleniyor</span>
+    <span class="shead up"><i>▲</i>1 ayda kendi türünden iyi gitmesi bekleniyor</span>
     <p style="line-height:1.6;margin:10px 0 6px">${esc(x.neden||"")}</p>
     <p class="small muted" style="line-height:1.55">Yapay zekâların tamamı AL diyor (${esc(x.oy)}); kendi türündeki fonlar arasında getiri sırası 1 ayda ${x.sira1a}/100, 3 ayda ${x.sira3a}/100. <b>Ölçüm sürüyor.</b></p>
     ${s?`<p class="xs faint" style="margin-top:6px">Seçildiği gün: ${dLbl(s.tarih)} · sonuç 1 ay sonra</p>`:""}
-    <div style="height:12px"></div><span class="label">Genel durum</span>
+    <div style="height:12px"></div><span class="shead">Genel durum</span>
     <div class="sgrid"><div><span class="xs muted">Tür</span><b style="font-size:13px">${esc(x.kategori||"")}</b></div><div><span class="xs muted">1 ay getiri</span><b>${isr(x.g1a)}</b></div><div><span class="xs muted">3 ay getiri</span><b>${isr(x.g3a)}</b></div><div><span class="xs muted">Türünde sıra (1 ay)</span><b>${x.sira1a}/100</b></div></div></div>`}
 function secimKart(){
   if(!SEC.updatedAt)return "";
@@ -844,14 +865,14 @@ function secimKart(){
     <div class="top"><div><span class="code">${esc(kod)}</span> <span class="small muted">${esc(a&&a.s?a.s.ad:ad||"")}</span></div>${a&&a.last?`<div style="text-align:right"><b>${px(a.last)}</b><br><span class="xs ${cls(a.ch)}">${pct(a.ch)}</span></div>`:""}</div>
     <p class="small" style="line-height:1.55">${alt}</p><span class="xs" style="color:var(--blue)">Nedenini ve genel durumu gör ›</span></button>`};
   const bos=m=>`<p class="small muted" style="padding:6px 0 12px">${m}</p>`;
-  const hisse=`<span class="label down">▼ Piyasadan zayıf kalması beklenenler</span>
+  const hisse=`<span class="shead down"><i>▼</i>Piyasadan zayıf kalması beklenenler</span>
   <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Hiç görmediği ${o.donem?esc(o.donem.test_basi.slice(0,4)):"2025"}–bugün verisinde doğrulanmış kurallar. Tahminsiz taban: ${o.taban?yuzde(o.taban):"–"}. ${canliYaz("zayif")}</p>
   ${z.map(x=>satir(x.kod,x.ad,`${esc(kosulYaz(x.kosul))}<br><span class="xs faint">${x.grup_isabet&&x.kural_sayisi>1?`${x.kural_sayisi} kural birden: geçmiş testte <b>${yuzde(x.grup_isabet)}</b> doğru (${x.grup_n} örnek)`:`Geçmiş testte <b>${yuzde(x.isabet)}</b> doğru (${x.n} örnek)`}</span>`,"k")).join("")||bos("Bugün yeterince güçlü sinyal yok.")}
   <div style="height:14px"></div>
-  <span class="label up">▲ Piyasadan güçlü gitmesi beklenenler</span>
+  <span class="shead up"><i>▲</i>Piyasadan güçlü gitmesi beklenenler</span>
   <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Yapay zekâ, trend ve haberin aynı yönü gösterdiği en çok 3 hisse. Bu tarafta geçmiş testte tutan kural yok; <b>ölçüm sürüyor.</b> ${canliYaz("guclu")}</p>
   ${g.map(x=>satir(x.kod,x.ad,`${esc(x.neden||"")}<br><span class="xs faint">Yapay zekâ AL oyu ${esc(x.oy||"")} · RSI ${nf(x.rsi||0,0)}</span>`,"k")).join("")||bos("Bugün şartları sağlayan hisse yok.")}`;
-  const fon=`<span class="label up">▲ Kendi türünden iyi gitmesi beklenen fonlar</span>
+  const fon=`<span class="shead up"><i>▲</i>Kendi türünden iyi gitmesi beklenen fonlar</span>
   <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Yapay zekâların tamamı AL diyor, kendi türünde getirisi üst sıralarda ve tek günlük sıçramadan gelmiyor. Para piyasası gibi her zaman artan fonlar hariç. <b>Ölçüm sürüyor.</b> ${canliYaz("fon")}</p>
   ${f.map(x=>satir(x.kod,x.ad,`${esc(x.kategori||"")}<br><span class="xs faint">1 ay ${isr(x.g1a)} · 3 ay ${isr(x.g3a)} · türünde sıra ${x.sira1a}/100 · AL oyu ${esc(x.oy)}</span>`,"f")).join("")||bos("Bugün şartları sağlayan fon yok.")}`;
   return `<div class="card"><div class="card-h"><h2>Yüksek ihtimalli sinyaller</h2><span class="xs muted">${SEC.tarih?dLbl(SEC.tarih):""}</span></div>
@@ -949,6 +970,7 @@ function fundAICard(k){
     <p class="note">AL ya da SAT için oyların en az %60'ının aynı yönde olması gerekir, yoksa karar TUT'tur. Getiri momentumu fonu kendi türündeki fonlarla karşılaştırır. Yatırım tavsiyesi değildir; tahminler yanılabilir.</p></div>`;
 }
 function openFund(k,noPush){
+  if(!noPush)kaydirSakla();
   curF=k;const f=fInfo(k),g=f.getiri||{},on=myF.includes(k),s=f.g||[];
   let chart="";
   if(s.length>2){const c=s.map(r=>r[1]),W=360,H=180,L=4,R=44,Tp=12,B=12,lo=Math.min(...c),hi=Math.max(...c),pad=(hi-lo)*.1||hi*.01;
@@ -958,7 +980,7 @@ function openFund(k,noPush){
       <path d="${d}L${x(c.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#gf)"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${x(c.length-1)}" cy="${y(c[c.length-1])}" r="4.5" fill="${col}" stroke="#111823" stroke-width="2"/></svg></div>
       <div class="chart-foot"><span>${dLbl(s[0][0])}</span><span>Son 3 ay: ${gp((c[c.length-1]/c[0]-1)*100)}</span><span>${dLbl(s[s.length-1][0])}</span></div>`}
   $("#p-fondetay").innerHTML=`
-  <div class="dtop"><button class="back" id="fback"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>Fonlar</button><span class="sp"></span></div>
+  <div class="dtop"><button class="back" id="fback"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>${GERI_AD[tab]||"Fonlar"}</button><span class="sp"></span></div>
   <div class="price-block"><div class="nm">${esc(k)} · ${esc(f.tur||f.kategori||"Yatırım fonu")}</div>
     <div class="big" style="font-size:${f.fiyat?34:26}px">${f.fiyat?nf(f.fiyat,4)+` <span style="font-size:17px" class="muted">TL</span>`:esc(k)}</div>
     <div class="meta">${f.gunluk!=null?`<span class="pill ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:""}<span class="small muted">${esc(f.ad||"")}</span></div></div>
@@ -980,10 +1002,12 @@ function openFund(k,noPush){
 
 /* ================= gezinme (telefonun geri tuşu uygulamadan atmaz) ================= */
 const VIEWS=["piyasa","detay","beklenti","haber","fon","fondetay"];
-function setView(v){VIEWS.forEach(n=>{const el=$("#p-"+n),once=el.hidden;el.hidden=n!==v;if(n===v&&once){el.classList.remove("giris");void el.offsetWidth;el.classList.add("giris")}});const tb=v==="detay"?"piyasa":v==="fondetay"?"fon":v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tb))}
+function setView(v){VIEWS.forEach(n=>{const el=$("#p-"+n),once=el.hidden;el.hidden=n!==v;if(n===v&&once){el.classList.remove("giris");void el.offsetWidth;el.classList.add("giris")}});const tb=v==="detay"||v==="fondetay"?(tab||"piyasa"):v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tb))}
 function nav(st){try{history.pushState(st,"","#"+(st.k||st.v))}catch(e){}}
 function goBack(){if(history.state&&history.state.v&&history.state.v!=="piyasa")history.back();else showTab("piyasa",true)}
-function showTab(t,noPush){tab=t;cur=null;setView(t);window.scrollTo(0,0);if(!noPush){if(t==="piyasa"){try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}}else nav({v:t})}}
+const KAYDIR={},GERI_AD={piyasa:"Piyasa",beklenti:"Beklenti",haber:"Haberler",fon:"Fonlar"};
+function kaydirSakla(){const v=VIEWS.find(n=>!$("#p-"+n).hidden);if(v&&v!=="detay"&&v!=="fondetay")KAYDIR[v]=window.scrollY}
+function showTab(t,noPush){tab=t;cur=null;setView(t);const y=noPush?(KAYDIR[t]||0):0;window.scrollTo(0,y);if(y){requestAnimationFrame(()=>window.scrollTo(0,y));[80,250,500].forEach(ms=>setTimeout(()=>{if(tab===t&&!$("#p-"+t).hidden&&Math.abs(scrollY-y)>4)window.scrollTo(0,y)},ms))}if(!noPush){if(t==="piyasa"){try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}}else nav({v:t})}}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{if(!$("#p-"+b.dataset.tab).hidden)return;showTab(b.dataset.tab)});
 window.addEventListener("popstate",e=>{const s=e.state||{v:"piyasa"};if(s.v==="detay"&&getA(s.k))openDetail(s.k,false,true);else if(s.v==="fondetay"&&s.k)openFund(s.k,true);else showTab(VIEWS.includes(s.v)?s.v:"piyasa",true)});
 // Android'in geri tuşu için: true = uygulama içinde geri gidildi
