@@ -9,10 +9,11 @@ const { chromium } = require("playwright");
   await p.addInitScript(() => { localStorage.setItem("onay", JSON.stringify("x")); localStorage.setItem("iosIpucu", "9"); });
   await p.goto("http://localhost:8765/index.html");
   await p.waitForTimeout(6000);
+  const onay = await p.$("#onay1");
+  if (onay) { await p.check("#onay1"); await p.check("#onay2"); await p.click("#onayBtn"); await p.waitForTimeout(500); }
   const satir = await p.$$eval("#p-piyasa [data-k]", e => e.length);
   for (const t of ["beklenti", "haber", "fon", "piyasa"]) { await p.click(`nav button[data-tab="${t}"]`); await p.waitForTimeout(700); }
-  const onayVar = await p.$("#onay1");
-  console.log("satır:", satir, "hatalar:", hatalar, "onay ekranı:", !!onayVar);
+  console.log("satır:", satir, "hatalar:", hatalar, "onay ekranı:", !!onay);
   await b.close();
   process.exit(hatalar.length || satir < 20 ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
