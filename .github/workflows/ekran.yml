@@ -38,7 +38,7 @@ jobs:
           ! grep -q "function renderOutlook" index.html
       - name: tarayıcıda dene (bozuk ekran yayınlanmasın)
         run: |
-          cd tools && npm install --no-audit --no-fund --silent playwright@1.56.1 && npx playwright install --with-deps chromium >/dev/null
+          cd tools && npm install --no-audit --no-fund --silent --no-save playwright@1.56.1 && npx playwright install --with-deps chromium >/dev/null
           cd .. && (python3 -m http.server 8765 >/dev/null 2>&1 &) && sleep 2
           node tools/ekran_test.js 2>&1 | tee /tmp/ekran_test.log; exit ${PIPESTATUS[0]}
       - name: hata günlüğü (yayın yapılmadı)
@@ -58,6 +58,7 @@ jobs:
           git add index.html
           git diff --cached --quiet && exit 0
           git commit --quiet -m "Ekran derlendi (karıştırılmış) $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
+          git stash --quiet --include-untracked || true
           for i in 1 2 3; do
             git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0
             sleep 5
