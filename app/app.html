@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0A0F16">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="description" content="BIST 30 hisseleri için grafikler, yapay zekâ kararları, 1 hafta / 1 ay / 3 ay hedefler ve haberler.">
+<meta name="description" content="Borsa İstanbul hisseleri ve fonları için grafikler, yapay zekâ kararları, 1 hafta / 1 ay / 3 ay hedefler ve haberler.">
 <title>Hisse Radar</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
@@ -218,6 +218,7 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 <script type="application/json" id="seed-funds">__FUNDS__</script>
 <script type="application/json" id="seed-ai">__AI__</script>
 <script type="application/json" id="seed-temel">__TEMEL__</script>
+<script type="application/json" id="seed-fai">__FAI__</script>
 
 <header class="appbar"><div class="wrap in">
   <span class="logo"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 12v-3M7 14V5M11 11V8M15 9V3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></span>
@@ -273,9 +274,9 @@ function toggleFav(k){FAV=isFav(k)?FAV.filter(x=>x!==k):[...FAV,k];store.set("fa
 let SNAP=seed("seed-snap"),NEWS=seed("seed-news"),OUT=seed("seed-outlook"),FUNDS=seed("seed-funds"),AI=seed("seed-ai"),TEMEL=seed("seed-temel");
 let ALL=[],BY={},cur=null,tab="piyasa";
 /* tüm BIST hisseleri (TradingView) ve geçmişleri */
-let MKD={},MK={},MKL=[],GEC=null,LITE={},uni=store.get("uni","30"),gecYuk=0;
-function setMarket(d){MKD=d||{};MK={};MKL=(MKD.hisseler||[]).map(r=>{const o={k:r[0],ad:r[1],last:r[2],ch:r[3]||0,vol:r[4],sek:r[5],pd:r[6],tv:r[7],rsi:r[8],h1:r[9],a1:r[10],a3:r[11],hi:r[12],lo:r[13],yb:r[14]};MK[o.k]=o;return o});LITE={}}
-const tvKarar=v=>v==null?null:v>=.1?"AL":v<=-.1?"SAT":"TUT";
+let MKD={},MK={},MKL=[],GEC=null,LITE={},gecYuk=0,KC={};
+function setMarket(d){MKD=d||{};MK={};MKL=(MKD.hisseler||[]).map(r=>{const o={k:r[0],ad:r[1],last:r[2],ch:r[3]||0,vol:r[4],sek:r[5],pd:r[6],tv:r[7],rsi:r[8],h1:r[9],a1:r[10],a3:r[11],hi:r[12],lo:r[13],yb:r[14]};MK[o.k]=o;return o});LITE={};KC={}}
+const tvKarar=v=>v==null?null:v>=.25?"AL":v<=-.25?"SAT":"TUT";
 const tvYazi=v=>v==null?"":v>=.5?"Güçlü al":v>=.1?"Al":v>-.1?"Nötr":v>-.5?"Sat":"Güçlü sat";
 function liteA(k){if(LITE[k])return LITE[k];const m=MK[k];if(!m)return null;
   const gs=((GEC&&GEC.g)||{})[k]||[],today=new Date(T(MKD.updatedAt)||Date.now()).toLocaleDateString("sv-SE",{timeZone:"Europe/Istanbul"});
@@ -284,7 +285,7 @@ function liteA(k){if(LITE[k])return LITE[k];const m=MK[k];if(!m)return null;
   const snap={ad:m.ad||m.k,sektor:m.sek||"BIST",last:m.last,prev,hi:m.hi||m.last,lo:m.lo||m.last,g:gs.length?g:[],i:[],id:"",t:(()=>{const hm=z.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Istanbul"}),d=new Date(z.toLocaleString("en-US",{timeZone:"Europe/Istanbul"})),m=d.getHours()*60+d.getMinutes(),g=d.getDay();return g>=1&&g<=5&&m>=600&&m<=1090?hm:"Kapanış"})()};
   const a=analyze(k,snap);a.lite=true;a.m=m;if(!gs.length){if(m.h1!=null)a.perf5=m.h1;if(m.a1!=null)a.perf20=m.a1;if(m.rsi!=null)a.R=m.rsi}LITE[k]=a;return a}
 const getA=k=>BY[k]||liteA(k);
-async function loadGec(force){if(!force&&GEC&&Date.now()-gecYuk<18e5)return;gecYuk=Date.now();try{const d=await getJ(RAW("data","gecmis.json"));if(d&&d.g){GEC=d;LITE={};if(uni==="tum")renderRows();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){gecYuk=0}}
+async function loadGec(force){if(!force&&GEC&&Date.now()-gecYuk<18e5)return;gecYuk=Date.now();try{const d=await getJ(RAW("data","gecmis.json"));if(d&&d.g){GEC=d;LITE={};KC={};renderRows();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){gecYuk=0}}
 
 /* ================= analiz ================= */
 const sma=(a,n)=>{a=a.slice(-n);return a.reduce((s,v)=>s+v,0)/(a.length||1)};
@@ -301,7 +302,7 @@ function analyze(k,s){
   if(m10>m20){sc++;why.push("Kısa vadeli eğilim yukarı")}else{sc--;why.push("Kısa vadeli eğilim aşağı")}
   if(R<30){sc++;why.push("RSI aşırı satımda, tepki gelebilir")}else if(R>70){sc--;why.push("RSI aşırı alımda, düzeltme riski")}else if(R>=50)sc++;
   if(ch<=-5){sc--;why.push("Bugün sert düşüş var")}else if(ch>=3)sc++;
-  const tone=sc>=2?"AL":sc<=-1?"SAT":"TUT";
+  const tone=sc>=2?"AL":sc<=-2?"SAT":"TUT";
   const bLo=sup,bHi=sup+A*.5,stop=sup-A*.8,mid=(bLo+bHi)/2;
   let t1=res;if(t1<=bHi+A)t1=bHi+A*1.5;const t2=t1+A;
   const hafta=tone==="AL"?Math.min(res,last+A*2):tone==="SAT"?Math.max(sup,last-A*2):last+(m10-m20)*.5;
@@ -310,34 +311,48 @@ function analyze(k,s){
   const ay=uzat(21,.5),uc=uzat(63,.3);
   const kv=(h,esik)=>h>last*(1+esik)?"AL":h<last*(1-esik)?"SAT":"TUT";
   const i=(s.i||[]);
-  return {k,s,last,ch,m10,m20,R,A,sup,res,sc,why,tone,bLo,bHi,stop,t1,t2,rr:(t1-mid)/Math.max(mid-stop,1e-9),hafta,ay,uc,tone1a:kv(ay,.03),tone3a:kv(uc,.06),
+  return {k,s,last,ch,m10,m20,R,A,sup,res,sc,why,tone,noHist:c.length<21,bLo,bHi,stop,t1,t2,rr:(t1-mid)/Math.max(mid-stop,1e-9),hafta,ay,uc,tone1a:kv(ay,.03),tone3a:kv(uc,.06),
     closes:c,perf5:c.length>6?(last/c[c.length-6]-1)*100:0,perf20:c.length>21?(last/c[c.length-21]-1)*100:0,
     vol:(g[g.length-1]||[])[5]||0,vAvg:sma(g.map(r=>r[5]),20),intraday:i};
 }
-function rebuild(){ALL=Object.keys(SNAP.hisseler||{}).sort().map(k=>analyze(k,SNAP.hisseler[k]));BY={};ALL.forEach(a=>BY[a.k]=a)}
+function rebuild(){ALL=Object.keys(SNAP.hisseler||{}).sort().map(k=>analyze(k,SNAP.hisseler[k]));BY={};ALL.forEach(a=>BY[a.k]=a);LITE={};KC={}}
 
 /* yapay zekâ kararları */
-const MODEL_RENK={gemini:"#4C8DFF",groq:"#F2B53A",grok:"#EAF0F7",openrouter:"#9B7CFF",gpt:"#10A37F",deepseek:"#4D6BFE",mistral:"#FA520F",claude:"#D97757",teknik:"#22C38E",temel:"#5AC8FA",tv:"#2962FF"};
-const MODEL_HARF={gemini:"G",groq:"L",grok:"X",openrouter:"R",gpt:"O",deepseek:"D",mistral:"M",claude:"C",teknik:"T",temel:"F",tv:"V"};
+const MODEL_RENK={momentum:"#F2B53A",gemini:"#4C8DFF",groq:"#F2B53A",grok:"#EAF0F7",openrouter:"#9B7CFF",gpt:"#10A37F",deepseek:"#4D6BFE",mistral:"#FA520F",claude:"#D97757",teknik:"#22C38E",temel:"#5AC8FA",tv:"#2962FF"};
+const MODEL_HARF={momentum:"%",gemini:"G",groq:"L",grok:"X",openrouter:"R",gpt:"O",deepseek:"D",mistral:"M",claude:"C",teknik:"T",temel:"F",tv:"V"};
 const kCls=v=>v==="AL"?"up":v==="SAT"?"down":"hold";
 const kText={AL:"AL",TUT:"TUT",SAT:"SAT"};
+// Hedef, karar yönüyle çelişiyorsa ya da vadeye göre gerçek dışıysa gösterilmez
+const HLIM={"1h":.10,"1a":.20,"3a":.35};
+function hedefOk(karar,h,last){if(!h||!last)return false;const r=h/last-1;if(Math.abs(r)>HLIM[HZ])return false;if(karar==="AL"&&r<=0)return false;if(karar==="SAT"&&r>=0)return false;return true}
 function atHZ(v){if(!v)return null;if(HZ==="1h")return v.karar?{karar:v.karar,hedef:v.hedef}:null;const kk=v["karar"+HZ];return kk?{karar:kk,hedef:v["hedef"+HZ]}:null}
+const gSev=g=>g==null?"":g>=70?"yüksek":g>=50?"orta":"düşük";
+function isabetTxt(id){const x=((AI.isabet||{})[id]||{})[HZ];if(!x)return "";return x.n>=20?`<span class="xs faint" style="display:block">Son 30 gün isabet: %${nf(x.oran,0)} (${x.n} karar)</span>`:`<span class="xs faint" style="display:block">İsabet ölçülüyor (${x.n}/20 karar)</span>`}
 function votes(k){
-  const a=getA(k),list=[];
+  const a=getA(k),list=[],last=a?a.last:0;
   const m=(AI.hisseler||{})[k]||{};
   (AI.modeller||[]).forEach(md=>{const v=m[md.id],h=atHZ(v);if(h&&md.durum!=="hata")list.push({id:md.id,ad:md.ad,model:md.model,...v,...h,eski:md.durum==="eski"})});
   const ck=((OUT.kararlar||{})[k]),ch=atHZ(ck);if(ch)list.push({id:"claude",ad:"Claude",...ck,...ch});
-  const tm=((TEMEL.hisseler||{})[k]);if(tm&&tm.ozet!==undefined){const p=tm.puan||0;list.push({id:"temel",ad:"Temel analiz ("+tm.ceyrek+")",karar:p>=2?"AL":p<=-2?"SAT":"TUT",guven:40+Math.abs(p)*10,neden:tm.ozet?tm.ozet.charAt(0).toLocaleUpperCase("tr")+tm.ozet.slice(1):"Finansallarda belirgin bir sinyal yok"})}
-  const tv=MK[k]&&MK[k].tv;if(tv!=null&&HZ==="1h")list.push({id:"tv",ad:"TradingView göstergeleri",karar:tvKarar(tv),guven:Math.round(50+Math.abs(tv)*45),neden:tvYazi(tv)+" sinyali (hareketli ortalamalar ve osilatörler)"+(MK[k].rsi!=null?", RSI "+nf(MK[k].rsi,0):"")});
-  if(a)list.push({id:"teknik",ad:"Teknik analiz",karar:HZ==="1h"?a.tone:HZ==="1a"?a.tone1a:a.tone3a,guven:Math.min(90,40+Math.abs(a.sc)*12),hedef:Math.round((HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc)*100)/100,neden:a.why.slice(0,2).map((w,i)=>i?w.charAt(0).toLocaleLowerCase("tr")+w.slice(1):w).join(", ")});
+  const tm=((TEMEL.hisseler||{})[k]);if(tm&&tm.ozet!==undefined){const p=tm.puan||0;list.push({id:"temel",ad:"Temel analiz ("+tm.ceyrek+")",karar:p>=2?"AL":p<=-2?"SAT":"TUT",guven:HZ==="1h"?35:Math.min(75,45+Math.abs(p)*10),neden:tm.ozet?tm.ozet.charAt(0).toLocaleUpperCase("tr")+tm.ozet.slice(1):"Finansallarda belirgin bir sinyal yok"})}
+  const tv=MK[k]&&MK[k].tv;if(tv!=null&&HZ==="1h")list.push({id:"tv",ad:"TradingView göstergeleri",karar:tvKarar(tv),guven:Math.round(40+Math.abs(tv)*50),neden:tvYazi(tv)+" sinyali (hareketli ortalamalar ve osilatörler)"+(MK[k].rsi!=null?", RSI "+nf(MK[k].rsi,0):"")});
+  if(a&&!a.noHist)list.push({id:"teknik",ad:"Teknik analiz",karar:HZ==="1h"?a.tone:HZ==="1a"?a.tone1a:a.tone3a,guven:Math.min(85,35+Math.abs(a.sc)*12),hedef:Math.round((HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc)*100)/100,neden:a.why.slice(0,2).map((w,i)=>i?w.charAt(0).toLocaleLowerCase("tr")+w.slice(1):w).join(", ")});
+  list.forEach(v=>{if(v.hedef&&!hedefOk(v.karar,+v.hedef,last))v.hedef=null});
   return list;
 }
+// Ortak karar: düşük güvenli oy yarım sayılır; AL/SAT için ağırlığın en az %60'ı ve en az 2 kaynak gerekir, yoksa TUT
 function consensus(list){
-  const c={AL:0,TUT:0,SAT:0};list.forEach(v=>c[v.karar]=(c[v.karar]||0)+1);
-  const best=Object.entries(c).sort((x,y)=>y[1]-x[1]);
-  const top=best[0][1]===best[1][1]?"TUT":best[0][0];
-  return {karar:top,c,n:list.length};
+  const c={AL:0,TUT:0,SAT:0},w={AL:0,TUT:0,SAT:0};let W=0;
+  list.forEach(v=>{const x=v.guven!=null&&v.guven<50?.5:1;c[v.karar]=(c[v.karar]||0)+1;w[v.karar]=(w[v.karar]||0)+x;W+=x});
+  let top="TUT";["AL","SAT"].forEach(d=>{if(W&&c[d]>=2&&w[d]/W>=.6)top=d});
+  const guc=W?(w.AL-w.SAT)/W:0;
+  return {karar:top,c,n:list.length,guc,oran:W?w[top]/W:0};
 }
+// Aşırı uç bölgelerde kısa vadeli sinyali frenle: sert düşüşten sonra SAT, sert yükselişten sonra AL demek geç kalmış olabilir
+function hisseKarar(k,vs){const a=getA(k),c=consensus(vs||votes(k));if(!a||HZ!=="1h")return c;const r=(MK[k]&&MK[k].rsi!=null)?MK[k].rsi:a.noHist?null:a.R;
+  if(r!=null&&c.karar==="SAT"&&r<30)return {...c,karar:"TUT",not:`Oylar SAT yönünde ama RSI ${nf(r,0)} ile aşırı satım bölgesinde; bu seviyeden satmak geç kalmış olabilir, tepki alımı da gelebilir. Bu yüzden TUT.`};
+  if(r!=null&&c.karar==="AL"&&r>75)return {...c,karar:"TUT",not:`Oylar AL yönünde ama RSI ${nf(r,0)} ile aşırı alım bölgesinde; bu seviyeden almak riskli, düzeltme gelebilir. Bu yüzden TUT.`};
+  return c}
+function kararK(k){const key=HZ+k;if(KC[key])return KC[key];const a=getA(k);if(!a)return null;return KC[key]=hisseKarar(k)}
 function targets(k){
   const a=getA(k);if(!a)return [];
   const t=[];votes(k).forEach(v=>{if(v.hedef)t.push({ad:v.ad,id:v.id,v:+v.hedef})});
@@ -415,72 +430,97 @@ function spark(a){
 }
 
 /* ================= sayfalar ================= */
-let filt=store.get("filt","all"),q="";
+let filt=store.get("filt","all"),q="",LIM=100,irng=store.get("irng","gun");
+if(!["all","fav","up","down","al","sat"].includes(filt))filt="all";
+/* BIST 100 genel grafiği */
+function idxSeries(){
+  const x=(SNAP.endeksler||{}).XU100;if(!x||!x.last)return null;
+  if(irng==="gun"){const today=(x.g&&x.g.length)?x.g[x.g.length-1][0]:"";let pts=(x.id===today?x.i||[]:[]).map(([h,v])=>({l:h,v}));
+    if(pts.length<2)pts=[{l:"Önceki kapanış",v:x.prev},{l:(x.t||"").split(" ").pop(),v:x.last}];return {x,pts,base:x.prev}}
+  const n={"1h":6,"1a":22,"3a":64,"6a":128}[irng]||22,g=(x.g||[]).slice(-n);if(g.length<2)return {x,pts:[{l:"",v:x.prev},{l:"",v:x.last}],base:x.prev};
+  const pts=g.map(r=>({l:dLbl(r[0]),v:r[4]}));return {x,pts,base:pts[0].v};
+}
+function idxCard(){
+  const S=idxSeries();
+  if(!S)return `<div class="card"><div class="sum-top"><span class="label">BIST 100</span></div><p class="small muted">Endeks verisi yükleniyor…</p></div>`;
+  const {x}=S,ch=(x.last/x.prev-1)*100,e=S.pts[S.pts.length-1].v,d=(e/S.base-1)*100;
+  return `<div class="card chart-card" style="padding:16px 12px 12px">
+    <div style="padding:0 4px"><div class="sum-top" style="margin-bottom:2px"><span class="label">BIST 100 endeksi</span><span class="xs muted">${esc(x.t||"")}</span></div>
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="sum-big" style="font-size:28px">${nf(x.last,2)}</span><span class="pill ${cls(ch)} ${cls(ch)}">${pct(ch)}</span>${irng!=="gun"?`<span class="xs muted">${{"1h":"1 hafta","1a":"1 ay","3a":"3 ay","6a":"6 ay"}[irng]}: <b class="${cls(d)}">${pct(d)}</b></span>`:""}</div></div>
+    <div class="chart-wrap" id="ichart"></div>
+    <div class="chart-foot"><span>${esc(S.pts[0].l)}</span><span>${irng==="gun"?"Kesikli çizgi: önceki kapanış":""}</span><span>${esc(S.pts[S.pts.length-1].l)}</span></div>
+    <div class="seg sm" id="irng" style="margin:10px 4px 0">${[["gun","Gün"],["1h","1H"],["1a","1A"],["3a","3A"],["6a","6A"]].map(([r,l])=>`<button data-ir="${r}" aria-pressed="${r===irng}">${l}</button>`).join("")}</div></div>`;
+}
+function drawIdx(){
+  const box=$("#ichart"),S=idxSeries();if(!box||!S)return;const {pts,base}=S;
+  const W=360,H=170,L=4,R=50,Tp=10,B=8;
+  const vals=pts.map(p=>p.v).concat(irng==="gun"?[base]:[]);let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.1||hi*.002;lo-=pad;hi+=pad;
+  const x=i=>L+(W-L-R)*(pts.length===1?.5:i/(pts.length-1)),y=v=>Tp+(H-Tp-B)*(1-(v-lo)/(hi-lo));
+  const end=pts[pts.length-1].v,col=end>=base?"#22C38E":"#F4475C",P=pts.map((p,i)=>[x(i),y(p.v)]),d=smoothPath(P);
+  let g="";[hi-pad,(hi+lo)/2,lo+pad].forEach(v=>{g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#1F2B3C"/><text x="${W-R+6}" y="${y(v)+4}" fill="#5C6C81" font-size="10.5" font-family="Manrope,sans-serif">${nf(v,0)}</text>`});
+  if(irng==="gun")g+=`<line x1="${L}" x2="${W-R}" y1="${y(base)}" y2="${y(base)}" stroke="#5C6C81" stroke-dasharray="3 4"/>`;
+  g+=`<defs><linearGradient id="gi" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>`;
+  if(pts.length>1)g+=`<path d="${d}L${x(pts.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#gi)"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+  g+=`<circle cx="${x(pts.length-1)}" cy="${y(end)}" r="4.5" fill="${col}" stroke="#111823" stroke-width="2"/><g id="ixh" visibility="hidden"><line id="ixl" y1="${Tp}" y2="${H-B}" stroke="#8B9AAE" stroke-dasharray="2 3"/><circle id="ixc" r="5" fill="${col}" stroke="#0A0F16" stroke-width="2"/></g>`;
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="BIST 100 grafiği">${g}</svg><div class="tip" id="itip" hidden></div>`;
+  const svg=box.querySelector("svg"),tip=$("#itip"),xh=$("#ixh");
+  const show=ev=>{const r=svg.getBoundingClientRect(),vx=(ev.clientX-r.left)/r.width*W,i=Math.max(0,Math.min(pts.length-1,Math.round((vx-L)/(W-L-R)*(pts.length-1)))),p=pts[i];
+    xh.setAttribute("visibility","visible");$("#ixl").setAttribute("x1",x(i));$("#ixl").setAttribute("x2",x(i));$("#ixc").setAttribute("cx",x(i));$("#ixc").setAttribute("cy",y(p.v));
+    tip.hidden=false;tip.style.left=Math.max(55,Math.min(r.width-55,x(i)/W*r.width))+"px";tip.style.top="-6px";const dd=(p.v/base-1)*100;tip.innerHTML=`${nf(p.v,2)} <b class="${cls(dd)}">${pct(dd)}</b><span>${esc(p.l)}</span>`};
+  const hide=()=>{xh.setAttribute("visibility","hidden");tip.hidden=true};
+  svg.addEventListener("pointermove",show);svg.addEventListener("pointerdown",show);svg.addEventListener("pointerleave",hide);svg.addEventListener("pointerup",e=>{if(e.pointerType!=="mouse")setTimeout(hide,1200)});
+}
 function renderMarket(){
-  const ups=ALL.filter(a=>a.ch>0).length,downs=ALL.filter(a=>a.ch<0).length,flat=ALL.length-ups-downs;
-  const vs=ALL.map(a=>consensus(votes(a.k)).karar);const nAL=vs.filter(v=>v==="AL").length,nSAT=vs.filter(v=>v==="SAT").length,nTUT=vs.length-nAL-nSAT;
-  const aiOk=(AI.modeller||[]).filter(m=>m.durum!=="hata").length;
+  const n=MKL.length||ALL.length;
   $("#p-piyasa").innerHTML=`
-  <div class="card">
-    <div class="sum-top"><span class="label">BIST 30</span><span class="small muted">${esc(SNAP.guncelleme||"")}</span></div>
-    <div class="sum-big"><span class="up">${ups} yükselen</span> <span class="faint">·</span> <span class="down">${downs} düşen</span></div>
-    <div class="bar" style="margin-top:12px"><i style="flex:${ups};background:var(--up)"></i><i style="flex:${flat};background:var(--faint)"></i><i style="flex:${downs};background:var(--down)"></i></div>
-    <div class="sum-grid"><div><span class="xs muted">AL diyor</span><b class="up">${nAL}</b></div><div><span class="xs muted">TUT</span><b class="hold">${nTUT}</b></div><div><span class="xs muted">SAT diyor</span><b class="down">${nSAT}</b></div></div>
-    <div style="margin-top:12px">${hzSeg("hzM")}</div>
-    <p class="xs faint" style="margin-top:10px">${HZL[HZ]} vadede ${aiOk?aiOk+" yapay zekâ, Claude, temel ve teknik analizin":"Claude, temel ve teknik analizin"} ortak kararı</p>
-  </div>
-  <div class="seg" id="uni"><button data-u="30" aria-pressed="${uni==="30"}">BIST 30</button><button data-u="tum" aria-pressed="${uni==="tum"}">Tüm hisseler${MKL.length?" ("+MKL.length+")":""}</button></div>
-  <input class="search" id="q" type="search" placeholder="${MKL.length?MKL.length+" hisse içinde ara":"Hisse ya da şirket ara"}" value="${esc(q)}" aria-label="Hisse ara">
+  <div id="idx">${idxCard()}</div>
+  <input class="search" id="q" type="search" placeholder="${n>40?n+" hisse içinde ara":"Hisse ya da şirket ara"}" value="${esc(q)}" aria-label="Hisse ara">
   ${FAV.filter(k=>getA(k)).length?`<div class="card" style="padding-bottom:6px"><div class="card-h" style="margin-bottom:4px"><h2>★ Favorilerim</h2><span class="xs muted">${FAV.filter(k=>getA(k)).length} hisse</span></div><div class="list" style="border:0;background:none" id="favrows"></div></div>`:""}
   <div class="seg" id="filt">${[["all","Tümü"],["fav","★"],["up","Yükselen"],["down","Düşen"],["al","AL"],["sat","SAT"]].map(([k,l])=>`<button data-f="${k}" aria-pressed="${k===filt}">${l}</button>`).join("")}</div>
+  <div id="kinfo"></div>
   <div class="list" id="rows"></div>
-  <p class="disc">Fiyatlar yaklaşık 15 dk gecikmelidir. Kararlar ve hedefler yatırım tavsiyesi değildir.</p>`;
-  renderRows();
-  $("#q").addEventListener("input",e=>{q=e.target.value;renderRows()});
-  $("#uni").onclick=e=>{const b=e.target.closest("[data-u]");if(!b)return;uni=b.dataset.u;store.set("uni",uni);[...$("#uni").children].forEach(x=>x.setAttribute("aria-pressed",x===b));if(uni==="tum")loadGec();renderRows()};
-  $("#filt").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(!b)return;filt=b.dataset.f;store.set("filt",filt);[...$("#filt").children].forEach(x=>x.setAttribute("aria-pressed",x===b));renderRows()});
+  <p class="disc">Fiyatlar yaklaşık 15 dk gecikmelidir. AL/SAT kararları yapay zekâ ve formül tahminidir, yatırım tavsiyesi değildir; tahminler yanılabilir.</p>`;
+  drawIdx();renderRows();
+  $("#q").addEventListener("input",e=>{q=e.target.value;LIM=100;renderRows()});
+  $("#filt").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(!b)return;filt=b.dataset.f;LIM=100;store.set("filt",filt);[...$("#filt").children].forEach(x=>x.setAttribute("aria-pressed",x===b));renderRows()});
+  $("#idx").addEventListener("click",e=>{const b=e.target.closest("[data-ir]");if(!b)return;irng=b.dataset.ir;store.set("irng",irng);$("#idx").innerHTML=idxCard();drawIdx()});
 }
-function rowHtml(a){const c=consensus(votes(a.k)).karar;return `<button class="row" data-k="${a.k}">
-    <span style="min-width:0"><span class="code">${isFav(a.k)?`<span class="star">★</span>`:""}${a.k}</span><span class="ai-dot pill ${kCls(c)} ${kCls(c)}">${c}</span><span class="name">${esc(a.s.ad)}</span></span>
+function badge(k){const c=kararK(k);return c?`<span class="ai-dot pill ${kCls(c.karar)} ${kCls(c.karar)}">${c.karar}</span>`:""}
+function rowHtml(a,rozet){return `<button class="row" data-k="${a.k}">
+    <span style="min-width:0"><span class="code">${isFav(a.k)?`<span class="star">★</span>`:""}${a.k}</span>${rozet?badge(a.k):""}<span class="name">${esc(a.s.ad)}</span></span>
     ${spark(a)}
     <span class="r"><span class="px">${px(a.last)}</span><span class="ch ${cls(a.ch)} ${cls(a.ch)}">${pct(a.ch)}</span></span></button>`}
 function liteSpark(k,ch){const c=(((GEC&&GEC.g)||{})[k]||[]).slice(-20).map(r=>r[1]);const m=MK[k];if(m)c.push(m.last);if(c.length<3)return `<svg viewBox="0 0 76 30" aria-hidden="true"></svg>`;
   const W=76,H=30,lo=Math.min(...c),hi=Math.max(...c),P=c.map((v,i)=>[i*(W-4)/(c.length-1)+2,H-4-(v-lo)/(hi-lo||1)*(H-8)]);
   return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smoothPath(P)}" fill="none" stroke="${ch>=0?"#22C38E":"#F4475C"}" stroke-width="1.8" stroke-linecap="round"/></svg>`}
-function liteRow(m){const c=tvKarar(m.tv);return `<button class="row" data-k="${esc(m.k)}">
-    <span style="min-width:0"><span class="code">${isFav(m.k)?`<span class="star">★</span>`:""}${esc(m.k)}</span>${c?`<span class="ai-dot pill ${kCls(c)} ${kCls(c)}">${c}</span>`:""}<span class="name">${esc(m.ad)}</span></span>
+function liteRow(m,rozet){return `<button class="row" data-k="${esc(m.k)}">
+    <span style="min-width:0"><span class="code">${isFav(m.k)?`<span class="star">★</span>`:""}${esc(m.k)}</span>${rozet?badge(m.k):""}<span class="name">${esc(m.ad)}</span></span>
     ${liteSpark(m.k,m.ch)}
     <span class="r"><span class="px">${px(m.last)}</span><span class="ch ${cls(m.ch)} ${cls(m.ch)}">${pct(m.ch)}</span></span></button>`}
-const anyRow=k=>BY[k]?rowHtml(BY[k]):MK[k]?liteRow(MK[k]):"";
-const kararOf=k=>BY[k]?consensus(votes(k)).karar:MK[k]?tvKarar(MK[k].tv):null;
+const anyRow=(k,rozet)=>BY[k]?rowHtml(BY[k],rozet):MK[k]?liteRow(MK[k],rozet):"";
 function renderRows(){
   const fr=$("#favrows");if(fr)fr.innerHTML=FAV.filter(k=>getA(k)).map(k=>anyRow(k).replace('class="row"','class="row" style="padding-inline:0"')).join("");
-  const t=nrm(q.trim());
-  if(uni==="tum"||(t&&MKL.length)){
-    let arr=(MKL.length?MKL.map(m=>m.k):ALL.map(a=>a.k)).filter(k=>{if(!t)return true;const n=(BY[k]?BY[k].s.ad:(MK[k]||{}).ad)||"";return nrm(k).includes(t)||nrm(n).includes(t)});
-    if(uni!=="tum")arr.sort((x,y)=>(BY[y]?1:0)-(BY[x]?1:0));
-    const chOf=k=>BY[k]?BY[k].ch:MK[k].ch;
-    if(filt==="fav")arr=arr.filter(isFav);
-    else if(filt==="up")arr=arr.filter(k=>chOf(k)>0).sort((x,y)=>chOf(y)-chOf(x));
-    else if(filt==="down")arr=arr.filter(k=>chOf(k)<0).sort((x,y)=>chOf(x)-chOf(y));
-    else if(filt==="al"||filt==="sat"){const w=filt==="al"?"AL":"SAT";arr=arr.filter(k=>kararOf(k)===w)}
-    const LIM=t?80:150,n=arr.length;
-    $("#rows").innerHTML=(arr.slice(0,LIM).map(anyRow).join("")||`<p class="muted" style="padding:18px">${!MKL.length?"Hisse listesi yükleniyor…":filt==="fav"?"Henüz favori hisse yok. Hisse sayfasındaki ☆ ile ekle.":"Eşleşen hisse yok."}</p>`)+(n>LIM?`<p class="xs muted" style="padding:14px 16px">${n} hisseden ilk ${LIM} tanesi gösteriliyor. Diğerleri için yukarıdan ara.</p>`:"");
-    return;
-  }
-  let arr=ALL.filter(a=>!t||nrm(a.k).includes(t)||nrm(a.s.ad).includes(t));
-  if(filt==="fav")arr=arr.filter(a=>isFav(a.k));
-  else if(filt==="up")arr=arr.filter(a=>a.ch>0).sort((x,y)=>y.ch-x.ch);
-  else if(filt==="down")arr=arr.filter(a=>a.ch<0).sort((x,y)=>x.ch-y.ch);
-  else if(filt==="al"||filt==="sat"){const w=filt==="al"?"AL":"SAT";arr=arr.map(a=>({a,c:consensus(votes(a.k))})).filter(o=>o.c.karar===w).sort((x,y)=>y.c.c[w]-x.c.c[w]).map(o=>o.a)}
-  $("#rows").innerHTML=arr.map(rowHtml).join("")||`<p class="muted" style="padding:18px">${filt==="fav"?"Henüz favori hisse yok. Hisse sayfasındaki ☆ ile ekle.":"Eşleşen hisse yok."}</p>`;
+  const rows=$("#rows");if(!rows)return;
+  const t=nrm(q.trim()),kd=filt==="al"||filt==="sat";
+  const kod=[...new Set([...MKL.map(m=>m.k),...ALL.map(a=>a.k)])];
+  let arr=kod.filter(k=>{if(!t)return true;const n=(BY[k]?BY[k].s.ad:(MK[k]||{}).ad)||"";return nrm(k).includes(t)||nrm(n).includes(t)});
+  const chOf=k=>BY[k]?BY[k].ch:MK[k].ch,pdOf=k=>(MK[k]&&MK[k].pd)||0;
+  if(!t&&!kd)arr.sort((x,y)=>pdOf(y)-pdOf(x));
+  if(filt==="fav")arr=arr.filter(isFav);
+  else if(filt==="up")arr=arr.filter(k=>chOf(k)>0).sort((x,y)=>chOf(y)-chOf(x));
+  else if(filt==="down")arr=arr.filter(k=>chOf(k)<0).sort((x,y)=>chOf(x)-chOf(y));
+  else if(kd){const w=filt==="al"?"AL":"SAT";arr=arr.map(k=>({k,c:kararK(k)})).filter(o=>o.c&&o.c.karar===w).sort((x,y)=>w==="AL"?y.c.guc-x.c.guc||y.c.n-x.c.n:x.c.guc-y.c.guc||y.c.n-x.c.n).map(o=>o.k)}
+  const ki=$("#kinfo");if(ki)ki.innerHTML=kd?`<div class="card" style="padding:12px 14px">${hzSeg("hzM")}<p class="xs muted" style="margin-top:8px">${arr.length} hisse ${HZL[HZ]} vadesinde ${filt==="al"?"AL":"SAT"} diyor. Karar için kaynakların en az %60'ının aynı yönde olması gerekir; en güçlü sinyal en üstte. Ayrıntı için hisseye dokun.</p>${GEC?"":`<p class="xs faint" style="margin-top:4px">Tüm hisselerin geçmiş verisi yükleniyor, liste birazdan uzayacak…</p>`}</div>`:"";
+  const n=arr.length;
+  rows.innerHTML=(arr.slice(0,LIM).map(k=>anyRow(k,kd)).join("")||`<p class="muted" style="padding:18px">${!kod.length?"Hisse listesi yükleniyor…":filt==="fav"?"Henüz favori hisse yok. Hisse sayfasındaki ☆ ile ekle.":kd?"Şu an bu yönde güçlü sinyal veren hisse yok.":"Eşleşen hisse yok."}</p>`)+(n>LIM?`<button class="btn ghost" id="more" style="margin:12px;width:calc(100% - 24px)">Daha fazla göster (${n-LIM} hisse daha)</button>`:"");
+  const mb=$("#more");if(mb)mb.onclick=()=>{LIM+=150;renderRows()};
 }
 $("#p-piyasa").addEventListener("click",e=>{const b=e.target.closest(".row[data-k]");if(b)openDetail(b.dataset.k)});
 
 let asked=store.get("asked",false);
 function openDetail(k,keepScroll,fromPop){
   const a=getA(k);if(!a)return;cur=a;if(a.lite){if(!GEC)loadGec();if(mode==="mum")mode="line"}
-  const vs=votes(k),con=consensus(vs),tg=targets(k);
+  const vs=votes(k),con=hisseKarar(k,vs),tg=targets(k);
   const avg=tg.length?tg.reduce((s,t)=>s+t.v,0)/tg.length:(HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc);
   const lo=Math.min(a.last,...tg.map(t=>t.v)),hi=Math.max(a.last,...tg.map(t=>t.v)),span=(hi-lo)||a.last*.02,pos=v=>((v-lo+span*.08)/(span*1.16))*100;
   const exp=[...(OUT.yukselis||[]).map(x=>({...x,yon:"up"})),...(OUT.dusus||[]).map(x=>({...x,yon:"down"}))].find(x=>x.sembol===k);
@@ -507,17 +547,19 @@ function openDetail(k,keepScroll,fromPop){
     <div class="card-h"><h2>Yapay zekâ kararı</h2><span class="xs muted">${esc(fmtTime(AI.updatedAt||OUT.updatedAt))}</span></div>
     ${hzSeg("hzD")}<div style="height:12px"></div>
     <div class="ask" id="ask" ${asked?"hidden":""}>
-      <p class="small muted">${a.lite?"TradingView göstergeleri ve teknik analiz":aiNames.length?esc(aiNames.join(", "))+", Claude ve teknik analiz":"Claude ve teknik analiz"} bu hisseyi değerlendirdi. Kararı görmek için sor.</p>
+      <p class="small muted">${a.lite?(a.noHist?"TradingView göstergeleri":"TradingView göstergeleri ve teknik analiz"):aiNames.length?esc(aiNames.join(", "))+", Claude ve teknik analiz":"Claude ve teknik analiz"} bu hisseyi değerlendirdi. Kararı görmek için sor.</p>
       <button class="btn primary" id="askBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Yapay zekâlara sor</button>
     </div>
     <div id="answer" ${asked?"":"hidden"}>
       <div class="verdict"><span class="v ${kCls(con.karar)} ${kCls(con.karar)}">${con.karar}</span>
-        <div><b>${con.karar==="AL"?"Alınır":con.karar==="SAT"?"Satılır":"Tutulur"} <span class="small muted">· ${HZL[HZ]} vadede</span></b><p class="small muted">${con.n} değerlendirmeden ${con.c.AL} AL, ${con.c.TUT} TUT, ${con.c.SAT} SAT</p>
+        <div><b>${con.karar==="AL"?"Alınır":con.karar==="SAT"?"Satılır":"Tutulur"} <span class="small muted">· ${HZL[HZ]} vadede</span></b><p class="small muted">${con.n} değerlendirmeden ${con.c.AL} AL, ${con.c.TUT} TUT, ${con.c.SAT} SAT${con.karar!=="TUT"?` · oyların %${nf(con.oran*100,0)}'i`:""}</p>
         <div class="votes">${vs.map(v=>`<i style="background:var(--${kCls(v.karar)==="up"?"up":kCls(v.karar)==="down"?"down":"hold"})" title="${esc(v.ad)}"></i>`).join("")}</div></div></div>
+      ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--hold-a)">${esc(con.not)}</p>`:""}
       <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
-        <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p></div>
+        <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null?`<span class="xs faint">Güven: ${gSev(v.guven)}${v.guven<50?" · yarım oy sayılır":""}</span>`:""}${isabetTxt(v.id)}</div>
         <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.hedef?`<span class="tg">${HZL[HZ]}: ${px(v.hedef)}</span>`:""}</div></div>`).join("")}</div>
-      ${a.lite?`<p class="note">Yapay zekâ ve Claude değerlendirmesi BIST 30 hisselerinde yapılıyor. Bu hissede TradingView göstergeleri ve teknik analiz var.</p>`:aiNames.length?"":`<p class="note">Llama, OpenRouter, Grok, GPT, DeepSeek ve Mistral'ın kararları, API anahtarları GitHub'a eklenince burada görünecek.</p>`}
+      ${a.lite?`<p class="note">Yapay zekâ ve Claude değerlendirmesi BIST 30 hisselerinde yapılıyor. Bu hissede TradingView göstergeleri ve teknik analiz var; ikisi aynı yönde değilse karar TUT olur.</p>`:""}
+      <p class="note">AL ya da SAT için kaynakların en az %60'ının aynı yönde olması gerekir, yoksa karar TUT'tur. Bu bilgiler yatırım tavsiyesi değildir; yapay zekâ tahminleri yanılabilir.</p>
     </div>
   </div>
 
@@ -533,7 +575,7 @@ function openDetail(k,keepScroll,fromPop){
     ${exp?`<p class="small" style="margin-top:14px;padding:12px;border-radius:12px;background:var(--${exp.yon}-a)"><b class="${exp.yon}">${exp.yon==="up"?"Kısa vadede haberlere göre yükselmesi bekleniyor":"Kısa vadede haberlere göre düşmesi bekleniyor"}</b><br>${esc(exp.neden)}</p>`:""}
   </div>
 
-  <div class="card">
+  ${a.noHist?"":`<div class="card">
     <div class="card-h"><h2>Al-sat seviyeleri</h2><span class="xs muted">Risk/ödül 1:${nf(a.rr,1)}</span></div>
     <div class="levels">
       <div class="lv buy"><div class="k">Alış bölgesi</div><div class="val">${nf(a.bLo,a.bLo>=100?1:2)}–${nf(a.bHi,a.bHi>=100?1:2)}</div><div class="s">Destek civarı</div></div>
@@ -541,15 +583,15 @@ function openDetail(k,keepScroll,fromPop){
       <div class="lv tgt"><div class="k">Hedef 1</div><div class="val">${px(a.t1)}</div><div class="s">${pct((a.t1/a.last-1)*100)}</div></div>
       <div class="lv tgt"><div class="k">Hedef 2</div><div class="val">${px(a.t2)}</div><div class="s">${pct((a.t2/a.last-1)*100)}</div></div>
     </div>
-  </div>
+  </div>`}
 
   ${temelCard(k)}
   <div class="card">
     <div class="card-h"><h2>Göstergeler</h2></div>
     <div class="kv">
       <div><span>RSI (14)</span><b><span class="gauge"><i style="left:${Math.max(0,Math.min(100,a.R))}%"></i></span>${nf(a.R,0)}</b></div>
-      <div><span>Trend (10/20 gün ort.)</span><b class="${a.m10>a.m20?"up":"down"}">${a.m10>a.m20?"Yukarı":"Aşağı"}</b></div>
-      <div><span>Destek / Direnç</span><b>${px(a.sup)} / ${px(a.res)}</b></div>
+      ${a.noHist?"":`<div><span>Trend (10/20 gün ort.)</span><b class="${a.m10>a.m20?"up":"down"}">${a.m10>a.m20?"Yukarı":"Aşağı"}</b></div>
+      <div><span>Destek / Direnç</span><b>${px(a.sup)} / ${px(a.res)}</b></div>`}
       <div><span>Son 1 hafta</span><b class="${cls(a.perf5)}">${pct(a.perf5)}</b></div>
       <div><span>Son 1 ay</span><b class="${cls(a.perf20)}">${pct(a.perf20)}</b></div>
       <div><span>Günlük oynaklık</span><b>%${nf(a.A/a.last*100,1)}</b></div>
@@ -625,7 +667,7 @@ function renderNews(){
 let ex=store.get("ex","up");
 function renderOutlook(){
   const up=(OUT.yukselis||[]),dn=(OUT.dusus||[]),list=ex==="up"?up:dn;
-  const cons=ALL.map(a=>({a,c:consensus(votes(a.k))}));
+  const cons=ALL.map(a=>({a,c:kararK(a.k)}));
   const topAL=cons.filter(o=>o.c.karar==="AL").sort((x,y)=>y.c.c.AL-x.c.c.AL).slice(0,5),topSAT=cons.filter(o=>o.c.karar==="SAT").sort((x,y)=>y.c.c.SAT-x.c.c.SAT).slice(0,5);
   $("#p-beklenti").innerHTML=`
   <div class="card"><div class="card-h"><h2>Günün özeti</h2><span class="xs muted">${esc(OUT.guncelleme||"")}</span></div><p style="line-height:1.6">${esc(OUT.ozet||"")}</p></div>
@@ -645,32 +687,80 @@ function renderOutlook(){
 $("#p-beklenti").addEventListener("click",e=>{const b=e.target.closest("[data-k]");if(b&&BY[b.dataset.k])openDetail(b.dataset.k)});
 
 /* fonlar */
-let myF=store.get("funds2",null),fq="",fsort=store.get("fsort","g1a"),curF=null;
+let myF=store.get("funds2",null),fq="",fsort=store.get("fsort","g1a"),curF=null,ffilt=store.get("ffilt","all"),FLIM=40,FAI=seed("seed-fai");
 const FSORT=[["g1a","1 ay"],["g3a","3 ay"],["gyb","Yılbaşı"],["g1y","1 yıl"]];
 const allFunds=()=>FUNDS.tum||[];
-const fInfo=k=>{const t=allFunds().find(f=>f.k===k)||{},d=(FUNDS.fonlar||{})[k]||{};return {k,...t,...d,getiri:d.getiri||{g1a:t.g1a,g3a:t.g3a,g6a:t.g6a,gyb:t.gyb,g1y:t.g1y,g3y:t.g3y}}};
+let FMAP=null,FMAPsrc=null,FRANK=null,FKC={};
+function fMap(){if(FMAPsrc!==FUNDS){FMAPsrc=FUNDS;FMAP={};allFunds().forEach(f=>FMAP[f.k]=f);FRANK=null;FKC={}}return FMAP}
+// Kategori içi getiri sırası (0 = en kötü, 1 = en iyi): fon, kendi türündeki fonlarla karşılaştırılır
+function fRank(){if(FRANK)return FRANK;FRANK={};const gr={};allFunds().forEach(f=>{(gr[f.tur||"?"]=gr[f.tur||"?"]||[]).push(f)});
+  Object.values(gr).forEach(list=>{["g1a","g3a","g6a"].forEach(m=>{const l=list.filter(f=>f[m]!=null).sort((a,b)=>a[m]-b[m]);l.forEach((f,i)=>{(FRANK[f.k]=FRANK[f.k]||{n:list.length})[m]=l.length>1?i/(l.length-1):.5})})});return FRANK}
+const FMW={"1h":["g1a"],"1a":["g1a","g3a"],"3a":["g3a","g6a"]};
+function fundVotes(k){
+  const f=fInfo(k),g=f.getiri||{},list=[];
+  const m=(FAI.fonlar||{})[k]||{};
+  const at=v=>{if(!v)return null;const kk=HZ==="1h"?v.karar:v["karar"+HZ];if(!kk)return null;return {karar:kk,getiri:HZ==="1h"?v.getiri:v["getiri"+HZ]}};
+  (FAI.modeller||[]).forEach(md=>{const v=m[md.id],h=at(v);if(h&&md.durum!=="hata")list.push({id:md.id,ad:md.ad,...v,...h,eski:md.durum==="eski"})});
+  const cv=(OUT.fonlar||{})[k],ch=at(cv);if(ch)list.push({id:"claude",ad:"Claude",...cv,...ch});
+  const r=fRank()[k];
+  if(r&&r.n>=5){const ms=FMW[HZ].filter(x=>r[x]!=null&&g[x]!=null);if(ms.length){const p=ms.reduce((s,x)=>s+r[x],0)/ms.length,ret=g[ms[ms.length-1]];
+    let karar=p>=.7&&ret>0?"AL":p<=.3&&ret<0?"SAT":"TUT";
+    // getirinin çoğu tek bir günlük sıçramadan geliyorsa (temettü, değerleme düzeltmesi vb.) momentum sayılmaz
+    const sr=(f.g||[]).slice(-23).map(x=>x[1]);let zip=0;for(let i=1;i<sr.length;i++)zip=Math.max(zip,Math.abs(sr[i]/sr[i-1]-1)*100);
+    const sicrama=zip>=5&&Math.abs(ret)>0&&zip>=Math.abs(ret)*.5;if(sicrama)karar="TUT";
+    list.push({id:"momentum",ad:"Getiri momentumu",karar,guven:sicrama?30:Math.round(40+Math.abs(p-.5)*60),neden:(sicrama?`Getirinin büyük kısmı tek günlük %${nf(zip,1)}'lik sıçramadan geliyor, kalıcı eğilim sayılmadı. `:"")+`Kendi türündeki ${r.n} fon arasında ${ms.map(x=>({g1a:"1 ay",g3a:"3 ay",g6a:"6 ay"})[x]).join(" ve ")} getiri sırası 100 üzerinden ${nf(p*100,0)}; ${({g1a:"1 ay",g3a:"3 ay",g6a:"6 ay"})[ms[ms.length-1]]} getirisi %${nf(ret,1)}`})}}
+  const s=f.g||[];if(s.length>=25){const c=s.map(x=>x[1]),last=c[c.length-1],m10=sma(c,10),m20=sma(c,20),d5=(last/c[c.length-6]-1)*100;
+    let zip=0;for(let i=Math.max(1,c.length-22);i<c.length;i++)zip=Math.max(zip,Math.abs(c[i]/c[i-1]-1)*100);
+    const sc=(last>m20?1:-1)+(m10>m20?1:-1);const karar=HZ==="3a"||zip>=5?"TUT":sc>=2&&d5>0?"AL":sc<=-2&&d5<0?"SAT":"TUT";
+    list.push({id:"teknik",ad:"Grafik (teknik)",karar,guven:HZ==="3a"?35:55,neden:`Fiyat 20 günlük ortalamanın ${last>m20?"üstünde":"altında"}, kısa vadeli eğilim ${m10>m20?"yukarı":"aşağı"}, son 5 işlem günü %${nf(d5,1)}`})}
+  list.forEach(v=>{if(v.getiri!=null&&!getiriOk(v.karar,+v.getiri))v.getiri=null});
+  return list;
+}
+const GLIM={"1h":6,"1a":12,"3a":25};
+function getiriOk(karar,r){if(!isFinite(r)||Math.abs(r)>GLIM[HZ])return false;if(karar==="AL"&&r<=0)return false;if(karar==="SAT"&&r>=0)return false;return true}
+function fKarar(k){const key=HZ+k;if(FKC[key])return FKC[key];fMap();return FKC[key]=consensus(fundVotes(k))}
+const fInfo=k=>{const t=fMap()[k]||{},d=(FUNDS.fonlar||{})[k]||{};return {k,...t,...d,getiri:d.getiri||{g1a:t.g1a,g3a:t.g3a,g6a:t.g6a,gyb:t.gyb,g1y:t.g1y,g3y:t.g3y}}};
 const gp=v=>v==null?`<span class="faint">–</span>`:`<span class="${cls(v)}">${v>=0?"+":"−"}%${nf(Math.abs(v),Math.abs(v)>=100?0:1)}</span>`;
 function fSpark(g){if(!g||g.length<3)return "";const c=g.map(r=>r[1]),W=76,H=30,lo=Math.min(...c),hi=Math.max(...c);const P=c.map((v,i)=>[i*(W-4)/(c.length-1)+2,H-4-(v-lo)/(hi-lo||1)*(H-8)]);const col=c[c.length-1]>=c[0]?"#22C38E":"#F4475C";return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smoothPath(P)}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round"/></svg>`}
 function renderFunds(){
   const tracked=Object.keys(FUNDS.fonlar||{});if(!myF)myF=["AES","AFT","YAY","TTE","IPB","MAC","NNF","TI2","GSP","IHK"].filter(k=>tracked.includes(k)||!tracked.length);
   const t=nrm(fq.trim());
-  let list=allFunds();
+  let list=allFunds();const fk=ffilt==="al"||ffilt==="sat";
   if(t)list=list.filter(f=>nrm(f.k).includes(t)||nrm(f.ad).includes(t)||nrm(f.tur).includes(t));
-  list=list.filter(f=>f[fsort]!=null).sort((a,b)=>b[fsort]-a[fsort]).slice(0,t?60:30);
+  if(fk){const w=ffilt==="al"?"AL":"SAT";list=list.map(f=>({f,c:fKarar(f.k)})).filter(o=>o.c.karar===w).sort((x,y)=>w==="AL"?y.c.guc-x.c.guc||(y.f[fsort]??-1e9)-(x.f[fsort]??-1e9):x.c.guc-y.c.guc).map(o=>o.f)}
+  else list=list.filter(f=>f[fsort]!=null||t).sort((a,b)=>(b[fsort]??-1e9)-(a[fsort]??-1e9));
+  const fn=list.length;list=list.slice(0,FLIM);
   $("#p-fon").innerHTML=`
   <div class="card"><div class="card-h"><h2>Takip ettiğim fonlar</h2><span class="xs muted">${allFunds().length?allFunds().length+" fon içinde":""}</span></div>
     <div class="list" style="border:0;background:none">${myF.map(k=>{const f=fInfo(k),g1=(f.getiri||{}).g1a;return `<button class="row" data-f="${esc(k)}" style="padding-inline:0">
       <span style="min-width:0"><span class="code">${esc(k)}</span><span class="name">${esc(f.ad||"TEFAS fonu")}</span></span>${fSpark(f.g)}
       <span class="r"><span class="px">${f.fiyat?nf(f.fiyat,4):"–"}</span>${f.gunluk!=null?`<span class="ch ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:g1!=null?`<span class="xs muted">1 ay ${gp(g1)}</span>`:""}</span></button>`}).join("")||`<p class="muted small">Aşağıdan fon seçip takip et.</p>`}</div></div>
-  <input class="search" id="fq" type="search" placeholder="Fon ara: kod, isim ya da tür (ör. altın, teknoloji)" value="${esc(fq)}" aria-label="Fon ara">
-  <div class="seg" id="fs">${FSORT.map(([k,l])=>`<button data-s="${k}" aria-pressed="${k===fsort}">${l}</button>`).join("")}</div>
-  <div class="card" style="padding-block:4px"><div class="card-h" style="margin:12px 0 4px"><h2 style="font-size:15px">${t?"Arama sonuçları":"En çok kazandıranlar"}</h2><span class="xs muted">${FSORT.find(x=>x[0]===fsort)[1]} getirisi</span></div>
-    ${list.map(f=>`<button class="frow" data-f="${esc(f.k)}"><span style="min-width:0"><b>${esc(f.k)}</b> <span class="xs muted">${esc(f.tur||"")}</span><span class="name">${esc(f.ad)}</span></span><b>${gp(f[fsort])}</b></button>`).join("")||`<p class="muted small" style="padding:12px 0">${allFunds().length?"Eşleşen fon yok.":"Fon listesi yükleniyor."}</p>`}</div>
+  <input class="search" id="fq" type="search" placeholder="${allFunds().length?allFunds().length+" fon içinde ara: kod, isim ya da tür":"Fon ara: kod, isim ya da tür (ör. altın, teknoloji)"}" value="${esc(fq)}" aria-label="Fon ara">
+  <div class="seg" id="ff">${[["all","Tümü"],["al","AL"],["sat","SAT"]].map(([k,l])=>`<button data-ff="${k}" aria-pressed="${k===ffilt}">${l}</button>`).join("")}</div>
+  ${fk?`<div class="card" style="padding:12px 14px">${hzSeg("hzFL")}<p class="xs muted" style="margin-top:8px">${fn} fon ${HZL[HZ]} vadesinde ${ffilt==="al"?"AL":"SAT"} diyor. Yapay zekâ, Claude, kategori içi getiri momentumu ve grafik oylarının en az %60'ı aynı yönde olmalı. Ayrıntı için fona dokun.</p></div>`:`<div class="seg" id="fs">${FSORT.map(([k,l])=>`<button data-s="${k}" aria-pressed="${k===fsort}">${l}</button>`).join("")}</div>`}
+  <div class="card" style="padding-block:4px"><div class="card-h" style="margin:12px 0 4px"><h2 style="font-size:15px">${fk?(ffilt==="al"?"AL diyen fonlar":"SAT diyen fonlar"):t?"Arama sonuçları":"En çok kazandıranlar"}</h2><span class="xs muted">${FSORT.find(x=>x[0]===fsort)[1]} getirisi</span></div>
+    ${list.map(f=>{const c=fk?fKarar(f.k):null;return `<button class="frow" data-f="${esc(f.k)}"><span style="min-width:0"><b>${esc(f.k)}</b>${c?`<span class="ai-dot pill ${kCls(c.karar)} ${kCls(c.karar)}">${c.karar}</span>`:""} <span class="xs muted">${esc(f.tur||"")}</span><span class="name">${esc(f.ad)}</span></span><b>${gp(f[fsort])}</b></button>`}).join("")||`<p class="muted small" style="padding:12px 0">${!allFunds().length?"Fon listesi yükleniyor.":fk?"Şu an bu yönde güçlü sinyal veren fon yok.":"Eşleşen fon yok."}</p>`}
+    ${fn>FLIM?`<button class="btn ghost" id="fmore" style="margin:8px 0 12px;width:100%">Daha fazla göster (${fn-FLIM} fon daha)</button>`:""}</div>
   <p class="disc">Kaynak: TEFAS. Getiriler geçmiş performanstır, gelecekteki getiriyi göstermez.</p>`;
-  $("#fq").addEventListener("input",e=>{fq=e.target.value;const pos=e.target.selectionStart;renderFunds();const n=$("#fq");n.focus();n.setSelectionRange(pos,pos)});
-  $("#fs").onclick=e=>{const b=e.target.closest("[data-s]");if(!b)return;fsort=b.dataset.s;store.set("fsort",fsort);renderFunds()};
+  $("#ff").onclick=e=>{const b=e.target.closest("[data-ff]");if(!b)return;ffilt=b.dataset.ff;FLIM=40;store.set("ffilt",ffilt);renderFunds()};
+  const fm=$("#fmore");if(fm)fm.onclick=()=>{FLIM+=60;renderFunds()};
+  $("#fq").addEventListener("input",e=>{fq=e.target.value;FLIM=40;const pos=e.target.selectionStart;renderFunds();const n=$("#fq");n.focus();n.setSelectionRange(pos,pos)});
+  if($("#fs"))$("#fs").onclick=e=>{const b=e.target.closest("[data-s]");if(!b)return;fsort=b.dataset.s;store.set("fsort",fsort);renderFunds()};
 }
 $("#p-fon").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(b)openFund(b.dataset.f)});
+function fundAICard(k){
+  const vs=fundVotes(k);if(!vs.length)return "";const con=consensus(vs);
+  const gs=vs.filter(v=>v.getiri!=null).map(v=>+v.getiri),ort=gs.length?gs.reduce((a,b)=>a+b,0)/gs.length:null;
+  return `<div class="card"><div class="card-h"><h2>Yapay zekâ kararı</h2><span class="xs muted">${esc(fmtTime(FAI.updatedAt||""))}</span></div>
+    ${hzSeg("hzF")}<div style="height:12px"></div>
+    <div class="verdict"><span class="v ${kCls(con.karar)} ${kCls(con.karar)}">${con.karar}</span>
+      <div><b>${con.karar==="AL"?"Alınır":con.karar==="SAT"?"Satılır":"Tutulur"} <span class="small muted">· ${HZL[HZ]} vadede</span></b><p class="small muted">${con.n} değerlendirmeden ${con.c.AL} AL, ${con.c.TUT} TUT, ${con.c.SAT} SAT</p>
+      ${ort!=null?`<p class="small">Beklenen getiri ortalaması: <b class="${cls(ort)}">${pct(ort)}</b></p>`:""}</div></div>
+    <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
+      <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null?`<span class="xs faint">Güven: ${gSev(v.guven)}${v.guven<50?" · yarım oy sayılır":""}</span>`:""}</div>
+      <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.getiri!=null?`<span class="tg">${HZL[HZ]}: ${pct(+v.getiri)}</span>`:""}</div></div>`).join("")}</div>
+    <p class="note">AL ya da SAT için oyların en az %60'ının aynı yönde olması gerekir, yoksa karar TUT'tur. Getiri momentumu fonu kendi türündeki fonlarla karşılaştırır. Yatırım tavsiyesi değildir; tahminler yanılabilir.</p></div>`;
+}
 function openFund(k,noPush){
   curF=k;const f=fInfo(k),g=f.getiri||{},on=myF.includes(k),s=f.g||[];
   let chart="";
@@ -686,10 +776,11 @@ function openFund(k,noPush){
     <div class="big" style="font-size:${f.fiyat?34:26}px">${f.fiyat?nf(f.fiyat,4)+` <span style="font-size:17px" class="muted">TL</span>`:esc(k)}</div>
     <div class="meta">${f.gunluk!=null?`<span class="pill ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:""}<span class="small muted">${esc(f.ad||"")}</span></div></div>
   ${chart?`<div class="card chart-card">${chart}</div>`:""}
+  ${fundAICard(k)}
   <button class="btn ${on?"ghost":"primary"}" id="ftrack">${on?"Takipten çıkar":"Takip et"}</button>
   <div class="card"><div class="card-h"><h2>Getiriler</h2></div>
     <div class="ratios" style="margin:0;grid-template-columns:repeat(3,1fr)">${[["1 ay",g.g1a],["3 ay",g.g3a],["6 ay",g.g6a],["Yılbaşından",g.gyb],["1 yıl",g.g1y],["3 yıl",g.g3y]].map(([l,v])=>`<div><span>${l}</span><b>${gp(v)}</b></div>`).join("")}</div></div>
-  ${f.buyukluk||f.yatirimci||f.r?`<div class="card"><div class="kv">${f.buyukluk?`<div><span>Fon büyüklüğü</span><b>${nf(f.buyukluk/1e9,2)} Mr TL</b></div>`:""}${f.yatirimci?`<div><span>Yatırımcı</span><b>${Number(f.yatirimci).toLocaleString("tr-TR")}</b></div>`:""}${f.r?`<div><span>Risk değeri (1-7)</span><b>${esc(f.r)}</b></div>`:""}${f.siralama&&f.kategoriSayi?`<div><span>Kategorisinde sırası</span><b>${esc(f.siralama)} / ${esc(f.kategoriSayi)}</b></div>`:""}</div></div>`:""}
+  ${f.buyukluk||f.yatirimci||f.r?`<div class="card"><div class="kv">${f.buyukluk?`<div><span>Fon büyüklüğü</span><b>${mr(f.buyukluk)} TL</b></div>`:""}${f.yatirimci?`<div><span>Yatırımcı</span><b>${Number(f.yatirimci).toLocaleString("tr-TR")}</b></div>`:""}${f.r?`<div><span>Risk değeri (1-7)</span><b>${esc(f.r)}</b></div>`:""}${f.siralama&&f.kategoriSayi?`<div><span>Kategorisinde sırası</span><b>${esc(f.siralama)} / ${esc(f.kategoriSayi)}</b></div>`:""}</div></div>`:""}
   ${s.length>2?"":`<p class="small muted" style="text-align:center">Bu fonun fiyat grafiği henüz yok. Grafikler en çok kazandıran 150 fon ve takip listesi için çekiliyor.</p>`}
   ${(()=>{const nw=newsForFund(k).slice(0,6);return nw.length?`<div class="card"><div class="card-h"><h2>Bu fonu etkileyebilecek haberler</h2></div><p class="xs muted" style="margin:-6px 0 6px">Konular: ${fundTopics(f).map(w=>w.toLocaleLowerCase("tr")).join(", ")}</p><div class="news">${nw.map(n=>newsRow(n)).join("")}</div></div>`:""})()}
   <a class="btn ghost" href="https://www.tefas.gov.tr/FonAnaliz.aspx?FonKod=${encodeURIComponent(k)}" target="_blank" rel="noopener">TEFAS'ta aç</a>
@@ -711,14 +802,17 @@ window.addEventListener("popstate",e=>{const s=e.state||{v:"piyasa"};if(s.v==="d
 window.hrBack=function(){const s=history.state;if(s&&s.v&&s.v!=="piyasa"){history.back();return true}if($("#p-piyasa").hidden){showTab("piyasa",true);return true}return false};
 
 /* ================= yeni sürüm uyarısı ================= */
-(function(){const m=navigator.userAgent.match(/HisseRadarApp\/(\d+)/);if(!m)return;const mine=+m[1];
+// Tasarım değişiklikleri APK'sız gelir; uyarı yalnızca uygulamanın kendisi (android/) değiştiğinde gerekir.
+// APK_MIN: kurulu olması gereken en düşük sürüm. Android kodu değişince bu sayı yeni sürüme çekilir.
+const APK_MIN=9;
+(function(){const m=navigator.userAgent.match(/HisseRadarApp\/(\d+)/);if(!m)return;const mine=+m[1];if(mine>=APK_MIN)return;
   fetch("https://api.github.com/repos/maj834/Hisse/releases/latest",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(d=>{if(!d)return;const n=+((d.tag_name||"").split(".").pop()||0);if(n>mine){const b=document.createElement("a");b.className="update";b.href="https://github.com/maj834/Hisse/releases/latest";b.innerHTML=`<b>Yeni güncelleme var · 1.${n}</b><span>Dokun, güncelleme sayfasında HisseRadar.apk'yı indirip kur. Favorilerin silinmez.</span>`;document.querySelector("main").prepend(b)}}).catch(()=>{})})();
 
 /* ================= canlılık ================= */
 function isOpen(){const n=new Date(),d=n.getUTCDay(),m=n.getUTCHours()*60+n.getUTCMinutes();return d>=1&&d<=5&&m>=420&&m<=915}
 function updateLive(){const t=T(SNAP.updatedAt),age=(Date.now()-t)/6e4,on=t&&age<6&&isOpen();$("#live").classList.toggle("on",!!on);
   const lt=(SNAP.guncelleme||"").split(", ").pop();$("#liveTxt").textContent=on?"Canlı · "+lt:isOpen()?"Veri "+lt:"Kapanış "+lt}
-function renderAll(){rebuild();renderMarket();renderOutlook();renderNews();renderFunds();updateLive();if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true)}
+function renderAll(){rebuild();if($("#q")&&$("#idx")){$("#idx").innerHTML=idxCard();drawIdx();renderRows()}else renderMarket();renderOutlook();renderNews();renderFunds();updateLive();FKC={};if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true);if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}
 function flash(){document.body.classList.add("flash");setTimeout(()=>document.body.classList.remove("flash"),1500)}
 
 /* ================= veri: 5 saniyede bir ================= */
@@ -727,11 +821,12 @@ let busy=false;
 async function poll(){if(busy||document.hidden)return;busy=true;try{const d=await getJ(RAW("data","snapshot.json"));if(d.hisseler&&T(d.updatedAt)>T(SNAP.updatedAt)){SNAP=d;renderAll();flash()}}catch(e){}busy=false;updateLive()}
 async function pollMarket(){try{const d=await getJ(RAW("data","market.json"));if(d.hisseler&&T(d.updatedAt)>T(MKD.updatedAt)){const ilk=!MKL.length;setMarket(d);if(ilk)renderMarket();else renderRows();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}}
 async function pollSlow(){
-  pollMarket();if(uni==="tum")loadGec();
+  pollMarket();loadGec();
   try{const d=await getJ(RAW("data","news.json"));if(d.items&&T(d.updatedAt)>T(NEWS.updatedAt)){NEWS=d;renderNews()}}catch(e){}
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/temel.json"));if(T(d.updatedAt)>T(TEMEL.updatedAt)){TEMEL=d;renderAll()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/fon_ai.json"));if(T(d.updatedAt)>T(FAI.updatedAt)){FAI=d;FKC={};renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}
   if(Date.now()-lastFunds>6e5){lastFunds=Date.now();try{const d=await getJ(RAW("data","funds.json"));if(T(d.updatedAt)>T(FUNDS.updatedAt)){FUNDS=d;renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}}
 }
 let lastFunds=0;

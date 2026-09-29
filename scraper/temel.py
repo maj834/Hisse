@@ -170,7 +170,8 @@ def analiz(kod: str) -> dict:
     nakit = son(q("CashAndCashEquivalents"))[1]
     t = lambda n: son(veri.get(f"trailing{n}", []))[1]  # noqa: E731
     pd_ = t("MarketCap")
-    fk = t("PeRatio") or (round(pd_ / net_ttm, 2) if pd_ and net_ttm and net_ttm > 0 else None)
+    # Son 4 çeyrek zarardaysa F/K anlamsızdır (Yahoo bazen yine de bir değer döndürüyor)
+    fk = (t("PeRatio") or (round(pd_ / net_ttm, 2) if pd_ else None)) if net_ttm is not None and net_ttm > 0 else None
     pddd = t("PbRatio") or (round(pd_ / oz, 2) if pd_ and oz and oz > 0 else None)
     roe = round(net_ttm / oz * 100, 1) if net_ttm is not None and oz and oz > 0 else None
 
@@ -184,13 +185,20 @@ def analiz(kod: str) -> dict:
             puan += 1; neden.append(f"hasılat yıllık %{gy:.0f} arttı")
         elif gy < 0:
             puan -= 1; neden.append(f"hasılat yıllık %{abs(gy):.0f} azaldı")
-    if ny is not None:
-        if ny >= 20:
-            puan += 1; neden.append(f"net kâr yıllık %{ny:.0f} arttı")
+    son_net = deger(net, tarih)
+    gy_net = deger(net, gecen_yil) if gecen_yil else None
+    if ny is not None and son_net is not None and gy_net is not None:
+        if gy_net < 0 <= son_net:
+            puan += 1; neden.append("net kâr geçen yılın aynı çeyreğindeki zarardan kâra döndü")
+        elif gy_net >= 0 > son_net:
+            puan -= 1; neden.append("geçen yıl kâr eden şirket bu çeyrek zarar etti")
+        elif gy_net < 0 and son_net < 0:
+            pass
+        elif ny >= 20:
+            puan += 1; neden.append(f"net kâr yıllık %{ny:.0f} arttı" if ny <= 200 else "net kâr yıllık %200'den fazla arttı (düşük baz)")
         elif ny <= -20:
             puan -= 1; neden.append(f"net kâr yıllık %{abs(ny):.0f} azaldı")
-    son_net = deger(net, tarih)
-    if son_net is not None and son_net < 0:
+    if son_net is not None and son_net < 0 and not (gy_net is not None and gy_net >= 0):
         puan -= 1; neden.append("son çeyrekte zarar")
     if roe is not None:
         if roe >= 25:

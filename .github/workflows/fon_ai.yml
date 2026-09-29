@@ -1,0 +1,60 @@
+name: Fon yapay zeka degerlendirme
+
+# Takip edilen ve en çok yatırımcısı olan ~60 fonu Groq (Llama) ve OpenRouter ile değerlendirir;
+# sonucu data/fon_ai.json'a yazar. Fon fiyatları gün sonunda açıklandığı için günde iki kez çalışır
+# (07:40 ve 19:40 TSİ). Anahtarlar: GROQ_API_KEY, OPENROUTER_API_KEY (Settings -> Secrets -> Actions).
+on:
+  schedule:
+    - cron: "40 4 * * 1-5"
+    - cron: "40 16 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fon-ai
+  cancel-in-progress: false
+
+jobs:
+  degerlendir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install --quiet requests
+
+      - name: güncel veriyi al
+        run: |
+          git fetch --quiet --depth 1 origin data
+          mkdir -p /tmp/veri
+          git show origin/data:funds.json > /tmp/veri/funds.json
+          git show origin/data:news.json > /tmp/veri/news.json 2>/dev/null || cp data/news.json /tmp/veri/news.json
+
+      - name: değerlendir
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_FON_MODEL: ${{ vars.GROQ_FON_MODEL }}
+          OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL }}
+          FUNDS: /tmp/veri/funds.json
+          NEWS: /tmp/veri/news.json
+        run: python scraper/fon_ai.py
+
+      - name: kaydet
+        run: |
+          git config user.name "hisse-radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/fon_ai.json
+          git diff --cached --quiet && exit 0
+          git commit --quiet -m "Fon yapay zeka degerlendirmesi $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
+          for i in 1 2 3; do
+            git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1

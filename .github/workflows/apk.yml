@@ -5,7 +5,7 @@ name: APK derle
 on:
   push:
     branches: [main]
-    paths: ["android/**", "app/**", ".github/workflows/apk.yml"]
+    paths: ["android/**", ".github/workflows/apk.yml"]
   workflow_dispatch:
 
 permissions:

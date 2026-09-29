@@ -64,6 +64,7 @@ jobs:
           git config user.name "hisse-radar-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/ai.json
+          git add data/karar_gecmisi.json 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit --quiet -m "Yapay zeka degerlendirmesi $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
           for i in 1 2 3; do

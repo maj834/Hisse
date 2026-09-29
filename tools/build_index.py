@@ -5,7 +5,7 @@ from pathlib import Path
 KOK = Path(__file__).resolve().parent.parent
 t = (KOK / "app" / "app.html").read_text(encoding="utf-8")
 for yer, dosya in [("__SNAP__", "snapshot"), ("__NEWS__", "news"), ("__OUTLOOK__", "outlook"), ("__FUNDS__", "funds"),
-                   ("__AI__", "ai"), ("__TEMEL__", "temel")]:
+                   ("__AI__", "ai"), ("__TEMEL__", "temel"), ("__FAI__", "fon_ai")]:
     yol = KOK / "data" / f"{dosya}.json"
     veri = yol.read_text(encoding="utf-8") if yol.exists() else "{}"
     if dosya == "funds":  # 2000+ fonluk liste uygulama açılınca ayrıca indirilir; başlangıç dosyasını küçük tut

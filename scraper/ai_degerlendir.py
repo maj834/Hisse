@@ -110,6 +110,22 @@ def ilgili_haber(kod, news, n=2):
     return sonuc
 
 
+def degisim_yazi(r) -> str:
+    """Yıllık değişimi yanıltmayacak biçimde yaz: işaret değişimi ve çok büyük oranlar ayrıca belirtilir."""
+    son, gy, y = r.get("son"), r.get("gecenYil"), r.get("yillik")
+    if son is None or gy is None or y is None:
+        return "yıllık karşılaştırma yok"
+    if gy < 0 <= son:
+        return "zarardan kâra geçti (geçen yılın aynı çeyreğine göre)"
+    if gy >= 0 > son:
+        return "kârdan zarara geçti (geçen yılın aynı çeyreğine göre)"
+    if gy < 0 and son < 0:
+        return "zarar " + ("azaldı" if son > gy else "büyüdü")
+    if y > 200:
+        return "yıllık %200'den fazla arttı (düşük bazdan, temkinli yorumla)"
+    return f"yıllık {y:+.0f}%"
+
+
 def temel_ek(kod, temel) -> str:
     x = (temel.get("hisseler") or {}).get(kod)
     if not x:
@@ -118,15 +134,30 @@ def temel_ek(kod, temel) -> str:
     o = x.get("oranlar", {})
     parca = []
     for ad in ("Hasılat", "Net kâr"):
-        if ad in s and s[ad].get("yillik") is not None:
-            parca.append(f"{ad.lower()} yıllık {s[ad]['yillik']:+.0f}%")
-    if o.get("fk"):
+        if ad in s:
+            parca.append(f"{ad.lower()} {degisim_yazi(s[ad])}")
+    ttm = o.get("netKarTTM")
+    if ttm is not None and ttm < 0:
+        parca.append("son 4 çeyrek toplamı zarar (F/K anlamsız)")
+    elif o.get("fk") and x.get("para", "TRY") == "TRY":
         parca.append(f"F/K {o['fk']:.1f}")
-    if o.get("pddd"):
+    if o.get("pddd") and x.get("para", "TRY") == "TRY":
         parca.append(f"PD/DD {o['pddd']:.1f}")
     if o.get("roe") is not None:
         parca.append(f"ROE %{o['roe']:.0f}")
     return f" | Temel ({x.get('ceyrek','')}): " + ", ".join(parca) if parca else ""
+
+
+def endeks_satiri(snap) -> str:
+    x = (snap.get("endeksler") or {}).get("XU100")
+    if not x or not x.get("g"):
+        return ""
+    c = [r[4] for r in x["g"]]
+    last = x["last"]
+    d5 = (last / c[-6] - 1) * 100 if len(c) > 6 else 0
+    d20 = (last / c[-21] - 1) * 100 if len(c) > 21 else 0
+    return (f"\nGenel piyasa: BIST 100 {last:,.0f}, bugün {(last / x['prev'] - 1) * 100:+.2f}%, 5 gün {d5:+.1f}%, 20 gün {d20:+.1f}%, "
+            f"20 günlük ortalamanın {'üstünde' if last > sma(c, 20) else 'altında'}, RSI14 {rsi(c):.0f}.\n")
 
 
 def istem_olustur(snap, news, outlook, temel=None) -> str:
@@ -137,22 +168,26 @@ def istem_olustur(snap, news, outlook, temel=None) -> str:
         hb = ilgili_haber(k, news)
         return s + (" | Haber: " + " / ".join(hb) if hb else "")
     satirlar = "\n".join(satir(k, h) for k, h in sorted(hisseler.items()) if h.get("g"))
-    basliklar = "\n".join(f"- {n.get('t','')}: {n.get('title','')}" for n in (news.get("items") or [])[:25])
+    cop = re.compile(r"hava durumu|hangi kanalda|\bdizi\b|\bmaç|burç|canlı grafik|stock price today|hisse senedi canlı|resmî gazete|resmi gazete", re.I)
+    basliklar = "\n".join(f"- {n.get('t','')}: {n.get('title','')}" for n in [x for x in (news.get("items") or []) if not cop.search(x.get("title", ""))][:25])
     gundem = ""
     if outlook.get("olaylar"):
         gundem = "\nGünün önemli olayları:\n" + "\n".join(f"- {o.get('baslik','')}: {o.get('detay','')}" for o in outlook["olaylar"][:5])
-    return f"""Sen Borsa İstanbul'u takip eden deneyimli bir analistsin. Bugün {dt.datetime.now(IST):%d.%m.%Y %H:%M}.
-Aşağıda BIST 30 hisselerinin güncel teknik verileri, son çeyrek finansalları (varsa) ve son haber başlıkları var. Teknik görünümü, şirketin finansal durumunu ve haberleri birlikte değerlendir. Her hisse için 1 haftalık vadede
-karar ver: "AL", "TUT" ya da "SAT". Gerçekçi ol: her hisseye AL deme, zayıf olanlara SAT de.
-Karar verirken şunları birlikte tart: trend (fiyatın ortalamalara göre yeri, MACD), momentum (RSI; 30 altı aşırı satım, 70 üstü aşırı alım),
-destek/direnç (20 gün ve 3 ay aralığı), hacim teyidi, şirketin son çeyrek finansalları ve hisseye özel haberler ile genel gündem.
-Tek bir göstergeye dayanma; sinyaller çelişiyorsa TUT de ve güveni düşük tut.
-Her hisse için ÜÇ vade ayrı ayrı değerlendir: 1 hafta, 1 ay ve 3 ay. Kısa vadede teknik görünüm ve haberler, uzun vadede
-şirketin finansalları ve genel trend daha ağır bassın; vadeler arasında karar farklı olabilir.
-Her vade için gerçekçi bir hedef fiyat ver: 1 hafta genellikle ±%8, 1 ay ±%15, 3 ay ±%30 içinde; günlük oynaklığı (ATR) dikkate al.
-AL için hedef son fiyatın üstünde, SAT için altında olsun.
-Gerekçe en fazla 18 kelime, Türkçe; somut bir veri ya da haberi ansın.
-
+    return f"""Sen Borsa İstanbul'u takip eden temkinli ve dürüst bir analistsin. Bugün {dt.datetime.now(IST):%d.%m.%Y %H:%M}.
+Bu kararları sıradan yatırımcılar görecek; yanlış yönlendirmemek en önemli kural.
+Aşağıda BIST 30 hisselerinin güncel teknik verileri, son çeyrek finansalları (varsa) ve son haber başlıkları var.
+KURALLAR:
+1) YALNIZCA aşağıda verilen sayılara ve haber başlıklarına dayan. Veride olmayan rakam, haber, hedef ya da olay uydurma.
+2) Her hisse için ÜÇ vadeyi ayrı değerlendir: 1 hafta (karar/hedef), 1 ay (karar1a/hedef1a), 3 ay (karar3a/hedef3a).
+   Kısa vadede teknik görünüm ve haberler, uzun vadede finansallar ve genel trend ağır bassın.
+3) Sinyaller çelişiyorsa ya da emin değilsen TUT de. AL/SAT yalnızca birden fazla gösterge aynı yönü gösteriyorsa.
+   Genel piyasa yönünü de hesaba kat; her hisseye aynı kararı verme.
+4) Sert düşüşten sonra RSI 30'un altındaysa kısa vadede SAT demek geç kalmış olabilir; sert yükselişten sonra RSI 70'in üstündeyse AL demek riskli.
+5) Hedefler gerçekçi olsun ve günlük oynaklığı (ATR) aşmasın: 1 hafta en çok ±%8, 1 ay ±%15, 3 ay ±%30.
+   AL ise hedef son fiyatın ÜSTÜNDE, SAT ise ALTINDA, TUT ise son fiyata yakın olmalı. Bu kurala uymayan yanıtlar otomatik silinir.
+6) "guven" 0-100: sinyaller net ve birbirini destekliyorsa 65 üstü, karışıksa 50 altı ver. Aşırı güvenme.
+7) Gerekçe en fazla 18 kelime, Türkçe; mutlaka yukarıdaki veriden somut bir sayı ya da haberi ansın.
+{endeks_satiri(snap)}
 Hisseler:
 {satirlar}
 
@@ -173,9 +208,25 @@ def json_ayikla(metin: str):
         metin = m.group(1)
     bas = min([i for i in (metin.find("{"), metin.find("[")) if i >= 0], default=-1)
     son = max(metin.rfind("}"), metin.rfind("]"))
-    if bas < 0 or son < 0:
+    if bas < 0:
         raise ValueError("JSON bulunamadı")
-    veri = json.loads(metin[bas: son + 1])
+    if son < bas:
+        son = len(metin) - 1
+    try:
+        veri = json.loads(metin[bas: son + 1])
+    except ValueError:
+        # yanıt yarıda kesildiyse tamamlanmış kayıtları kurtar
+        parca = []
+        for m in re.finditer(r"\{[^{}]*\}", metin):
+            try:
+                o = json.loads(m.group(0))
+            except ValueError:
+                continue
+            if isinstance(o, dict) and (o.get("k") or o.get("kod")):
+                parca.append(o)
+        if not parca:
+            raise
+        veri = parca
     if isinstance(veri, dict):
         veri = veri.get("hisseler") or veri.get("stocks") or next((v for v in veri.values() if isinstance(v, list)), [])
     return veri
@@ -240,9 +291,11 @@ def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre
         model = tercih_et(adlar, tercihler, filtre)
         if not model:
             raise RuntimeError("uygun model yok")
-    govde = {"model": model, "temperature": 0.3,
+    govde = {"model": model, "temperature": 0.2, "max_tokens": 8000,
              "messages": [{"role": "system", "content": "Yalnızca geçerli JSON döndür."},
                           {"role": "user", "content": istem}]}
+    if "gpt-oss" in model:  # düşünme payı yanıtı yarıda kesmesin
+        govde["reasoning_effort"] = "low"
     if json_modu:
         govde["response_format"] = {"type": "json_object"}
     r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
@@ -255,8 +308,14 @@ def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre
     if r.status_code == 400 and json_modu:  # bazı modeller json modunu desteklemez
         govde.pop("response_format")
         r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
+    if r.status_code == 400 and "reasoning_effort" in govde:
+        govde.pop("reasoning_effort")
+        r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
     r.raise_for_status()
-    return model, r.json()["choices"][0]["message"]["content"]
+    ch = r.json()["choices"][0]
+    if ch.get("finish_reason") == "length":
+        log(model, "uyarı: yanıt uzunluk sınırında kesildi, tamamlanan kayıtlar kurtarılacak")
+    return model, ch["message"]["content"] or ""
 
 
 def groq(istem, anahtar):
@@ -336,7 +395,7 @@ def mistral(istem, anahtar):
 
 
 # Ücretsiz katmanda dakikalık metin sınırı düşük olanlara hisseler küçük gruplar hâlinde gönderilir
-PARCA = {"groq": 8, "mistral": 15}
+PARCA = {"groq": 6, "openrouter": 15, "mistral": 15}
 # Günlük ücretsiz kotası dar olanlar her saat değil, N saatte bir çalışır (arada önceki analiz gösterilir)
 PERIYOT = {"groq": 2}
 
@@ -353,16 +412,34 @@ SAGLAYICILAR = [
 KARAR = {"BUY": "AL", "HOLD": "TUT", "SELL": "SAT", "AL": "AL", "TUT": "TUT", "SAT": "SAT"}
 
 
-def _hedef(x, alan, last, alt, ust):
+# Vadeye göre izin verilen en büyük hedef sapması ve TUT için en büyük sapma
+SINIR = {"": (0.10, 0.04), "1a": (0.20, 0.08), "3a": (0.35, 0.15)}
+
+
+def _hedef(x, alan, last, vade, karar):
+    """Hedef fiyatı doğrula. Dönüş: (hedef | None, geçerli_mi). Yön ya da büyüklük tutarsızsa kayıt geçersizdir."""
+    ham = x.get(alan)
+    if ham in (None, ""):
+        return None, True
     try:
-        v = float(str(x.get(alan) or "").replace(",", "."))
+        v = float(str(ham).replace(",", "."))
     except ValueError:
-        return None
-    return round(v, 2) if last * alt <= v <= last * ust else None  # gerçek dışı hedefleri at
+        return None, True
+    r = v / last - 1
+    buyuk, tut = SINIR[vade]
+    if abs(r) > buyuk:
+        return None, False
+    if (karar == "AL" and r <= 0) or (karar == "SAT" and r >= 0) or (karar == "TUT" and abs(r) > tut):
+        return None, False
+    return round(v, 2), True
 
 
-def temizle(liste, hisseler) -> dict:
+GECERSIZ: dict[str, int] = {}
+
+
+def temizle(liste, hisseler, kimlik="") -> dict:
     sonuc = {}
+    simdi_ts = time.time()
     for x in liste or []:
         if not isinstance(x, dict):
             continue
@@ -372,19 +449,88 @@ def temizle(liste, hisseler) -> dict:
         karar = KARAR.get(str(x.get("karar") or x.get("decision") or "").upper())
         if not karar:
             continue
-        last = float(hisseler[kod]["last"])
+        h = hisseler[kod]
+        if simdi_ts - (h.get("ts") or simdi_ts) > 5 * 86400:  # fiyatı eski olana karar verilmez
+            continue
+        last = float(h["last"])
         try:
             guven = max(0, min(100, int(float(x.get("guven") or x.get("confidence") or 50))))
         except ValueError:
             guven = 50
-        k = {"karar": karar, "guven": guven, "hedef": _hedef(x, "hedef", last, 0.7, 1.3),
+        hedef, ok = _hedef(x, "hedef", last, "", karar)
+        if not ok:  # yönü ya da büyüklüğü tutarsız kararı atla
+            GECERSIZ[kimlik] = GECERSIZ.get(kimlik, 0) + 1
+            continue
+        k = {"karar": karar, "guven": guven, "hedef": hedef,
              "neden": str(x.get("neden") or x.get("reason") or "")[:200]}
-        for vade, alt, ust in (("1a", 0.6, 1.5), ("3a", 0.45, 1.9)):
+        for vade in ("1a", "3a"):
             kv = KARAR.get(str(x.get("karar" + vade) or "").upper())
             if kv:
-                k["karar" + vade] = kv
-                k["hedef" + vade] = _hedef(x, "hedef" + vade, last, alt, ust)
+                hv, ok = _hedef(x, "hedef" + vade, last, vade, kv)
+                if ok:
+                    k["karar" + vade] = kv
+                    k["hedef" + vade] = hv
+                else:
+                    GECERSIZ[kimlik] = GECERSIZ.get(kimlik, 0) + 1
         sonuc[kod] = k
+    return sonuc
+
+
+# ------------------------------------------------------------ isabet takibi
+GECMIS = Path(os.environ.get("KARAR_GECMISI", KOK / "data" / "karar_gecmisi.json"))
+VADE_GUN = {"1h": 5, "1a": 21, "3a": 63}
+TUT_ESIK = {"1h": 3.0, "1a": 6.0, "3a": 10.0}
+
+
+def isabet_guncelle(cikti: dict, snap: dict, outlook: dict) -> dict:
+    """Her günün kararlarını kaydeder; vadesi dolan kararları gerçekleşen fiyatla karşılaştırıp son 30 günün isabetini hesaplar."""
+    gecmis = oku(GECMIS, {"gunler": {}})
+    gunler = gecmis.setdefault("gunler", {})
+    hisseler = snap.get("hisseler") or {}
+    bugun = dt.datetime.now(IST).strftime("%Y-%m-%d")
+    kay = {"fiyat": {k: h["last"] for k, h in hisseler.items() if h.get("last")}, "k": {}}
+    kaynaklar = {m: {k: h[m] for k, h in cikti["hisseler"].items() if m in h}
+                 for m in {x["id"] for x in cikti["modeller"] if x.get("durum") == "ok"}}
+    kaynaklar["claude"] = outlook.get("kararlar") or {}
+    for m, kk in kaynaklar.items():
+        kay["k"][m] = {k: [v.get("karar"), v.get("karar1a"), v.get("karar3a")] for k, v in kk.items() if v.get("karar")}
+    if dt.datetime.now(IST).weekday() < 5:
+        gunler[bugun] = kay
+    for d in sorted(gunler)[:-130]:
+        gunler.pop(d)
+    # fiyat geçmişi: kayıtlardaki fiyatlar + snapshot günlük kapanışları
+    kapanis: dict[str, dict[str, float]] = {}
+    for d, g in gunler.items():
+        for k, v in g.get("fiyat", {}).items():
+            kapanis.setdefault(k, {})[d] = v
+    for k, h in hisseler.items():
+        for r in h.get("g") or []:
+            kapanis.setdefault(k, {})[r[0]] = r[4]
+    sinir = (dt.datetime.now(IST) - dt.timedelta(days=45)).strftime("%Y-%m-%d")
+    sonuc: dict[str, dict] = {}
+    for d0, g in gunler.items():
+        for m, kk in g.get("k", {}).items():
+            for kod, kararlar in kk.items():
+                seri = kapanis.get(kod, {})
+                tarihler = sorted(t for t in seri if t > d0)
+                p0 = g.get("fiyat", {}).get(kod) or seri.get(d0)
+                for i, vade in enumerate(("1h", "1a", "3a")):
+                    karar = kararlar[i] if i < len(kararlar) else None
+                    n = VADE_GUN[vade]
+                    if not karar or not p0 or len(tarihler) < n:
+                        continue
+                    bitis = tarihler[n - 1]
+                    if bitis < sinir:  # son 30 iş günü civarında vadesi dolanlar
+                        continue
+                    ret = (seri[bitis] / p0 - 1) * 100
+                    dogru = ret > 0 if karar == "AL" else ret < 0 if karar == "SAT" else abs(ret) < TUT_ESIK[vade]
+                    x = sonuc.setdefault(m, {}).setdefault(vade, {"n": 0, "d": 0})
+                    x["n"] += 1
+                    x["d"] += int(dogru)
+    for m in sonuc.values():
+        for vade, x in m.items():
+            m[vade] = {"n": x["n"], "oran": round(x["d"] / x["n"] * 100, 1)}
+    GECMIS.write_text(json.dumps(gecmis, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     return sonuc
 
 
@@ -428,15 +574,17 @@ def main() -> int:
                     ham = json_ayikla(metin)
                 except Exception as e:
                     raise RuntimeError(f"JSON okunamadı ({e}); yanıt başı: {metin[:120]!r}")
-                kararlar.update(temizle(ham, hisseler))
+                kararlar.update(temizle(ham, hisseler, kimlik))
                 if boy < len(kodlar) and i + boy < len(kodlar):
                     time.sleep(20)
             if len(kararlar) < len(hisseler) * 0.5:
-                raise RuntimeError(f"eksik yanıt ({len(kararlar)} hisse)")
+                raise RuntimeError(f"eksik ya da tutarsız yanıt ({len(kararlar)} geçerli hisse, {GECERSIZ.get(kimlik, 0)} tutarsız kayıt)")
+            if GECERSIZ.get(kimlik):
+                log(ad, GECERSIZ[kimlik], "tutarsız kayıt atıldı")
             for kod, k in kararlar.items():
                 cikti["hisseler"].setdefault(kod, {})[kimlik] = k
             cikti["modeller"].append({"id": kimlik, "ad": ad, "model": model, "durum": "ok", "sayi": len(kararlar),
-                                      "sure": round(time.time() - bas, 1)})
+                                      "atilan": GECERSIZ.get(kimlik, 0), "sure": round(time.time() - bas, 1)})
             calisan += 1
             log(ad, model, len(kararlar), "hisse")
         except Exception as e:
@@ -454,6 +602,10 @@ def main() -> int:
             else:
                 cikti["modeller"].append({"id": kimlik, "ad": ad, "durum": "hata", "hata": mesaj[:120]})
     CIKTI.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        cikti["isabet"] = isabet_guncelle(cikti, snap, outlook)
+    except Exception as e:
+        log("isabet hesaplanamadı:", e)
     CIKTI.write_text(json.dumps(cikti, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     log("yazıldı:", CIKTI, "çalışan model:", calisan)
     return 0

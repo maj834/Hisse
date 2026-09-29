@@ -66,6 +66,8 @@ HISSELER = {
     "VAKBN": ("VakıfBank", "Bankacılık"),
     "YKBNK": ("Yapı Kredi", "Bankacılık"),
 }
+# Ana ekrandaki genel grafik için endeksler (kod: ad, tür, Yahoo sembolleri)
+ENDEKSLER = {"XU100": ("BIST 100", "Endeks", ["XU100.IS"])}
 # Yahoo'da farklı kodla duran hisseler (ilk bulunan kullanılır)
 YAHOO_ALT = {"TRALT": ["TRALT.IS", "KOZAL.IS"]}
 
@@ -84,6 +86,9 @@ HABER_SORGULARI = [
     ("Fon", "yatırım fonları getiri"),
 ]
 
+# Borsa/ekonomiyle ilgisi olmayan ya da içeriksiz başlıklar (hava durumu, dizi, "canlı grafik" sayfaları vb.)
+HABER_COP = re.compile(r"hava durumu|hangi kanalda|\bdizi\b|\bmaç|burç|canlı grafik|stock price today|hisse senedi canlı|"
+                       r"namaz vakti|yeni bölüm|fragman|şans oyunu|\bloto\b|çekiliş", re.I)
 AY = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]
 AY_UZUN = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
 
@@ -172,9 +177,9 @@ def yahoo_sembol(kod: str) -> list[str]:
     return YAHOO_ALT.get(kod, [f"{kod}.IS"])
 
 
-def chart_dene(kod: str, aralik: str, arasi: str):
+def chart_dene(kod: str, aralik: str, arasi: str, semboller: list[str] | None = None):
     son = None
-    for s in yahoo_sembol(kod):
+    for s in (semboller or yahoo_sembol(kod)):
         try:
             return yahoo_chart(s, aralik, arasi)
         except Exception as e:
@@ -202,12 +207,12 @@ def gunluk_satirlar(res) -> list[list]:
     return [tekil[k] for k in sorted(tekil)]
 
 
-def hisse_guncelle(kod: str, eski: dict | None, gunluk_de: bool) -> dict:
-    ad, sektor = HISSELER[kod]
+def hisse_guncelle(kod: str, eski: dict | None, gunluk_de: bool, semboller: list[str] | None = None) -> dict:
+    ad, sektor = HISSELER.get(kod) or ENDEKSLER[kod][:2]
     kayit = dict(eski or {})
     kayit.update({"ad": ad, "sektor": sektor})
 
-    gun = chart_dene(kod, "1d", "5m")
+    gun = chart_dene(kod, "1d", "5m", semboller)
     meta = gun.get("meta", {})
     last = meta.get("regularMarketPrice")
     prev = meta.get("chartPreviousClose") or meta.get("previousClose")
@@ -238,7 +243,7 @@ def hisse_guncelle(kod: str, eski: dict | None, gunluk_de: bool) -> dict:
     g = kayit.get("g") or []
     if gunluk_de or not g:
         try:
-            g = gunluk_satirlar(chart_dene(kod, "3mo", "1d"))
+            g = gunluk_satirlar(chart_dene(kod, "6mo" if kod in ENDEKSLER else "3mo", "1d", semboller))
         except Exception as e:
             log("günlük alınamadı", kod, e)
     # bugünün mumu: gün içi veriden güncelle (Yahoo'nun günlük satırı yoksa ya da eksikse)
@@ -246,7 +251,7 @@ def hisse_guncelle(kod: str, eski: dict | None, gunluk_de: bool) -> dict:
     acilis = noktalar[0][1] if noktalar else prev
     bugun = [gun_id, round(acilis, 4), round(max(hi, last), 4), round(min(lo, last), 4), round(last, 4), int(hacim)]
     g = [s for s in g if s[0] != gun_id] + [bugun]
-    kayit["g"] = sorted(g, key=lambda s: s[0])[-60:]
+    kayit["g"] = sorted(g, key=lambda s: s[0])[-(130 if kod in ENDEKSLER else 60):]
     return kayit
 
 
@@ -280,7 +285,7 @@ def haberleri_cek(eski: dict) -> dict:
                 t = email.utils.parsedate_to_datetime(it.findtext("pubDate")).astimezone(IST)
             except Exception:
                 t = simdi()
-            if not baslik or not link:
+            if not baslik or not link or HABER_COP.search(baslik):
                 continue
             if baslik not in items:
                 items[baslik] = {"title": baslik, "url": link, "kaynak": kaynak, "kat": kat}
@@ -301,7 +306,8 @@ def haberleri_cek(eski: dict) -> dict:
                         items[baslik]["kat"] = "Borsa"
             items[baslik]["ts"] = int(t.timestamp())
             items[baslik]["t"] = kisa_tarih(t)
-    liste = sorted(items.values(), key=lambda x: x.get("ts", 0), reverse=True)[:120]
+    liste = sorted((x for x in items.values() if not HABER_COP.search(x.get("title", ""))),
+                   key=lambda x: x.get("ts", 0), reverse=True)[:120]
     return {"updatedAt": simdi().isoformat(timespec="seconds"), "kaynak": "Google Haberler", "items": liste}
 
 
@@ -558,6 +564,13 @@ def bir_tur(sayac: int, zorla_hepsi: bool) -> tuple[int, int]:
         time.sleep(0.4)
     for eski_kod in [k for k in hisseler if k not in HISSELER]:
         hisseler.pop(eski_kod)
+    endeksler = snap.get("endeksler", {})
+    for kod, (_, _, semboller) in ENDEKSLER.items():
+        try:
+            endeksler[kod] = hisse_guncelle(kod, endeksler.get(kod), gunluk_de, semboller)
+        except Exception as e:
+            log("hata", kod, e)
+    snap["endeksler"] = endeksler
     if basari:
         en_yeni = max((h.get("ts", 0) for h in hisseler.values()), default=0)
         z = dt.datetime.fromtimestamp(en_yeni, IST) if en_yeni else simdi()
