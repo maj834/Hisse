@@ -1,9 +1,11 @@
-name: Geçmiş veri testi
+name: Geçmiş veri testi ve günlük seçim
 
-# Hangi koşullarda tahminlerin gerçekten tuttuğunu 5 yıllık veriyle ölçer -> data/backtest.json
+# 1) Hangi koşullarda tahminlerin gerçekten tuttuğunu 4-5 yıllık veriyle ölçer -> data/backtest.json
+# 2) Bugün bu koşullara uyan en güçlü sinyalleri seçer, eski seçimleri gerçek fiyatlarla puanlar -> data/secim.json
+# Cerebras yalnızca burada, günde 1 çağrı ve toplam bütçe sınırıyla kullanılır (secim.py).
 on:
   schedule:
-    - cron: "30 4 * * 1-5"   # 07:30 TSİ, borsa açılmadan önce ("bugün uyan hisseler" güncel olsun)
+    - cron: "5 16 * * 1-5"   # 19:05 TSİ, kapanıştan ve son yapay zekâ turundan sonra
   workflow_dispatch:
 
 permissions:
@@ -24,13 +26,16 @@ jobs:
           python-version: "3.12"
       - run: pip install --quiet requests curl_cffi pandas numpy
       - run: python scraper/backtest.py
+      - run: python scraper/secim.py
+        env:
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
       - name: kaydet
         run: |
           git config user.name "hisse-radar-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/backtest.json
+          git add data/backtest.json data/secim.json
           git diff --cached --quiet && exit 0
-          git commit --quiet -m "Geçmiş veri testi $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
+          git commit --quiet -m "Günlük seçim $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
           for i in 1 2 3; do
             git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0
             sleep 5

@@ -66,7 +66,6 @@ jobs:
           SNAPSHOT: /tmp/veri/snapshot.json
           NEWS: /tmp/veri/news.json
           MARKET: /tmp/veri/market.json
-          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
         run: python scraper/ai_degerlendir.py
 
       - name: kaydet

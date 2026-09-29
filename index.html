@@ -795,11 +795,39 @@ function gundemKart(){const m=GUN.makro||{},pz=GUN.piyasa||{},sr=(m.seriler||[])
     <p class="note">Otomatik derlenmiştir: Alpha Vantage, web haber taraması ve Marketaux. Yatırım tavsiyesi değildir.</p></div>`}
 /* beklenti */
 let ex=store.get("ex","up");
+/* yüksek ihtimalli sinyaller: yalnızca geçmiş veri testinde tutan koşullar + canlı isabet takibi (data/secim.json) */
+let SEC={};
+const yuzde=v=>"%"+nf(v*100,0);
+const KOSUL_AD={"200 günlük ort. uzaklık: en düşük %20":"200 günlük ortalamanın en çok altında kalanlardan","200 günlük ort. uzaklık: en yüksek %20":"200 günlük ortalamanın en çok üstünde olanlardan",
+  "oynaklık: en yüksek %20":"en oynak hisselerden","oynaklık: en düşük %20":"en sakin hisselerden","Zirveden %30+ aşağı":"52 haftalık zirvesinden %30'dan fazla aşağıda",
+  "Düşen trend":"düşüş trendinde","Yükselen trend":"yükseliş trendinde","RSI 30-45":"RSI 30–45 arası (zayıf)","RSI<30":"RSI 30'un altında","RSI>70":"RSI 70'in üstünde"};
+const kosulYaz=l=>(l||[]).map(x=>KOSUL_AD[x]||x.replace(": en yüksek %20"," en yüksek %20'de").replace(": en düşük %20"," en düşük %20'de")).join(" · ");
+function secimKart(){
+  if(!SEC.updatedAt)return "";
+  const eski=(Date.now()-T(SEC.updatedAt))/36e5>100;
+  const z=eski?[]:(SEC.zayif||[]),g=eski?[]:(SEC.guclu||[]),c=SEC.canli||{},o=SEC.zayif_olcum||{};
+  const satir=(x,yon,alt)=>{const a=BY[x.kod];return `<button class="exp" data-k="${esc(x.kod)}">
+    <div class="top"><div><span class="code">${esc(x.kod)}</span> <span class="small muted">${a?esc(a.s.ad):esc(x.ad||"")}</span></div>${a?`<div style="text-align:right"><b>${px(a.last)}</b><br><span class="xs ${cls(a.ch)}">${pct(a.ch)}</span></div>`:""}</div>
+    <p class="small" style="line-height:1.55">${alt}</p></button>`};
+  const canli=t=>{const s=c[t]||{};return s.n?`Canlı sonuç: <b>${s.dogru}/${s.n} doğru (${yuzde(s.dogru/s.n)})</b>${s.bekleyen?` · ${s.bekleyen} tahmin sürüyor`:""}`:`Canlı takip başladı: ${s.bekleyen||0} tahmin sürüyor, ilk sonuçlar 1 ay sonra`};
+  return `<div class="card"><div class="card-h"><h2>Yüksek ihtimalli sinyaller</h2><span class="xs muted">${SEC.tarih?dLbl(SEC.tarih):""}</span></div>
+  <p class="small muted" style="line-height:1.55;margin-bottom:12px">Az ama ölçülmüş: 1 ay içinde hissenin <b>BIST 100'den</b> iyi mi kötü mü gideceği. Emin olunmayan gün liste boş kalır.</p>
+  ${eski?`<p class="small muted">Seçim ${esc(dLbl(SEC.tarih||""))} tarihinden, eski olduğu için gösterilmiyor.</p>`:""}
+  <span class="label down">▼ Piyasadan zayıf kalması beklenenler</span>
+  <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Geçmiş testte hiç görmediği ${o.donem?esc(o.donem.test_basi.slice(0,4)):"2025"}–bugün verisinde doğrulandı. Tahminsiz taban: ${o.taban?yuzde(o.taban):"–"}. ${canli("zayif")}</p>
+  ${z.map(x=>satir(x,"down",`${esc(kosulYaz(x.kosul))}<br><span class="xs faint">Geçmiş testte <b>${yuzde(x.isabet)}</b> doğru (${x.n} örnek)${x.kural_sayisi>1?` · ${x.kural_sayisi} kural aynı yönde`:""}</span>`)).join("")||`<p class="small muted" style="padding:6px 0 12px">Bugün yeterince güçlü sinyal yok.</p>`}
+  <div style="height:14px"></div>
+  <span class="label up">▲ Piyasadan güçlü gitmesi beklenenler</span>
+  <p class="xs muted" style="margin:6px 0 10px;line-height:1.5">Yükseliş tarafında geçmiş testte tutan kural bulunamadı. Burada yalnızca yapay zekâ, trend ve haberin aynı yönü gösterdiği en çok 3 hisse var. <b>Ölçüm sürüyor.</b> ${canli("guclu")}</p>
+  ${g.map(x=>satir(x,"up",`${esc(x.neden||"")}<br><span class="xs faint">Yapay zekâ AL oyu ${esc(x.oy||"")} · RSI ${nf(x.rsi||0,0)} · 3 ayda BIST 100'e göre ${x.bist100e_gore_3ay>=0?"+":""}%${nf(x.bist100e_gore_3ay||0,1)}</span>`)).join("")||`<p class="small muted" style="padding:6px 0 4px">Bugün şartları sağlayan hisse yok.</p>`}
+  </div>`;
+}
 function renderOutlook(){
   const taze=outTaze(),up=taze?(OUT.yukselis||[]):[],dn=taze?(OUT.dusus||[]):[],list=ex==="up"?up:dn;
   const cons=ALL.map(a=>({a,c:kararK(a.k)}));
   const topAL=cons.filter(o=>o.c.karar==="AL").sort((x,y)=>y.c.c.AL-x.c.c.AL).slice(0,5),topSAT=cons.filter(o=>o.c.karar==="SAT").sort((x,y)=>y.c.c.SAT-x.c.c.SAT).slice(0,5);
   $("#p-beklenti").innerHTML=`
+  ${secimKart()}
   ${taze?`<div class="card"><div class="card-h"><h2>Günün özeti</h2><span class="xs muted">${esc(OUT.guncelleme||"")}</span></div><p style="line-height:1.6">${esc(OUT.ozet||"")}</p></div>`:`<div class="card"><div class="card-h"><h2>Claude'un haber yorumu</h2></div><p class="small muted" style="line-height:1.6">Claude'un son yorumu ${OUT.updatedAt?"çok eski ("+esc(OUT.guncelleme||"")+")":"henüz yok"}, bu yüzden yanıltmamak için gösterilmiyor. Yeni yorum geldiğinde burada görünecek. Aşağıdaki piyasa gündemi ve yapay zekâ kararları güncel verilerle hesaplanıyor.</p></div>`}
   ${gundemKart()}
   <div class="seg" id="ex"><button data-e="up" aria-pressed="${ex==="up"}">▲ Yükselecekler</button><button data-e="down" aria-pressed="${ex==="down"}">▼ Düşecekler</button></div>
@@ -987,6 +1015,7 @@ async function pollMarket(){try{const d=await getJ(RAW("data","market.json"));if
 async function pollSlow(){
   pollMarket();loadGec();
   try{const d=await getJ(RAW("data","news.json"));if(d.items&&T(d.updatedAt)>T(NEWS.updatedAt)){NEWS=d;renderNews()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/secim.json"));if(T(d.updatedAt)>T(SEC.updatedAt)){SEC=d;renderOutlook()}}catch(e){}
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/temel.json"));if(T(d.updatedAt)>T(TEMEL.updatedAt)){TEMEL=d;renderAll()}}catch(e){}

@@ -173,6 +173,7 @@ def main():
     xu_trend = ((xc > xc.rolling(200).mean()) & (xc.rolling(50).mean() > xc.rolling(200).mean())).astype(float)
 
     parcalar, bugun_ozellik, eksik = [], [], []
+    fiyatlar = {"XU100": {d.strftime("%Y-%m-%d"): round(float(v), 4) for d, v in xc.iloc[-90:].items()}}
     for i, kod in enumerate(kodlar):
         df = seri(kod)
         if df is None:
@@ -181,6 +182,7 @@ def main():
         o = ozellikler(df, xc)
         o["xu_trend"] = xu_trend.reindex(o.index).ffill()
         o["kod"] = kod
+        fiyatlar[kod] = {d.strftime("%Y-%m-%d"): round(float(v), 4) for d, v in df["c"].iloc[-90:].items()}
         o["tarih"] = o.index
         son = o.iloc[-1:].copy()
         if (pd.Timestamp.now().normalize() - son.index[-1]).days <= 6:
@@ -244,6 +246,20 @@ def main():
     gecen = sorted([k for k in kurallar if k["gecti"]], key=lambda k: (-k["test"]["isabet"], -k["test"]["n"]))
     log(f"Eğitimde tutan: {len(kurallar)}, testte de tutan: {len(gecen)}")
 
+    # birden çok doğrulanmış kurala aynı anda uyan hisseler daha mı isabetli? (1 aylık, piyasaya göre)
+    uyum = {}
+    for karar, yon in (("SAT", -1), ("AL", 1)):
+        kk = [k for k in gecen if k["karar"] == karar]
+        if not kk:
+            continue
+        sayac = sum((kos[k["kosul"][0]] if len(k["kosul"]) == 1 else (kos[k["kosul"][0]] & kos[k["kosul"][1]])).astype(int) for k in kk)
+        for en_az in range(1, len(kk) + 1):
+            m = sayac >= en_az
+            e = say(m & egitim, t["p_1a"], yon, t["tarih"])
+            s = say(m & test, t["p_1a"], yon, t["tarih"])
+            uyum.setdefault(karar, []).append({"en_az": en_az, "egitim": [round(e[1], 3), e[0]], "test": [round(s[1], 3), s[0]]})
+    log("Uyum:", uyum)
+
     # bugün bu kurallara uyan hisseler
     bugun = []
     if bugun_ozellik and gecen:
@@ -280,8 +296,21 @@ def main():
         "kurallar": gecen[:60],
         "egitimde_tutup_testte_tutmayan": len(kurallar) - len(gecen),
         "yakin": sorted([k for k in kurallar if not k["gecti"]], key=lambda k: -k["test"]["isabet"])[:20],
-        "bugun": bugun[:25],
+        "bugun": bugun[:40],
+        "uyum": uyum,
     }
+    # seçim programı için bugünkü göstergeler ve son 90 günlük fiyatlar (geçici dosya)
+    gunluk = {}
+    if bugun_ozellik:
+        b2 = pd.concat(bugun_ozellik, ignore_index=True)
+        b2["tarih"] = b2["tarih"].max()
+        for c_ in ("rs20", "rs60"):
+            b2[c_ + "_sira"] = b2[c_].rank(pct=True)
+        for _, s in b2.iterrows():
+            gunluk[s["kod"]] = {c_: (None if pd.isna(s[c_]) else round(float(s[c_]), 4))
+                                for c_ in ("rsi", "r20", "r60", "rs20", "rs60", "rs20_sira", "rs60_sira", "s200", "trend", "zirve", "hacim", "oyn", "likit")}
+    Path(os.environ.get("BT_GECICI", "/tmp/bt_gecici.json")).write_text(
+        json.dumps({"fiyat": fiyatlar, "gunluk": gunluk, "xu_trend": float(xu_trend.iloc[-1])}, ensure_ascii=False), encoding="utf-8")
     CIKTI.write_text(json.dumps(sonuc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     log(json.dumps({k: v for k, v in sonuc.items() if k not in ("kurallar", "bugun")}, ensure_ascii=False))
     for k in gecen[:15]:
