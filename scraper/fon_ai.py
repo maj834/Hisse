@@ -204,8 +204,8 @@ def temizle(liste, turler: dict) -> tuple[dict, int]:
 def groq_fon(istem_, anahtar):
     """Hisse değerlendirmesinden ayrı bir Groq modeli (her modelin kendi günlük kotası var)."""
     tercih = [os.environ["GROQ_FON_MODEL"]] if os.environ.get("GROQ_FON_MODEL") else []
-    tercih += ["qwen/qwen3-32b", "moonshotai/kimi-k2-instruct-0905", "openai/gpt-oss-120b"]
-    tercih += ["llama-3.3-70b-versatile"]
+    # hisse analiziyle aynı modelin günlük kotasını paylaşmamak için önce farklı model
+    tercih += ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]
     return groq_yedekli(istem_, anahtar, tercih, en_cok=3000)
 
 

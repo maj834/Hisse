@@ -45,7 +45,7 @@ DUSUK_HACIM_TL = 20_000_000                          # günlük işlem hacmi bun
 
 # Groq'ta her modelin ayrı günlük kotası var; BIST 30 değerlendirmesi gpt-oss-120b kullandığı için burada önce başkaları denenir
 # En kaliteli model önce; kota dolarsa küçük modele düşer
-GROQ_TERCIH = ["openai/gpt-oss-120b", "moonshotai/kimi-k2-instruct-0905", "llama-3.3-70b-versatile", "openai/gpt-oss-20b"]
+GROQ_TERCIH = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "openai/gpt-oss-20b"]
 
 
 def talepleri_oku(son_ts: int, gecerli: set) -> tuple[list[str], int]:
