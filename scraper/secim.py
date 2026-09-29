@@ -272,6 +272,10 @@ def main():
         temiz = [{k: v for k, v in a.items() if k != "_puan"} for a in adaylar]
         secilen, cer_not = cerebras_sec(temiz, cer, bugun)
         log("Cerebras:", cer_not, secilen)
+        if secilen is None and eski.get("tarih") == tarih and eski.get("guclu_not") == "ok":
+            # aynı gün yeniden çalıştı: Cerebras'ın bugünkü seçimini koru (krediyi tekrar harcama)
+            secilen = [{"kod": x["kod"], "neden": x.get("neden", "")} for x in eski.get("guclu", []) if x["kod"] in {a["kod"] for a in adaylar}]
+            cer_not = "ok"
         if secilen is None:
             # yedek: yalnızca en az 2 kaynağın AL dediği adaylar, en çok 2 tane
             secilen = [{"kod": a["kod"], "neden": "; ".join(o["neden"] for o in a["ai_oylari"] if o["karar"] == "AL")[:220]}
