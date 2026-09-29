@@ -485,8 +485,8 @@ SAGLAYICILAR = [
     ("sambanova", "SambaNova", "SAMBANOVA_API_KEY", sambanova),
     ("grok", "Grok", "XAI_API_KEY", grok),
     ("openrouter", "OpenRouter", "OPENROUTER_API_KEY", openrouter),
-    ("gpt", "GPT (OpenAI)", "GH_MODELS_TOKEN", gpt),
-    ("deepseek", "DeepSeek", "GH_MODELS_TOKEN", deepseek_gh),
+    # GitHub Models 30 Temmuz 2026'da kapatıldı (github.blog/changelog/2026-07-30-github-models-is-now-retired);
+    # gpt ve deepseek_gh işlevleri kodda duruyor ama kullanılmıyor.
     ("mistral", "Mistral", "MISTRAL_API_KEY", mistral),
 ]
 
