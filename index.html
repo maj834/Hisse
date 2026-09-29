@@ -221,6 +221,55 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 .onay input[type=checkbox]{width:22px;height:22px;flex:none;margin:0;accent-color:var(--blue)}
 .onay .btn[disabled]{opacity:.45}
 body.kilit{overflow:hidden}
+/* ================= animasyonlar ================= */
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+@keyframes yukari{from{transform:translateY(12px);opacity:0}}
+@keyframes solgun{from{opacity:0}}
+@keyframes kay{from{transform:translateX(-100%)}to{transform:translateX(320%)}}
+@keyframes cubuk{from{transform:scaleY(.08)}}
+@keyframes ciz{to{stroke-dashoffset:0}}
+@keyframes zipla{40%{transform:translateY(-5px)}70%{transform:translateY(1px)}}
+@keyframes flUp{0%{background:rgba(34,195,142,.28)}100%{background:transparent}}
+@keyframes flDn{0%{background:rgba(244,71,92,.28)}100%{background:transparent}}
+@keyframes parilti{0%{background-position:-200px 0}100%{background-position:200px 0}}
+/* açılış (giriş) ekranı */
+.splash{position:fixed;inset:0;z-index:60;background:radial-gradient(120% 70% at 50% 35%,#13223A 0%,var(--bg) 60%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .5s ease,visibility .5s}
+.splash.bitti{opacity:0;visibility:hidden;pointer-events:none}
+.splash .lg{width:92px;height:92px;border-radius:28px;background:var(--blue);display:grid;place-items:center;box-shadow:0 20px 60px rgba(76,141,255,.4);animation:pop .7s cubic-bezier(.2,1.4,.4,1) both}
+.splash .lg path{transform-box:fill-box;transform-origin:bottom;animation:cubuk .8s cubic-bezier(.3,1.4,.5,1) both}
+.splash .lg path:nth-child(2){animation-delay:.12s}.splash .lg path:nth-child(3){animation-delay:.24s}.splash .lg path:nth-child(4){animation-delay:.36s}
+.splash h1{font-size:30px;font-weight:800;letter-spacing:-.02em;margin-top:8px;animation:yukari .6s .35s both}
+.splash p{color:var(--muted);font-size:14px;animation:yukari .6s .5s both}
+.splash .yuk{width:130px;height:3px;border-radius:2px;background:var(--s3);overflow:hidden;margin-top:18px;animation:solgun .4s .7s both}
+.splash .yuk i{display:block;height:100%;width:35%;border-radius:2px;background:var(--blue);animation:kay 1.1s ease-in-out infinite}
+.splash small{position:absolute;bottom:calc(28px + env(safe-area-inset-bottom,0px));font-size:11px;color:var(--faint);animation:solgun .6s .8s both}
+/* sayfa geçişi */
+.page.giris{animation:yukari .35s cubic-bezier(.2,.8,.2,1)}
+/* liste satırları kademeli gelir (yalnızca kullanıcı filtre/arama/sekme değiştirince) */
+.anim>.row,.anim>.frow,.anim>.card>.frow,.anim>.exp{animation:yukari .42s cubic-bezier(.2,.8,.2,1) both}
+.anim>*:nth-child(2){animation-delay:.03s}.anim>*:nth-child(3){animation-delay:.06s}.anim>*:nth-child(4){animation-delay:.09s}
+.anim>*:nth-child(5){animation-delay:.12s}.anim>*:nth-child(6){animation-delay:.15s}.anim>*:nth-child(7){animation-delay:.18s}
+.anim>*:nth-child(8){animation-delay:.21s}.anim>*:nth-child(9){animation-delay:.24s}.anim>*:nth-child(n+10){animation-delay:.27s}
+/* grafik çizimi */
+.ciz{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:ciz 1.1s cubic-bezier(.4,0,.2,1) forwards}
+.alan{animation:solgun .9s .35s both}
+.nokta{animation:pop .4s 1s both;transform-box:fill-box;transform-origin:center}
+/* karar kartları */
+.verdict .v{animation:pop .55s cubic-bezier(.2,1.4,.4,1) both}
+.votes i{animation:pop .35s both}.votes i:nth-child(2){animation-delay:.05s}.votes i:nth-child(3){animation-delay:.1s}.votes i:nth-child(4){animation-delay:.15s}.votes i:nth-child(5){animation-delay:.2s}.votes i:nth-child(n+6){animation-delay:.25s}
+.models .model{animation:yukari .4s both}.models .model:nth-child(2){animation-delay:.06s}.models .model:nth-child(3){animation-delay:.12s}.models .model:nth-child(n+4){animation-delay:.18s}
+/* dokunma geri bildirimi */
+.btn,.chip,.seg button,.iconbtn,.modebtn,.row,.frow,.exp{transition:transform .12s ease,background-color .2s ease}
+.btn:active,.chip:active,.seg button:active,.iconbtn:active,.modebtn:active{transform:scale(.95)}
+.row:active,.frow:active,.exp:active{transform:scale(.985)}
+.seg button{transition:background-color .25s ease,color .25s ease,transform .12s ease}
+nav button[aria-selected="true"] svg{animation:zipla .45s ease}
+/* fiyat değişince satır kısa süre yeşil/kırmızı parlar */
+.row.fl-up{animation:flUp 1.3s ease-out}.row.fl-dn{animation:flDn 1.3s ease-out}
+/* yüklenirken iskelet */
+.iskelet{height:64px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,var(--s1) 0,var(--s2) 50%,var(--s1) 100%) no-repeat;background-size:400px 100%;animation:parilti 1.2s linear infinite}
+.onay .kutu{animation:yukari .45s cubic-bezier(.2,.8,.2,1)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.01ms!important}.ciz{stroke-dasharray:none}}
 </style>
 </head>
 <body>
@@ -233,6 +282,13 @@ body.kilit{overflow:hidden}
 <script type="application/json" id="seed-fai">{"updatedAt":"2026-09-29T13:53:45+03:00","modeller":[{"id":"groq","ad":"Groq","model":"openai/gpt-oss-120b","durum":"ok","sayi":50,"atilan":15,"sure":149.4},{"id":"openrouter","ad":"OpenRouter","durum":"hata","hata":"eksik ya da tutarsız yanıt (0 geçerli fon, 0 tutarsız kayıt) JSON bulunamadı"}],"fonlar":{"AES":{"groq":{"karar":"TUT","guven":55,"getiri":2.3,"neden":"1 ay %16.2, medyan -%1.5; 3 ay %41, medyan +%6.1","karar1a":"AL","getiri1a":3.5,"karar3a":"AL","getiri3a":8.0}},"AFT":{"groq":{"karar":"TUT","guven":60,"getiri":0.7,"neden":"1 ay %5.4 > medyan -%8.1; 3 ay %13.6 > medyan -%4.9","karar1a":"AL","getiri1a":4.0,"karar3a":"AL","getiri3a":10.0}},"YAY":{"groq":{"karar":"TUT","guven":58,"getiri":1.7,"neden":"1 ay %7.2 > medyan -%8.1; 3 ay %9.4 > medyan -%4.9","karar1a":"AL","getiri1a":5.0,"karar3a":"AL","getiri3a":7.0}},"IPB":{"groq":{"karar":"SAT","guven":40,"getiri":-3.1,"neden":"1 ay -%18.1 < medyan -%1.5; 3 ay -%14.0 < medyan +%4.4","karar1a":"SAT","getiri1a":-4.0,"karar3a":"SAT","getiri3a":-5.0}},"MAC":{"groq":{"karar":"TUT","guven":45,"getiri":-2.9,"neden":"1 ay -%9.8 < medyan -%8.1; 3 ay -%13.9 < medyan -%4.9","karar1a":"TUT","getiri1a":-1.0,"karar3a":"SAT","getiri3a":-3.0}},"NNF":{"groq":{"karar":"SAT","guven":35,"getiri":-4.3,"neden":"1 ay -%15.8 < medyan -%8.1; 3 ay -%15.5 < medyan -%4.9","karar1a":"SAT","getiri1a":-3.5,"karar3a":"SAT","getiri3a":-4.0}},"GSP":{"groq":{"karar":"TUT","guven":55,"getiri":-1.8,"neden":"1 ay -%4.3 > medyan -%8.1; 3 ay +%0.1 > medyan -%4.9","karar1a":"TUT","getiri1a":-1.0,"karar3a":"AL","getiri3a":1.0}},"IJC":{"groq":{"karar":"TUT","guven":50,"getiri":-0.2,"neden":"1 ay %‑2.4 medyan %‑1.5 altında, 3 ay %‑9.2 medyan %4.4 altında","karar1a":"TUT","getiri1a":-2.4,"karar3a":"TUT","getiri3a":-9.2}},"PRY":{"groq":{"karar":"TUT","guven":50,"getiri":0.0,"neden":"1 ay %2.5 medyan %2.9 altında, 3 ay %10.8 medyan %10.0 üstünde ama düşük riskli","karar1a":"TUT","getiri1a":2.5,"karar3a":"TUT","getiri3a":10.8}},"GUH":{"groq":{"karar":"AL","guven":50,"getiri":1.5,"neden":"1 ay %7.2 medyan %‑8.1 üstünde, 3 ay %9.9 medyan %‑4.9 üstünde","karar1a":"AL","getiri1a":7.2,"karar3a":"AL","getiri3a":9.9}},"TGE":{"groq":{"karar":"AL","guven":50,"getiri":1.0,"neden":"1 ay %4.1 medyan %‑1.5 üstünde, 3 ay %17.4 medyan %6.1 üstünde","karar1a":"AL","getiri1a":4.1,"karar3a":"AL","getiri3a":17.4}},"GBV":{"groq":{"karar":"TUT","guven":50,"getiri":0.5,"neden":"1 ay %2.7 medyan %‑1.5 üstünde fakat düşük getiri, 3 ay %2.6 medyan %4.4 altında","karar1a":"TUT","getiri1a":2.7,"karar3a":"TUT","getiri3a":2.6}},"KTJ":{"groq":{"karar":"TUT","guven":58,"getiri":0.0,"neden":"1 ay %4.2 > medyan %0.9, 3 ay %9.5 > medyan %8.1","karar1a":"AL","getiri1a":4.2,"karar3a":"AL","getiri3a":9.5}},"GMC":{"groq":{"karar":"TUT","guven":45,"getiri":0.0,"neden":"1 ay -12% < medyan -1.5, 3 ay +8.6 > medyan +6.1","karar3a":"AL","getiri3a":8.6}},"IOG":{"groq":{"karar":"TUT","guven":48,"getiri":0.0,"neden":"1 ay -9.9% < medyan 0%, 3 ay +9.2% > medyan +4.8","karar3a":"AL","getiri3a":9.2}},"CPU":{"groq":{"karar":"TUT","guven":60,"getiri":0.0,"neden":"1 ay -0.9% < medyan +0.9, 3 ay +5.2% < medyan +8.1","karar1a":"TUT","getiri1a":-0.9,"karar3a":"TUT","getiri3a":5.2}},"KNJ":{"groq":{"karar":"TUT","guven":55,"getiri":0.0,"neden":"1 ay -4.3% < medyan +0.9, 3 ay +10.2% > medyan +8.1","karar1a":"TUT","getiri1a":-4.3,"karar3a":"AL","getiri3a":10.2}},"DMG":{"groq":{"karar":"TUT","guven":44,"getiri":0.0,"neden":"1 ay -10.4% < medyan -1.5, 3 ay +9.4% > medyan +6.1","karar3a":"AL","getiri3a":9.4}},"YIT":{"groq":{"karar":"TUT","guven":52,"getiri":0.0,"neden":"1 ay +2.1% > medyan -1.5, 3 ay -5.1% < medyan +4.4","karar1a":"AL","getiri1a":2.1,"karar3a":"TUT","getiri3a":-5.1}},"YJK":{"groq":{"karar":"TUT","guven":50,"getiri":0.0,"neden":"1 ay +0.1% < medyan -1.5, 3 ay +1.4% < medyan +6.1","karar1a":"TUT","getiri1a":0.1,"karar3a":"TUT","getiri3a":1.4}},"KCV":{"groq":{"karar":"TUT","guven":57,"getiri":0.0,"neden":"1 ay -1.0% < medyan +0.9, 3 ay +4.8% < medyan +8.1","karar1a":"TUT","getiri1a":-1.0,"karar3a":"TUT","getiri3a":4.8}},"YZC":{"groq":{"karar":"TUT","guven":59,"getiri":0.0,"neden":"1 ay +2.6% > medyan -1.5, 3 ay +10.0% > medyan +4.4","karar1a":"AL","getiri1a":2.6,"karar3a":"AL","getiri3a":10.0}},"CPT":{"groq":{"karar":"TUT","guven":60,"getiri":0.3,"neden":"1 ay %1.2 > medyan -%1.5, 3 ay -%4.0 < medyan +%4.4","karar1a":"AL","getiri1a":1.2,"karar3a":"SAT","getiri3a":-4.0}},"OJT":{"groq":{"karar":"TUT","guven":60,"getiri":0.9,"neden":"1 ay %1.0 > medyan -%1.5, 3 ay %7.4 > medyan +%6.1","karar1a":"AL","getiri1a":1.0,"karar3a":"AL","getiri3a":7.4}},"DVT":{"groq":{"karar":"TUT","guven":55,"getiri":-0.1,"neden":"1 ay -%1.1 < medyan -%1.5 (daha az düşüş), 3 ay %6.7 > medyan +%4.4","karar1a":"SAT","getiri1a":-1.1,"karar3a":"AL","getiri3a":6.7}},"TFF":{"groq":{"karar":"AL","guven":70,"getiri":1.8,"neden":"1 ay %5.0 > medyan -%1.5, 3 ay %12.6 > medyan +%6.1","karar1a":"AL","getiri1a":5.0,"karar3a":"AL","getiri3a":12.6}},"MJG":{"groq":{"karar":"SAT","guven":40,"getiri":-2.7,"neden":"1 ay -%6.7 < medyan -%1.5, 3 ay %13.3 > medyan +%6.1","karar1a":"SAT","getiri1a":-6.7,"karar3a":"AL","getiri3a":13.3}},"PIL":{"groq":{"karar":"SAT","guven":45,"getiri":-2.5,"neden":"1 ay -%5.2 < medyan -%1.5, 3 ay -%3.6 < medyan +%6.1","karar1a":"SAT","getiri1a":-5.2,"karar3a":"SAT","getiri3a":-3.6}},"PSE":{"groq":{"karar":"AL","guven":75,"getiri":0.1,"neden":"1 ay %2.0 > medyan 0%, 3 ay %10.4 > medyan +%4.8","karar1a":"AL","getiri1a":2.0,"karar3a":"AL","getiri3a":10.4}},"TRJ":{"groq":{"karar":"AL","guven":80,"getiri":0.7,"neden":"1 ay %3.1 > medyan +%2.5, 3 ay %11.7 > medyan +%9.5","karar1a":"AL","getiri1a":3.1,"karar3a":"AL","getiri3a":11.7}},"RTG":{"groq":{"karar":"AL","guven":65,"getiri":0.3,"neden":"1 ay %0.0 = medyan -%1.5 (nötr), 3 ay %0.2 < medyan +%4.4","karar1a":"TUT","getiri1a":0.0,"karar3a":"TUT","getiri3a":0.2}},"GZG":{"groq":{"karar":"SAT","guven":45,"getiri":-0.5,"neden":"1 ay %‑3.5, medyan %‑1.5, performans zayıf","karar1a":"SAT","getiri1a":-3.5,"karar3a":"AL","getiri3a":6.4}},"GZE":{"groq":{"karar":"SAT","guven":60,"getiri":-0.4,"neden":"1 ay %2.0, medyan 0, pozitif trend","karar1a":"AL","getiri1a":2.0,"karar3a":"AL","getiri3a":20.8}},"PPT":{"groq":{"karar":"AL","guven":70,"getiri":0.5,"neden":"1 ay %2.5, medyan %2.9, stabil","karar1a":"TUT","getiri1a":2.5,"karar3a":"TUT","getiri3a":10.4}},"KDE":{"groq":{"karar":"SAT","guven":45,"getiri":-0.3,"neden":"1 ay %‑0.5, medyan %0.9, negatif","karar1a":"SAT","getiri1a":-0.5,"karar3a":"TUT","getiri3a":7.5}},"GBG":{"groq":{"karar":"AL","guven":80,"getiri":0.8,"neden":"1 ay %3.1, medyan %‑8.1, güçlü","karar1a":"AL","getiri1a":3.1,"karar3a":"AL","getiri3a":6.5}},"ICH":{"groq":{"karar":"SAT","guven":40,"getiri":-1.0,"neden":"1 ay %‑9.3, medyan %‑1.5, kötü","karar1a":"SAT","getiri1a":-9.3,"karar3a":"TUT","getiri3a":4.8}},"OVD":{"groq":{"karar":"SAT","guven":55,"getiri":-0.5,"neden":"1 ay %1.8, medyan %‑1.5, pozitif","karar1a":"AL","getiri1a":1.8,"karar3a":"AL","getiri3a":19.4}},"BLT":{"groq":{"karar":"SAT","guven":50,"getiri":-1.0,"neden":"1 ay %‑5.5, medyan %‑8.0, negatif","karar1a":"SAT","getiri1a":-5.5,"karar3a":"AL","getiri3a":17.8}},"PTO":{"groq":{"karar":"SAT","guven":65,"getiri":-0.5,"neden":"1 ay %1.2, medyan %‑8.1, olumlu","karar1a":"AL","getiri1a":1.2,"karar3a":"AL","getiri3a":20.2}},"CKF":{"groq":{"karar":"SAT","guven":45,"getiri":-0.4,"neden":"1 ay %‑1.2, medyan %0.9, negatif","karar1a":"SAT","getiri1a":-1.2,"karar3a":"TUT","getiri3a":7.5}},"SGT":{"groq":{"karar":"TUT","guven":60,"getiri":0.2,"neden":"1 ay %1.1, medyan -%1.5; 3 ay %18, medyan +%4.4","karar1a":"AL","getiri1a":1.1,"karar3a":"AL","getiri3a":18.0}},"PKV":{"groq":{"karar":"AL","guven":70,"getiri":0.8,"neden":"1 ay %3.4 > medyan 0; 3 ay %11.5 > medyan +%4.8","karar1a":"AL","getiri1a":3.4,"karar3a":"AL","getiri3a":11.5}},"BPZ":{"groq":{"karar":"TUT","guven":55,"getiri":0.2,"neden":"1 ay %2.5 < medyan +%2.9; 3 ay %10.7 ≈ medyan +%10.0","karar1a":"TUT","getiri1a":2.5,"karar3a":"TUT","getiri3a":10.7}},"GO6":{"groq":{"karar":"TUT","guven":55,"getiri":0.7,"neden":"1 ay %2.5 < medyan +%2.9; 3 ay %9.9 < medyan +%10.0","karar1a":"TUT","getiri1a":2.5,"karar3a":"TUT","getiri3a":9.9}},"NJR":{"groq":{"karar":"AL","guven":70,"getiri":0.7,"neden":"1 ay %3.0 > medyan +%2.5; 3 ay %10.4 > medyan +%9.5","karar1a":"AL","getiri1a":3.0,"karar3a":"AL","getiri3a":10.4}},"FPG":{"groq":{"karar":"SAT","guven":45,"getiri":-3.7,"neden":"1 ay -%5.4 < medyan 0; 3 ay %14.7 > medyan +%4.8","karar1a":"SAT","getiri1a":-5.4,"karar3a":"AL","getiri3a":14.7}},"BMU":{"groq":{"karar":"SAT","guven":30,"getiri":-1.7,"neden":"1 ay -%31.4 < medyan 0; 3 ay -%25.5 << medyan +%4.8"}},"SRL":{"groq":{"karar":"SAT","guven":45,"getiri":-4.1,"neden":"1 ay -%2.3 < medyan -%8.1; 3 ay %14.4 > medyan -%4.9","karar1a":"SAT","getiri1a":-2.3,"karar3a":"AL","getiri3a":14.4}},"LPH":{"groq":{"karar":"AL","guven":70,"getiri":0.4,"neden":"1 ay %2.5 > medyan 0; 3 ay %10.0 > medyan +%4.8","karar1a":"AL","getiri1a":2.5,"karar3a":"AL","getiri3a":10.0}}}}</script>
 <template id="yasal-metin"><h2>Hisse Radar — Gizlilik Politikası ve Yasal Bilgilendirme</h2><p>Son güncelleme: 29 Eylül 2026</p><p>Hisse Radar, Borsa İstanbul hisseleri ve TEFAS yatırım fonları hakkında herkese açık piyasa verilerini, haber başlıklarını ve yapay zekâ ile formüllerle üretilmiş değerlendirmeleri gösteren ücretsiz bir mobil uygulamadır. Uygulamayı kullanarak aşağıdaki koşulları kabul etmiş olursunuz.</p><h3>1. Yatırım tavsiyesi değildir</h3><ul><li>Uygulamada yer alan AL / TUT / SAT kararları, hedef fiyatlar, beklenen getiriler, beklentiler, puanlar ve yorumlar <b>yatırım danışmanlığı kapsamında değildir</b> ve kimseye bir menkul kıymeti ya da fonu almayı, satmayı veya tutmayı tavsiye etmez.</li><li>Yatırım danışmanlığı hizmeti; aracı kurumlar, portföy yönetim şirketleri, mevduat kabul etmeyen bankalar ile müşteri arasında imzalanacak yatırım danışmanlığı sözleşmesi çerçevesinde sunulmaktadır. Burada yer alan yorum ve değerlendirmeler ise genel niteliktedir; mali durumunuz ile risk ve getiri tercihlerinize uygun olmayabilir. Bu nedenle, yalnızca burada yer alan bilgilere dayanılarak yatırım kararı verilmesi beklentilerinize uygun sonuçlar doğurmayabilir.</li><li>Değerlendirmeler otomatik olarak üretilir: yapay zekâ modelleri (ör. Groq üzerinden açık kaynak modeller, Claude), teknik göstergeler, TradingView göstergeleri ve şirket finansallarından hesaplanan formüller kullanılır. <b>Yapay zekâ ve formüller yanılabilir</b>; yanlış, eksik ya da güncel olmayan sonuç verebilir.</li><li>Geçmiş getiri, gelecekteki getirinin göstergesi değildir. Hisse senetleri ve fonlar değer kaybedebilir; yatırdığınız paranın bir kısmını ya da tamamını kaybedebilirsiniz.</li><li>Yatırım kararlarınızı kendi araştırmanıza dayanarak ve gerekirse yetkili bir yatırım danışmanına başvurarak veriniz.</li></ul><h3>2. Verilerin doğruluğu ve sorumluluk reddi</h3><ul><li>Fiyatlar yaklaşık 15 dakika gecikmelidir ve üçüncü taraf kaynaklardan (Yahoo Finance, TradingView, TEFAS, Google Haberler) alınır. Bu kaynaklardaki hata, gecikme ya da kesintilerden uygulama sorumlu değildir.</li><li>Uygulama &quot;olduğu gibi&quot; sunulur. Uygulamanın geliştiricisi; uygulamadaki bilgilerin kullanılmasından ya da bu bilgilere dayanılarak verilen kararlardan doğabilecek doğrudan veya dolaylı hiçbir zarardan, kayıptan ya da kâr yoksunluğundan sorumlu tutulamaz.</li><li>Uygulama Borsa İstanbul, SPK, TEFAS, TradingView, Yahoo veya haberleri yayımlayan kuruluşlarla bağlantılı değildir ve onlar tarafından onaylanmamıştır. Haberlerin telif hakları ilgili yayıncılara aittir; uygulama yalnızca başlık ve bağlantı gösterir.</li><li>Uygulama alım satım işlemi yapmaz, para ya da hesap bilgisi istemez.</li></ul><h3>3. Gizlilik politikası</h3><p><b>Topladığımız kişisel veri yoktur.</b> Uygulamada üyelik, giriş, reklam ya da analiz (izleme) aracı bulunmaz.</p><ul><li><b>Telefonunuzda kalan bilgiler:</b> Favori hisseleriniz, takip ettiğiniz fonlar, ekran tercihleriniz, bu bilgilendirmeyi kabul ettiğiniz ve günlük analiz hakkınız yalnızca telefonunuzdaki uygulama depolamasında tutulur; bize gönderilmez. Uygulamayı silince bu bilgiler de silinir.</li><li><b>Veri indirme:</b> Uygulama piyasa verilerini ve güncellemeleri GitHub (github.com, raw.githubusercontent.com) üzerinden indirir. Her internet isteğinde olduğu gibi GitHub, IP adresiniz gibi teknik bilgileri kendi gizlilik politikasına göre işleyebilir.</li><li><b>&quot;Yapay zekâya analiz ettir&quot; düğmesi:</b> Bu düğmeye bastığınızda yalnızca hisse kodu (ör. &quot;THYAO&quot;) herkese açık ntfy.sh bildirim hizmetine gönderilir. Adınız, hesap ya da cihaz bilgisi gönderilmez; ancak ntfy.sh, IP adresinizi kendi politikasına göre işleyebilir. İstenen hissenin analizi herkes tarafından görülebilen ortak bir dosyaya kaydedilir.</li><li><b>Dış bağlantılar:</b> Haberler, TradingView ve TEFAS bağlantıları telefonunuzun tarayıcısında açılır; bu sitelerin kendi gizlilik politikaları geçerlidir.</li><li><b>Haklarınız (6698 sayılı KVKK):</b> Uygulama sizi tanımlayan bir veri tutmadığı için silinecek bir hesap yoktur. Telefonunuzdaki tüm uygulama verilerini (favoriler, onaylar, tercihler) istediğiniz an Ayarlar → Uygulamalar → Hisse Radar → Depolama → Verileri temizle ile ya da uygulamayı kaldırarak silebilirsiniz. Verdiğiniz onayı geri almak için de aynı yolu kullanabilir ve uygulamayı kullanmayı bırakabilirsiniz; bir sonraki açılışta onay yeniden sorulur.</li><li><b>İzinler:</b> Uygulama yalnızca internet erişimi ve bağlantı durumunu görme (internet var mı) izinlerini kullanır; konum, kişiler, kamera, mikrofon, dosyalar gibi izinler istemez.</li><li><b>Çocuklar:</b> Uygulama 18 yaş altındaki kişilere yönelik değildir.</li><li><b>Değişiklikler:</b> Bu metin güncellenebilir; önemli değişikliklerde uygulama açılışında yeniden onayınız istenir.</li></ul><h3>4. İletişim</h3><p>Sorularınız ve talepleriniz için Google Play mağaza sayfasında yer alan geliştirici e-posta adresine yazabilirsiniz.</p></template>
 
+<div class="splash" id="splash" aria-hidden="true">
+  <span class="lg"><svg width="50" height="50" viewBox="0 0 18 18"><path d="M3 12v-3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><path d="M7 14V5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><path d="M11 11V8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><path d="M15 9V3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></span>
+  <h1>Hisse Radar</h1>
+  <p>Borsa İstanbul · hisseler · fonlar · haberler</p>
+  <span class="yuk"><i></i></span>
+  <small>Yatırım tavsiyesi değildir</small>
+</div>
 <header class="appbar"><div class="wrap in">
   <span class="logo"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 12v-3M7 14V5M11 11V8M15 9V3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></span>
   <h1 id="title">Hisse Radar</h1>
@@ -448,11 +504,12 @@ function drawChart(){
   }else{
     const P=pts.map((p,i)=>[x(i),y(p.v)]),d=smoothPath(P);
     g+=`<defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>`;
-    if(pts.length>1)g+=`<path d="${d}L${x(pts.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#ga)"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-    g+=`<circle cx="${x(pts.length-1)}" cy="${y(end)}" r="4.5" fill="${col}" stroke="#111823" stroke-width="2"/>`;
+    if(pts.length>1)g+=`<path class="az" d="${d}L${x(pts.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#ga)"/><path class="cz" d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    g+=`<circle class="nk" cx="${x(pts.length-1)}" cy="${y(end)}" r="4.5" fill="${col}" stroke="#111823" stroke-width="2"/>`;
   }
   g+=`<g id="xh" visibility="hidden"><line id="xl" y1="${Tp-6}" y2="${H-B}" stroke="#8B9AAE" stroke-width="1" stroke-dasharray="2 3"/><circle id="xc" r="5" fill="${col}" stroke="#0A0F16" stroke-width="2"/></g>`;
   box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${a.k} fiyat grafiği">${g}</svg><div class="tip" id="tip" hidden></div>`;
+  cizAnim(box,chartAnim);chartAnim=false;
   $("#cfoot").innerHTML=`<span>${esc(pts[0].l)}</span><span>${range==="gun"?"Kesikli çizgi: önceki kapanış "+px(base):""}</span><span>${esc(pts[pts.length-1].l)}</span>`;
   $("#clegend").hidden=!candle;
   const svg=box.querySelector("svg"),tip=$("#tip"),xh=$("#xh");
@@ -473,7 +530,11 @@ function spark(a){
 }
 
 /* ================= sayfalar ================= */
-let filt=store.get("filt","all"),q="",LIM=100,irng=store.get("irng","gun");
+let filt=store.get("filt","all"),q="",LIM=100,irng=store.get("irng","gun"),idxAnim=true,rowsAnim=true,chartAnim=true;
+const PXS={};
+// yeni çizilen grafik çizgisini soldan sağa "çiz" (yalnızca ilk açılışta ya da aralık değişince)
+function cizAnim(box,on){if(!on)return;box.querySelectorAll("path.cz").forEach(p=>{try{const l=Math.ceil(p.getTotalLength());p.style.setProperty("--len",l);p.classList.add("ciz")}catch(e){}});box.querySelectorAll(".az").forEach(x=>x.classList.add("alan"));box.querySelectorAll(".nk").forEach(x=>x.classList.add("nokta"))}
+function sayiSay(el,son,d){if(!el)return;const bas=son*.985,t0=performance.now(),dur=750;const f=t=>{const k=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-k,3);el.textContent=nf(bas+(son-bas)*e,d);if(k<1)requestAnimationFrame(f)};requestAnimationFrame(f)}
 if(!["all","fav","up","down","al","sat"].includes(filt))filt="all";
 /* BIST 100 genel grafiği */
 function idxSeries(){
@@ -489,7 +550,7 @@ function idxCard(){
   const {x}=S,ch=(x.last/x.prev-1)*100,e=S.pts[S.pts.length-1].v,d=(e/S.base-1)*100;
   return `<div class="card chart-card" style="padding:16px 12px 12px">
     <div style="padding:0 4px"><div class="sum-top" style="margin-bottom:2px"><span class="label">BIST 100 endeksi</span><span class="xs muted">${esc(x.t||"")}</span></div>
-    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="sum-big" style="font-size:28px">${nf(x.last,2)}</span><span class="pill ${cls(ch)} ${cls(ch)}">${pct(ch)}</span>${irng!=="gun"?`<span class="xs muted">${{"1h":"1 hafta","1a":"1 ay","3a":"3 ay","6a":"6 ay"}[irng]}: <b class="${cls(d)}">${pct(d)}</b></span>`:""}</div></div>
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span class="sum-big" style="font-size:28px" id="idxVal">${nf(x.last,2)}</span><span class="pill ${cls(ch)} ${cls(ch)}">${pct(ch)}</span>${irng!=="gun"?`<span class="xs muted">${{"1h":"1 hafta","1a":"1 ay","3a":"3 ay","6a":"6 ay"}[irng]}: <b class="${cls(d)}">${pct(d)}</b></span>`:""}</div></div>
     <div class="chart-wrap" id="ichart"></div>
     <div class="chart-foot"><span>${esc(S.pts[0].l)}</span><span>${irng==="gun"?"Kesikli çizgi: önceki kapanış":""}</span><span>${esc(S.pts[S.pts.length-1].l)}</span></div>
     <div class="seg sm" id="irng" style="margin:10px 4px 0">${[["gun","Gün"],["1h","1H"],["1a","1A"],["3a","3A"],["6a","6A"]].map(([r,l])=>`<button data-ir="${r}" aria-pressed="${r===irng}">${l}</button>`).join("")}</div></div>`;
@@ -503,9 +564,10 @@ function drawIdx(){
   let g="";[hi-pad,(hi+lo)/2,lo+pad].forEach(v=>{g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#1F2B3C"/><text x="${W-R+6}" y="${y(v)+4}" fill="#5C6C81" font-size="10.5" font-family="Manrope,sans-serif">${nf(v,0)}</text>`});
   if(irng==="gun")g+=`<line x1="${L}" x2="${W-R}" y1="${y(base)}" y2="${y(base)}" stroke="#5C6C81" stroke-dasharray="3 4"/>`;
   g+=`<defs><linearGradient id="gi" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>`;
-  if(pts.length>1)g+=`<path d="${d}L${x(pts.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#gi)"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-  g+=`<circle cx="${x(pts.length-1)}" cy="${y(end)}" r="4.5" fill="${col}" stroke="#111823" stroke-width="2"/><g id="ixh" visibility="hidden"><line id="ixl" y1="${Tp}" y2="${H-B}" stroke="#8B9AAE" stroke-dasharray="2 3"/><circle id="ixc" r="5" fill="${col}" stroke="#0A0F16" stroke-width="2"/></g>`;
+  if(pts.length>1)g+=`<path class="az" d="${d}L${x(pts.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#gi)"/><path class="cz" d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+  g+=`<circle class="nk" cx="${x(pts.length-1)}" cy="${y(end)}" r="4.5" fill="${col}" stroke="#111823" stroke-width="2"/><g id="ixh" visibility="hidden"><line id="ixl" y1="${Tp}" y2="${H-B}" stroke="#8B9AAE" stroke-dasharray="2 3"/><circle id="ixc" r="5" fill="${col}" stroke="#0A0F16" stroke-width="2"/></g>`;
   box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="BIST 100 grafiği">${g}</svg><div class="tip" id="itip" hidden></div>`;
+  cizAnim(box,idxAnim);if(idxAnim)sayiSay($("#idxVal"),S.x.last,2);idxAnim=false;
   const svg=box.querySelector("svg"),tip=$("#itip"),xh=$("#ixh");
   const show=ev=>{const r=svg.getBoundingClientRect(),vx=(ev.clientX-r.left)/r.width*W,i=Math.max(0,Math.min(pts.length-1,Math.round((vx-L)/(W-L-R)*(pts.length-1)))),p=pts[i];
     xh.setAttribute("visibility","visible");$("#ixl").setAttribute("x1",x(i));$("#ixl").setAttribute("x2",x(i));$("#ixc").setAttribute("cx",x(i));$("#ixc").setAttribute("cy",y(p.v));
@@ -525,8 +587,8 @@ function renderMarket(){
   <p class="disc">Fiyatlar yaklaşık 15 dk gecikmelidir. AL/SAT kararları yapay zekâ ve formül tahminidir, yatırım tavsiyesi değildir; tahminler yanılabilir. <a href="#" data-yasal>Gizlilik ve yasal bilgilendirme</a></p>`;
   drawIdx();renderRows();
   $("#q").addEventListener("input",e=>{q=e.target.value;LIM=100;renderRows()});
-  $("#filt").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(!b)return;filt=b.dataset.f;LIM=100;store.set("filt",filt);[...$("#filt").children].forEach(x=>x.setAttribute("aria-pressed",x===b));renderRows()});
-  $("#idx").addEventListener("click",e=>{const b=e.target.closest("[data-ir]");if(!b)return;irng=b.dataset.ir;store.set("irng",irng);$("#idx").innerHTML=idxCard();drawIdx()});
+  $("#filt").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(!b)return;filt=b.dataset.f;LIM=100;rowsAnim=true;store.set("filt",filt);[...$("#filt").children].forEach(x=>x.setAttribute("aria-pressed",x===b));renderRows()});
+  $("#idx").addEventListener("click",e=>{const b=e.target.closest("[data-ir]");if(!b)return;irng=b.dataset.ir;store.set("irng",irng);idxAnim=true;$("#idx").innerHTML=idxCard();drawIdx()});
 }
 function badge(k){const c=kararK(k);return c?`<span class="ai-dot pill ${kCls(c.karar)} ${kCls(c.karar)}">${c.karar}</span>`:""}
 function rowHtml(a,rozet){return `<button class="row" data-k="${a.k}">
@@ -542,6 +604,7 @@ function liteRow(m,rozet){return `<button class="row" data-k="${esc(m.k)}">
     <span class="r"><span class="px">${px(m.last)}</span><span class="ch ${cls(m.ch)} ${cls(m.ch)}">${pct(m.ch)}</span></span></button>`}
 const anyRow=(k,rozet)=>BY[k]?rowHtml(BY[k],rozet):MK[k]?liteRow(MK[k],rozet):"";
 function renderRows(){
+  if(!MKL.length&&!ALL.length){const r=$("#rows");if(r)r.innerHTML=Array(6).fill('<div class="iskelet"></div>').join("");return}
   const fr=$("#favrows");if(fr)fr.innerHTML=FAV.filter(k=>getA(k)).map(k=>anyRow(k).replace('class="row"','class="row" style="padding-inline:0"')).join("");
   const rows=$("#rows");if(!rows)return;
   const t=nrm(q.trim()),kd=filt==="al"||filt==="sat";
@@ -555,8 +618,11 @@ function renderRows(){
   else if(kd){const w=filt==="al"?"AL":"SAT";arr=arr.map(k=>({k,c:kararK(k)})).filter(o=>o.c&&o.c.karar===w).sort((x,y)=>w==="AL"?y.c.guc-x.c.guc||y.c.n-x.c.n:x.c.guc-y.c.guc||y.c.n-x.c.n).map(o=>o.k)}
   const ki=$("#kinfo");if(ki)ki.innerHTML=kd?`<div class="card" style="padding:12px 14px">${hzSeg("hzM")}<p class="xs muted" style="margin-top:8px">${arr.length} hisse ${HZL[HZ]} vadesinde ${filt==="al"?"AL":"SAT"} diyor. Karar için kaynakların en az %60'ının aynı yönde olması gerekir; en güçlü sinyal en üstte. Ayrıntı için hisseye dokun.</p>${GEC?"":`<p class="xs faint" style="margin-top:4px">Tüm hisselerin geçmiş verisi yükleniyor, liste birazdan uzayacak…</p>`}<p class="xs faint" style="margin-top:4px">Yapay zekâ BIST 30'u ve en popüler 100 hisseyi düzenli değerlendirir; diğer hisseleri hisse sayfasındaki "Yapay zekâya analiz ettir" düğmesiyle sen istersin.${AIG.ilerleme?` Şu an ${AIG.ilerleme.yapilan} hissede yapay zekâ analizi var.`:""}</p></div>`:"";
   const n=arr.length;
+  rows.classList.toggle("anim",rowsAnim);if(rowsAnim)setTimeout(()=>rows.classList.remove("anim"),700);rowsAnim=false;
   rows.innerHTML=(arr.slice(0,LIM).map(k=>anyRow(k,kd)).join("")||`<p class="muted" style="padding:18px">${!kod.length?"Hisse listesi yükleniyor…":filt==="fav"?"Henüz favori hisse yok. Hisse sayfasındaki ☆ ile ekle.":kd?"Şu an bu yönde güçlü sinyal veren hisse yok.":"Eşleşen hisse yok."}</p>`)+(n>LIM?`<button class="btn ghost" id="more" style="margin:12px;width:calc(100% - 24px)">Daha fazla göster (${n-LIM} hisse daha)</button>`:"");
   const mb=$("#more");if(mb)mb.onclick=()=>{LIM+=150;renderRows()};
+  // fiyatı değişen satırı kısa süre yeşil/kırmızı parlat
+  rows.querySelectorAll(".row[data-k]").forEach(el=>{const k=el.dataset.k,p=BY[k]?BY[k].last:MK[k]?MK[k].last:null;if(p==null)return;const o=PXS[k];if(o!=null&&o!==p)el.classList.add(p>o?"fl-up":"fl-dn");PXS[k]=p});
 }
 $("#p-piyasa").addEventListener("click",e=>{const b=e.target.closest(".row[data-k]");if(b)openDetail(b.dataset.k)});
 
@@ -649,11 +715,11 @@ function openDetail(k,keepScroll,fromPop){
 
   ${rel.length?`<div class="card"><div class="card-h"><h2>İlgili haberler</h2></div><div class="news">${rel.map(newsRow).join("")}</div></div>`:""}
   <p class="disc">Kararlar ve hedefler yapay zekâ ve formül tahminidir, yatırım tavsiyesi değildir. <a href="#" data-yasal>Yasal bilgilendirme</a></p>`;
-  if(!keepScroll)window.scrollTo(0,0);
+  if(!keepScroll){window.scrollTo(0,0);chartAnim=true}
   drawChart();
   $("#back").onclick=goBack;
   $("#favbtn").onclick=()=>{toggleFav(k);const on=isFav(k);const b=$("#favbtn");b.textContent=on?"★":"☆";b.classList.toggle("on",on);b.setAttribute("aria-label",on?"Favorilerden çıkar":"Favorilere ekle");renderMarket();renderNews()};
-  $("#rng").onclick=e=>{const b=e.target.closest("[data-r]");if(!b)return;range=b.dataset.r;store.set("rng",range);[...$("#rng").children].forEach(x=>x.setAttribute("aria-pressed",x===b));drawChart()};
+  $("#rng").onclick=e=>{const b=e.target.closest("[data-r]");if(!b)return;range=b.dataset.r;store.set("rng",range);[...$("#rng").children].forEach(x=>x.setAttribute("aria-pressed",x===b));chartAnim=true;drawChart()};
   $("#mode").onclick=()=>{mode=mode==="mum"?"line":"mum";store.set("mode",mode);if(mode==="mum"&&range==="gun"){range="1a";store.set("rng",range)}openDetail(k,true)};
   const tb=$("#talepBtn");if(tb)tb.onclick=()=>talepGonder(k);
   const ab=$("#askBtn");if(ab)ab.onclick=()=>{asked=true;store.set("asked",true);$("#ask").hidden=true;$("#answer").hidden=false};
@@ -787,7 +853,7 @@ function renderFunds(){
     ${list.map(f=>{const c=fk?fKarar(f.k):null;return `<button class="frow" data-f="${esc(f.k)}"><span style="min-width:0"><b>${esc(f.k)}</b>${c?`<span class="ai-dot pill ${kCls(c.karar)} ${kCls(c.karar)}">${c.karar}</span>`:""} <span class="xs muted">${esc(f.tur||"")}</span><span class="name">${esc(f.ad)}</span></span><b>${gp(f[fsort])}</b></button>`}).join("")||`<p class="muted small" style="padding:12px 0">${!allFunds().length?"Fon listesi yükleniyor.":fk?"Şu an bu yönde güçlü sinyal veren fon yok.":"Eşleşen fon yok."}</p>`}
     ${fn>FLIM?`<button class="btn ghost" id="fmore" style="margin:8px 0 12px;width:100%">Daha fazla göster (${fn-FLIM} fon daha)</button>`:""}</div>
   <p class="disc">Kaynak: TEFAS. Getiriler geçmiş performanstır, gelecekteki getiriyi göstermez. Yatırım tavsiyesi değildir. <a href="#" data-yasal>Yasal bilgilendirme</a></p>`;
-  $("#ff").onclick=e=>{const b=e.target.closest("[data-ff]");if(!b)return;ffilt=b.dataset.ff;FLIM=40;store.set("ffilt",ffilt);renderFunds()};
+  $("#ff").onclick=e=>{const b=e.target.closest("[data-ff]");if(!b)return;ffilt=b.dataset.ff;FLIM=40;store.set("ffilt",ffilt);renderFunds();const c=document.querySelectorAll("#p-fon .card")[1];if(c){c.classList.add("anim");setTimeout(()=>c.classList.remove("anim"),700)}};
   const fm=$("#fmore");if(fm)fm.onclick=()=>{FLIM+=60;renderFunds()};
   $("#fq").addEventListener("input",e=>{fq=e.target.value;FLIM=40;const pos=e.target.selectionStart;renderFunds();const n=$("#fq");n.focus();n.setSelectionRange(pos,pos)});
   if($("#fs"))$("#fs").onclick=e=>{const b=e.target.closest("[data-s]");if(!b)return;fsort=b.dataset.s;store.set("fsort",fsort);renderFunds()};
@@ -837,7 +903,7 @@ function openFund(k,noPush){
 
 /* ================= gezinme (telefonun geri tuşu uygulamadan atmaz) ================= */
 const VIEWS=["piyasa","detay","beklenti","haber","fon","fondetay"];
-function setView(v){VIEWS.forEach(n=>$("#p-"+n).hidden=n!==v);const tb=v==="detay"?"piyasa":v==="fondetay"?"fon":v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tb))}
+function setView(v){VIEWS.forEach(n=>{const el=$("#p-"+n),once=el.hidden;el.hidden=n!==v;if(n===v&&once){el.classList.remove("giris");void el.offsetWidth;el.classList.add("giris")}});const tb=v==="detay"?"piyasa":v==="fondetay"?"fon":v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tb))}
 function nav(st){try{history.pushState(st,"","#"+(st.k||st.v))}catch(e){}}
 function goBack(){if(history.state&&history.state.v&&history.state.v!=="piyasa")history.back();else showTab("piyasa",true)}
 function showTab(t,noPush){tab=t;cur=null;setView(t);window.scrollTo(0,0);if(!noPush){if(t==="piyasa"){try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}}else nav({v:t})}}
@@ -900,7 +966,10 @@ async function pollSlow(){
   if(Date.now()-lastFunds>6e5){lastFunds=Date.now();try{const d=await getJ(RAW("data","funds.json"));if(T(d.updatedAt)>T(FUNDS.updatedAt)){FUNDS=d;renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}}
 }
 let lastFunds=0;
-renderAll();talepIzle();onayGoster(false);
+renderAll();talepIzle();
+// giriş ekranı: en az ~1,3 sn görünür, sonra kaybolur; ardından (gerekirse) yasal onay açılır
+(function(){const sp=$("#splash"),hazir=()=>{sp.classList.add("bitti");setTimeout(()=>{sp.remove();onayGoster(false)},520)};
+  const az=matchMedia("(prefers-reduced-motion:reduce)").matches?200:1300;setTimeout(hazir,az)})();
 const h=location.hash.slice(1);try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}
 if(["beklenti","haber","fon"].includes(h))showTab(h);else if(getA(h.toUpperCase()))openDetail(h.toUpperCase());
 poll();pollSlow();
