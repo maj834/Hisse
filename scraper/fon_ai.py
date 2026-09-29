@@ -22,6 +22,8 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ai_degerlendir  # noqa: E402
+import kaynaklar  # noqa: E402
 from ai_degerlendir import IST, KARAR, json_ayikla, log, oku, openai_uyumlu, openrouter  # noqa: E402
 
 KOK = Path(__file__).resolve().parent.parent
@@ -118,6 +120,12 @@ def fon_satiri(k: str, funds: dict, med: dict, news: dict) -> str:
     return " | ".join(parca)
 
 
+def _gundem_metni() -> str:
+    g = oku(KOK / "data" / "gundem.json", {})
+    ai_degerlendir.GUNDEM = g
+    return kaynaklar.makro_satiri(g.get("makro") or {}, g.get("piyasa")) + ai_degerlendir.haber_ai_genel()
+
+
 def istem(kodlar, funds, med, news) -> str:
     satirlar = "\n".join(fon_satiri(k, funds, med, news) for k in kodlar)
     return f"""Sen Türkiye'deki yatırım fonlarını (TEFAS) değerlendiren temkinli ve dürüst bir analistsin. Bugün {dt.datetime.now(IST):%d.%m.%Y}.
@@ -130,6 +138,8 @@ KURALLAR:
 5) Getiri tahminleri gerçekçi olsun: 1 hafta en çok ±%6, 1 ay ±%12, 3 ay ±%25. AL ise getiri pozitif, SAT ise negatif olmalı. Kurala uymayan yanıt otomatik silinir.
 6) "guven" 0-100; karışık sinyalde 50 altı.
 7) Gerekçe en fazla 18 kelime, Türkçe, verideki somut bir sayıyı ansın.
+{_gundem_metni()}
+Petrol, altın, dolar, faiz ve borsa hakkında YALNIZCA yukarıdaki makro verilere ve haber özetine dayan; yönünü bilmediğin bir piyasa hareketinden bahsetme.
 
 Fonlar:
 {satirlar}
