@@ -1,111 +1,37 @@
 {
- "zaman": "2026-09-29T16:18:11",
+ "zaman": "2026-09-29T16:33:50",
  "sonuc": [
   {
-   "ad": "mistral modeller",
-   "url": "https://api.mistral.ai/v1/models",
+   "ad": "cohere command-a",
+   "url": "https://api.cohere.ai/compatibility/v1/chat/completions",
    "durum": 200,
    "tur": "application/json",
    "yonlendirme": "",
-   "govde": "{\"object\":\"list\",\"data\":[{\"id\":\"codestral-2508\",\"object\":\"model\",\"created\":1790698692,\"owned_by\":\"mistralai\",\"capabilities\":{\"completion_chat\":true,\"function_calling\":true,\"reasoning\":false,\"completion_fim\":true,\"fine_tuning\":false,\"vision\":false,\"ocr\":false,\"classification\":false,\"moderation\":false,\"audio\":false,\"audio_transcription\":false,\"audio_transcription_realtime\":false,\"audio_speech\":false",
+   "govde": "{\"id\":\"04b2bdaf-fc01-4f94-a612-52ffab9cb34d\",\"choices\":[{\"index\":0,\"finish_reason\":\"stop\",\"message\":{\"role\":\"assistant\",\"content\":\"TAMAM\"},\"logprobs\":null}],\"created\":1790699630,\"model\":\"command-a-03-2025\",\"object\":\"chat.completion\",\"usage\":{\"prompt_tokens\":6,\"completion_tokens\":2,\"total_tokens\":8,\"prompt_tokens_details\":{\"cached_tokens\":0,\"audio_tokens\":0},\"completion_tokens_details\":{\"reasoning_",
    "limit": {}
   },
   {
-   "ad": "mistral mistral-small-latest",
-   "url": "https://api.mistral.ai/v1/chat/completions",
-   "durum": 429,
+   "ad": "cloudflare doğrula",
+   "url": "https://api.cloudflare.com/client/v4/user/tokens/verify",
+   "durum": 200,
    "tur": "application/json",
    "yonlendirme": "",
-   "govde": "{\"object\":\"error\",\"message\":\"Rate limit exceeded\",\"type\":\"rate_limited\",\"param\":null,\"code\":\"1300\",\"raw_status_code\":429}",
+   "govde": "{\"result\":{\"id\":\"39746c1cb8589da1a94596d47c20e0e4\",\"status\":\"active\"},\"success\":true,\"errors\":[],\"messages\":[{\"code\":10000,\"message\":\"This API Token is valid and active\",\"type\":null}]}",
+   "limit": {}
+  },
+  {
+   "ad": "cloudflare hesaplar",
+   "url": "https://api.cloudflare.com/client/v4/accounts",
+   "durum": 200,
+   "tur": "application/json",
+   "yonlendirme": "",
+   "govde": "{\"result\":[],\"result_info\":{\"page\":1,\"per_page\":20,\"total_pages\":0,\"count\":0,\"total_count\":0},\"success\":true,\"errors\":[],\"messages\":[]}",
    "limit": {
-    "x-ratelimit-limit-req-minute": "0",
-    "x-ratelimit-remaining-req-minute": "0"
-   }
-  },
-  {
-   "ad": "mistral mistral-large-latest",
-   "url": "https://api.mistral.ai/v1/chat/completions",
-   "durum": 403,
-   "tur": "application/json",
-   "yonlendirme": "",
-   "govde": "{\"object\":\"error\",\"message\":\"This model is not available in your subscription tier\",\"type\":\"tier_not_allowed\",\"param\":null,\"code\":\"1910\",\"raw_status_code\":403}",
-   "limit": {}
-  },
-  {
-   "ad": "sambanova modeller",
-   "url": "https://api.sambanova.ai/v1/models",
-   "durum": 200,
-   "tur": "application/json",
-   "yonlendirme": "",
-   "govde": "{\"data\":[{\"context_length\":131072,\"id\":\"DeepSeek-V3.1\",\"max_completion_tokens\":7168,\"object\":\"model\",\"owned_by\":\"no-reply@sambanova.ai\",\"pricing\":{\"completion\":\"0.00000450\",\"prompt\":\"0.00000300\"},\"sn_metadata\":{}},{\"context_length\":32768,\"id\":\"DeepSeek-V3.2\",\"max_completion_tokens\":7168,\"object\":\"model\",\"owned_by\":\"no-reply@sambanova.ai\",\"pricing\":{\"completion\":\"0.00000450\",\"prompt\":\"0.00000300\"},",
-   "limit": {}
-  },
-  {
-   "ad": "sambanova Meta-Llama-3.1-8B-Instruct",
-   "url": "https://api.sambanova.ai/v1/chat/completions",
-   "durum": 402,
-   "tur": "application/json",
-   "yonlendirme": "",
-   "govde": "{\"error\":{\"balance_units\":0,\"billing_portal_url\":\"https://cloud.sambanova.ai/plans/billing\",\"code\":\"PAYMENT_METHOD_REQUIRED\",\"message\":\"A payment method is required. Add one at https://cloud.sambanova.ai/plans/billing to continue.\"}}\n",
-   "limit": {}
-  },
-  {
-   "ad": "sambanova Meta-Llama-3.3-70B-Instruct",
-   "url": "https://api.sambanova.ai/v1/chat/completions",
-   "durum": 402,
-   "tur": "application/json",
-   "yonlendirme": "",
-   "govde": "{\"error\":{\"balance_units\":0,\"billing_portal_url\":\"https://cloud.sambanova.ai/plans/billing\",\"code\":\"PAYMENT_METHOD_REQUIRED\",\"message\":\"A payment method is required. Add one at https://cloud.sambanova.ai/plans/billing to continue.\"}}\n",
-   "limit": {}
-  },
-  {
-   "ad": "github katalog",
-   "url": "https://models.github.ai/catalog/models",
-   "durum": 200,
-   "tur": "text/plain",
-   "yonlendirme": "",
-   "govde": "OK\r\n",
-   "limit": {}
-  },
-  {
-   "ad": "github gpt-4.1",
-   "url": "https://models.github.ai/inference/chat/completions",
-   "durum": 200,
-   "tur": "text/plain",
-   "yonlendirme": "",
-   "govde": "OK\r\n",
-   "limit": {}
-  },
-  {
-   "ad": "github gpt-4.1-mini",
-   "url": "https://models.github.ai/inference/chat/completions",
-   "durum": 200,
-   "tur": "text/plain",
-   "yonlendirme": "",
-   "govde": "OK\r\n",
-   "limit": {}
-  },
-  {
-   "ad": "github eski uç",
-   "url": "https://models.inference.ai.azure.com/chat/completions",
-   "hata": "HTTPSConnectionPool(host='models.inference.ai.azure.com', port=443): Max retries exceeded with url: /chat/completions (Caused by NameResolutionError(\"HTTPSConnection(host='models.inference.ai.azure.co"
-  },
-  {
-   "ad": "github kullanıcı",
-   "url": "https://api.github.com/user",
-   "durum": 200,
-   "tur": "application/json; charset=utf-8",
-   "yonlendirme": "",
-   "govde": "{\"login\":\"maj834\",\"id\":90580214,\"node_id\":\"MDQ6VXNlcjkwNTgwMjE0\",\"avatar_url\":\"https://avatars.githubusercontent.com/u/90580214?v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/maj834\",\"html_url\":\"https://github.com/maj834\",\"followers_url\":\"https://api.github.com/users/maj834/followers\",\"following_url\":\"https://api.github.com/users/maj834/following{/other_user}\",\"gists_url\":\"https://api.g",
-   "limit": {
-    "X-RateLimit-Limit": "5000",
-    "X-RateLimit-Remaining": "4987",
-    "X-RateLimit-Reset": "1790700445",
-    "X-RateLimit-Used": "13",
-    "X-RateLimit-Resource": "core"
+    "Ratelimit": "\"default\";r=1199;t=1",
+    "Ratelimit-Policy": "\"default\";q=1200;w=300"
    }
   }
  ],
- "gh_token_uzunluk": 93,
- "gh_token_bas": "github_pat_"
+ "gh_token_uzunluk": 0,
+ "gh_token_bas": ""
 }
