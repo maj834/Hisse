@@ -859,7 +859,7 @@ function renderFunds(){
   else list=list.filter(f=>f[fsort]!=null||t).sort((a,b)=>(b[fsort]??-1e9)-(a[fsort]??-1e9));
   const fn=list.length;list=list.slice(0,FLIM);
   $("#p-fon").innerHTML=`
-  <div class="card"><div class="card-h"><h2>Takip ettiğim fonlar</h2><span class="xs muted">${allFunds().length?allFunds().length+" fon içinde":""}</span></div>
+  <div class="card"><div class="card-h"><h2>Takip ettiğim fonlar</h2>${myF.length?`<button class="xs" id="fclear" style="color:var(--muted);padding:6px 0 6px 10px">Listeyi temizle</button>`:`<span class="xs muted">${allFunds().length?allFunds().length+" fon içinde":""}</span>`}</div>
     <div class="list" style="border:0;background:none">${myF.map(k=>{const f=fInfo(k),g1=(f.getiri||{}).g1a;return `<button class="row" data-f="${esc(k)}" style="padding-inline:0">
       <span style="min-width:0"><span class="code">${esc(k)}</span><span class="name">${esc(f.ad||"TEFAS fonu")}</span></span>${fSpark(f.g)}
       <span class="r"><span class="px">${f.fiyat?nf(f.fiyat,4):"–"}</span>${f.gunluk!=null?`<span class="ch ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:g1!=null?`<span class="xs muted">1 ay ${gp(g1)}</span>`:""}</span></button>`}).join("")||`<p class="muted small" style="padding:6px 0 10px">Henüz takip ettiğin fon yok. Aşağıdan bir fona girip <b>Takip et</b>'e basarak buraya ekleyebilirsin.</p>`}</div></div>
@@ -871,6 +871,7 @@ function renderFunds(){
     ${fn>FLIM?`<button class="btn ghost" id="fmore" style="margin:8px 0 12px;width:100%">Daha fazla göster (${fn-FLIM} fon daha)</button>`:""}</div>
   <p class="disc">Kaynak: TEFAS. Getiriler geçmiş performanstır, gelecekteki getiriyi göstermez. Yatırım tavsiyesi değildir. <a href="#" data-yasal>Yasal bilgilendirme</a></p>`;
   $("#ff").onclick=e=>{const b=e.target.closest("[data-ff]");if(!b)return;ffilt=b.dataset.ff;FLIM=40;store.set("ffilt",ffilt);renderFunds();const c=document.querySelectorAll("#p-fon .card")[1];if(c){c.classList.add("anim");setTimeout(()=>c.classList.remove("anim"),700)}};
+  const fc=$("#fclear");if(fc)fc.onclick=()=>{if(confirm("Takip ettiğin "+myF.length+" fon listeden çıkarılsın mı?")){myF=[];store.set("funds2",myF);renderFunds()}};
   const fm=$("#fmore");if(fm)fm.onclick=()=>{FLIM+=60;renderFunds()};
   $("#fq").addEventListener("input",e=>{fq=e.target.value;FLIM=40;const pos=e.target.selectionStart;renderFunds();const n=$("#fq");n.focus();n.setSelectionRange(pos,pos)});
   if($("#fs"))$("#fs").onclick=e=>{const b=e.target.closest("[data-s]");if(!b)return;fsort=b.dataset.s;store.set("fsort",fsort);renderFunds()};
