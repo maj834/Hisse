@@ -142,11 +142,47 @@ def durum(g: dict) -> dict:
             "trend": g.get("trend"), "hacim_mn": None if not g.get("likit") else round(g["likit"] / 1e6)}
 
 
+# ---------------------------------------------------------------- risk (soruşturma, temerrüt, tasfiye ...)
+RISK_KELIME = re.compile(r"soruşturma|gözaltı|yakalama kararı|tutukla|yurt ?dışı (çıkış )?yasağı|tedbir|iflas|konkordato|temerrüt|"
+                         r"tasfiye|el kon|kayyum|tmsf|dolandırıcılık|manipülasyon|işlem yasağı|kara para", re.I)
+GENEL_KELIME = {"TÜRKİYE", "TÜRK", "BORSA", "İSTANBUL", "ANADOLU", "GLOBAL", "YATIRIM", "HOLDİNG", "ENERJİ", "PORTFÖY", "GRUP", "DOĞU", "BATI"}
+
+
+def fon_kurum(ad: str) -> str:
+    return (ad or "").split(" ")[0].upper()
+
+
+def risk_listesi(market: dict, haberler: list[str]) -> dict:
+    """Elle doğrulanmış liste (data/riskli.json) + haberlerden otomatik tespit. Dönüş: {"kurum": {AD: neden}, "hisse": {KOD: neden}}."""
+    r = oku("riskli.json")
+    kurum = {k["ad"].upper(): k["neden"] for k in r.get("kurumlar", [])}
+    hisse = {h["kod"]: h["neden"] for h in r.get("hisseler", [])}
+    ilk_ad = {}
+    for kod, m in market.items():
+        w = fon_kurum(m.get("ad", ""))
+        if len(w) >= 4 and w not in GENEL_KELIME:
+            ilk_ad.setdefault(w, kod)
+    for b in haberler:
+        if not b or not RISK_KELIME.search(b):
+            continue
+        B = b.upper().replace("İ", "İ")
+        for kod in market:
+            if re.search(rf"\b{re.escape(kod)}\b", B) and kod not in hisse:
+                hisse[kod] = "Haber: " + b[:160]
+        for w, kod in ilk_ad.items():
+            if re.search(rf"\b{re.escape(w)}\b", B) and kod not in hisse:
+                hisse[kod] = "Haber: " + b[:160]
+        m = re.search(r"([A-ZÇĞİÖŞÜ]{3,})\s+PORTFÖY", B)
+        if m and m.group(1) not in kurum:
+            kurum[m.group(1)] = "Haber: " + b[:160]
+    return {"kurum": kurum, "hisse": hisse}
+
+
 # ---------------------------------------------------------------- fonlar
 PASIF_TUR = ("para piyasası", "kısa vadeli", "kira sertifika", "katılım para")
 
 
-def fon_sec(fon_ai: dict, fonlar: dict) -> list[dict]:
+def fon_sec(fon_ai: dict, fonlar: dict, riskli_kurum: dict | None = None) -> list[dict]:
     """Öne çıkan fonlar: yapay zekâların hepsi 1 aylık AL + kendi türünde getiri sırası üstte + tek günlük sıçrama yok."""
     if yas_saat(fon_ai.get("updatedAt")) > 48 or not fonlar:
         return []
@@ -168,6 +204,11 @@ def fon_sec(fon_ai: dict, fonlar: dict) -> list[dict]:
         f = tmap.get(k)
         if not f or any(s in (f.get("tur") or "").lower() for s in PASIF_TUR):
             continue
+        if fon_kurum(f.get("ad", "")) in (riskli_kurum or {}):
+            continue   # soruşturma/temerrüt/tasfiye yaşayan kurumun fonu önerilmez
+        detay = (fonlar.get("fonlar") or {}).get(k) or {}
+        if f.get("g1a") == 0 or (detay.get("tarih") and (datetime.now(TSI).date() - datetime.fromisoformat(detay["tarih"]).date()).days > 5):
+            continue   # fiyatı donmuş ya da güncellenmeyen fon
         oy = [v[m] for m in modeller if isinstance(v.get(m), dict) and v[m].get("karar1a")]
         if len(oy) < 2 or any(o["karar1a"] != "AL" for o in oy):
             continue
@@ -282,6 +323,17 @@ def main():
 
     xu = fiyat.get("XU100", {})
     tarih = max(xu) if xu else datetime.now(TSI).strftime("%Y-%m-%d")
+    haberler = []
+    try:
+        nw = requests.get("https://raw.githubusercontent.com/maj834/Hisse/data/news.json", timeout=30).json()
+        haberler += [n.get("title", "") for n in nw.get("items", [])]
+    except Exception as e:
+        log("news.json:", e)
+    haberler += [f'{o.get("baslik", "")} {o.get("detay", "")}' for o in outlook.get("olaylar", [])]
+    for sk in (gundem.get("sirket") or {}).values():
+        haberler += [h.get("baslik", "") for h in sk.get("haberler", [])]
+    risk = risk_listesi(market, haberler)
+    log("Riskli:", risk)
     bugun = datetime.now(TSI).strftime("%Y-%m-%d")
 
     puanla(gecmis, fiyat)
@@ -291,7 +343,7 @@ def main():
         log("funds.json:", e)
         fonlar = {}
     fon_puanla(gecmis, fonlar)
-    fon = fon_sec(oku("fon_ai.json"), fonlar)
+    fon = fon_sec(oku("fon_ai.json"), fonlar, risk["kurum"])
     log("Fon seçimi:", [f["kod"] for f in fon])
 
     # ---- zayıf kalacaklar (ölçülmüş kurallar)
@@ -325,7 +377,7 @@ def main():
     sat_kodlari = {b["kod"] for b in bt.get("bugun", []) if b["karar"] == "SAT"}
     adaylar = []
     for kod, g in gunluk.items():
-        if kod in sat_kodlari or (g.get("likit") or 0) < MIN_LIKIT:
+        if kod in sat_kodlari or kod in risk["hisse"] or (g.get("likit") or 0) < MIN_LIKIT:
             continue
         if g.get("trend") != 1 or (g.get("rsi") or 0) >= 70 or (g.get("rsi") or 0) < 45:
             continue
@@ -377,6 +429,15 @@ def main():
                           "oy": f'{sum(o["karar"] == "AL" for o in a["ai_oylari"])}/{len(a["ai_oylari"])}',
                           "durum": durum(gunluk.get(a["kod"], {}))})
 
+    # ---- riskli çıkan açık öneriler geri çekilir ve YANLIŞ sayılır (hatayı gizlemeyiz)
+    fon_ad = {f["k"]: f.get("ad", "") for f in (fonlar.get("tum") or [])}
+    for s in gecmis:
+        if s.get("sonuc") or s["tur"] == "zayif":
+            continue
+        neden = risk["kurum"].get(fon_kurum(fon_ad.get(s["kod"], ""))) if s["tur"] == "fon" else risk["hisse"].get(s["kod"])
+        if neden:
+            s["sonuc"] = {"tarih": bugun, "dogru": False, "geri_cekildi": True, "neden": neden[:200]}
+
     # ---- bugünkü seçimleri kaydet (aynı hisse vadesi dolmadan tekrar sayılmaz)
     acik = {(s["kod"], s["tur"]) for s in gecmis if not s.get("sonuc")}
     for tur, liste in (("zayif", zayif), ("guclu", guclu), ("fon", fon)):
@@ -403,6 +464,7 @@ def main():
         "guclu": guclu,
         "guclu_not": cer_not,
         "fon": fon,
+        "riskli": risk,
         "canli": ozet(gecmis),
         "gecmis": gecmis,
         "cerebras": cer,

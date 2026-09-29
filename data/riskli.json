@@ -1,0 +1,12 @@
+{
+  "aciklama": "Elle doğrulanmış riskli kurum ve hisseler. Bunlara ait fon/hisse Beklenti'de önerilmez, AL kararı verilmez, detayda uyarı gösterilir. secim.py haberlerden otomatik tespit edilenleri de ekler.",
+  "guncelleme": "2026-09-29",
+  "kurumlar": [
+    {"ad": "TERA", "eslesme": ["TERA PORTFÖY", "TERA YATIRIM"], "neden": "Tera Portföy fonları temerrüde düştü, tasfiye süreci başladı; fon soruşturmasında yöneticiler hakkında 27 Eylül 2026'da yakalama kararı çıktı.", "kaynak": "https://www.takvim.com.tr/guncel/2026/09/27/tera-portfoy-baskani-erdin-ozel-ve-tera-yatirim-ceosu-sarpyener-hakkinda-yakalama-karari"},
+    {"ad": "PUSULA", "eslesme": ["PUSULA PORTFÖY"], "neden": "Fon krizinde Pusula Portföy fonlarında iade kısıtları ve %70-95'e varan değer kayıpları var.", "kaynak": "https://www.ntv.com.tr/ntvpara/galeri-500-binden-fazla-kisiyi-etkiledi-fon-krizi-nasil-gelisti-bundan-sonra-ne-olacak-1742343"}
+  ],
+  "hisseler": [
+    {"kod": "TERA", "neden": "Grup şirketi Tera Portföy'ün fonları temerrüde düştü; yöneticiler hakkında yakalama kararı (27 Eylül 2026).", "kaynak": "https://www.finansingundemi.com/haber/teranin-ceosu-ve-portfoy-baskani-icin-yakalama-karari/1909639"},
+    {"kod": "ASTOR", "neden": "Fon soruşturması kapsamında şirket sahibine yurt dışı çıkış yasağı getirildi (29 Eylül 2026).", "kaynak": ""}
+  ]
+}

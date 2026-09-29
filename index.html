@@ -471,13 +471,17 @@ async function talepGonder(k){
 function talepIzle(){if(talepTimer)return;talepTimer=setInterval(async()=>{const bekleyen=Object.keys(TALEP).filter(k=>talepDurum(k)==="bekliyor");
   if(!bekleyen.length){clearInterval(talepTimer);talepTimer=null;return}
   try{const d=await getJ(RAW("main","data/ai_genis.json"));if(T(d.updatedAt)>T(AIG.updatedAt)){AIG=d;KC={};renderRows();if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}},20000)}
-function hisseKarar(k,vs){const a=getA(k),c=consensus(vs||votes(k));if(!a||HZ!=="1h")return c;const r=(MK[k]&&MK[k].rsi!=null)?MK[k].rsi:a.noHist?null:a.R;
+function hisseKarar(k,vs){const a=getA(k),c=consensus(vs||votes(k));const rk=riskHisse(k);if(rk&&c.karar==="AL")return {...c,karar:"TUT",not:"Risk uyarısı: "+rk+" Bu yüzden AL verilmiyor."};if(!a||HZ!=="1h")return c;const r=(MK[k]&&MK[k].rsi!=null)?MK[k].rsi:a.noHist?null:a.R;
   if(r!=null&&c.karar==="SAT"&&r<30)return {...c,karar:"TUT",not:`Oylar SAT yönünde ama RSI ${nf(r,0)} ile aşırı satım bölgesinde; bu seviyeden satmak geç kalmış olabilir, tepki alımı da gelebilir. Bu yüzden TUT.`};
   if(r!=null&&c.karar==="AL"&&r>75)return {...c,karar:"TUT",not:`Oylar AL yönünde ama RSI ${nf(r,0)} ile aşırı alım bölgesinde; bu seviyeden almak riskli, düzeltme gelebilir. Bu yüzden TUT.`};
   return c}
 // "Neden?": oy kuralını değil, hisseyi gerçekten etkileyen gelişmeleri sayar (haber, sektör, petrol/dolar/faiz, piyasa havası)
 // [petrol yükselince etki yönü, kanal]: havayolu için yükseliş olumsuz, rafineri için olumlu
 const PETROL_ETKI={"Ulaştırma":[-1,"yakıt maliyeti"],"Enerji":[1,"rafineri ürün fiyatları ve stok değeri"],"Kimya ve işleme":[0,"hammadde maliyeti"],"Elektrik ve doğalgaz":[0,"enerji fiyatları"]};
+/* risk: soruşturma / temerrüt / tasfiye yaşayan kurum ve hisseler (data/riskli.json + haberlerden otomatik, secim.json içinde) */
+function riskHisse(k){return ((SEC.riskli||{}).hisse||{})[k]||null}
+function riskFon(k){const ad=(fInfo(k).ad||"").split(" ")[0].toUpperCase();return ((SEC.riskli||{}).kurum||{})[ad]||null}
+const riskKart=n=>n?`<div class="card" style="border-color:rgba(244,71,92,.55);background:var(--down-a)"><b class="down">⚠️ Risk uyarısı</b><p class="small" style="margin-top:6px;line-height:1.6">${esc(n)}</p><p class="xs muted" style="margin-top:6px">Bu yüzden burada AL kararı verilmez ve Beklenti'de önerilmez.</p></div>`:"";
 function nedenKutu(k,con,vs){
   const a=getA(k),sek=(a&&a.s&&a.s.sektor)||(MK[k]||{}).sek||"",ha=GUN.haber_ai||{},m=[];
   const etkiYaz=e=>e==="olumlu"?`<b class="up">olumlu</b>`:e==="olumsuz"?`<b class="down">olumsuz</b>`:esc(e||"");
@@ -692,6 +696,7 @@ function openDetail(k,keepScroll,fromPop){
     <div class="big">${px(a.last)} <span style="font-size:18px;font-weight:700" class="muted">TL</span></div>
     <div class="meta"><span class="pill ${cls(a.ch)} ${cls(a.ch)}">${pct(a.ch)}</span><span class="small muted">${a.ch>=0?"+":"−"}${nf(Math.abs(a.last-a.s.prev),2)} TL · ${esc(a.s.t||"")}</span></div>
   </div>
+  ${riskKart(riskHisse(k))}
   ${secimNeden(k)}
   <div class="card chart-card">
     <div class="chart-top"><div class="seg sm" id="rng">${[["gun","Gün"],["1h","1H"],["1a","1A"],["3a","3A"]].map(([r,l])=>`<button data-r="${r}" aria-pressed="${r===range}">${l}</button>`).join("")}</div>
@@ -942,7 +947,7 @@ function fundVotes(k){
 }
 const GLIM={"1h":6,"1a":12,"3a":25};
 function getiriOk(karar,r){if(!isFinite(r)||Math.abs(r)>GLIM[HZ])return false;if(karar==="AL"&&r<=0)return false;if(karar==="SAT"&&r>=0)return false;return true}
-function fKarar(k){const key=HZ+k;if(FKC[key])return FKC[key];fMap();return FKC[key]=consensus(fundVotes(k))}
+function fKarar(k){const key=HZ+k;if(FKC[key])return FKC[key];fMap();const c=consensus(fundVotes(k)),rk=riskFon(k);return FKC[key]=rk&&c.karar==="AL"?{...c,karar:"TUT",not:"Risk uyarısı: "+rk}:c}
 const fInfo=k=>{const t=fMap()[k]||{},d=(FUNDS.fonlar||{})[k]||{};return {k,...t,...d,getiri:d.getiri||{g1a:t.g1a,g3a:t.g3a,g6a:t.g6a,gyb:t.gyb,g1y:t.g1y,g3y:t.g3y}}};
 const gp=v=>v==null?`<span class="faint">–</span>`:`<span class="${cls(v)}">${v>=0?"+":"−"}%${nf(Math.abs(v),Math.abs(v)>=100?0:1)}</span>`;
 function fSpark(g){if(!g||g.length<3)return "";const c=g.map(r=>r[1]),W=76,H=30,lo=Math.min(...c),hi=Math.max(...c);const P=c.map((v,i)=>[i*(W-4)/(c.length-1)+2,H-4-(v-lo)/(hi-lo||1)*(H-8)]);const col=c[c.length-1]>=c[0]?"#22C38E":"#F4475C";return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smoothPath(P)}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round"/></svg>`}
@@ -1000,6 +1005,7 @@ function openFund(k,noPush){
   <div class="price-block"><div class="nm">${esc(k)} · ${esc(f.tur||f.kategori||"Yatırım fonu")}</div>
     <div class="big" style="font-size:${f.fiyat?34:26}px">${f.fiyat?nf(f.fiyat,4)+` <span style="font-size:17px" class="muted">TL</span>`:esc(k)}</div>
     <div class="meta">${f.gunluk!=null?`<span class="pill ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:""}<span class="small muted">${esc(f.ad||"")}</span></div></div>
+  ${riskKart(riskFon(k))}
   ${fonNeden(k)}
   ${chart?`<div class="card chart-card">${chart}</div>`:""}
   ${fundAICard(k)}
@@ -1083,7 +1089,7 @@ async function pollMarket(){try{const d=await getJ(RAW("data","market.json"));if
 async function pollSlow(){
   pollMarket();loadGec();
   try{const d=await getJ(RAW("data","news.json"));if(d.items&&T(d.updatedAt)>T(NEWS.updatedAt)){NEWS=d;renderNews()}}catch(e){}
-  try{const d=await getJ(RAW("main","data/secim.json"));if(T(d.updatedAt)>T(SEC.updatedAt)){SEC=d;renderOutlook()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/secim.json"));if(T(d.updatedAt)>T(SEC.updatedAt)){SEC=d;KC={};FKC={};renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/temel.json"));if(T(d.updatedAt)>T(TEMEL.updatedAt)){TEMEL=d;renderAll()}}catch(e){}
