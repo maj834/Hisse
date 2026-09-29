@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ai_degerlendir import IST, KARAR, json_ayikla, log, oku, openai_uyumlu  # noqa: E402
+from ai_degerlendir import IST, KARAR, json_ayikla, log, oku, openai_uyumlu, openrouter  # noqa: E402
 
 KOK = Path(__file__).resolve().parent.parent
 CIKTI = Path(os.environ.get("FON_AI_CIKTI", KOK / "data" / "fon_ai.json"))
@@ -191,14 +191,17 @@ def temizle(liste, turler: dict) -> tuple[dict, int]:
     return sonuc, atilan
 
 
+def groq_fon(istem_, anahtar):
+    """Hisse değerlendirmesinden ayrı bir Groq modeli (her modelin kendi günlük kotası var)."""
+    tercih = [os.environ["GROQ_FON_MODEL"]] if os.environ.get("GROQ_FON_MODEL") else []
+    tercih += ["moonshotai/kimi-k2-instruct-0905", "moonshotai/kimi-k2-instruct", "qwen/qwen3-32b", "openai/gpt-oss-120b"]
+    return openai_uyumlu("https://api.groq.com/openai/v1", anahtar, None, tercih,
+                         lambda a: "gpt-oss" in a or "kimi" in a, istem_, en_cok=3000)
+
+
 SAGLAYICILAR = [
-    ("groq", "Llama (Groq)", "GROQ_API_KEY",
-     lambda i, a: openai_uyumlu("https://api.groq.com/openai/v1", a, os.environ.get("GROQ_FON_MODEL") or "llama-3.3-70b-versatile",
-                                [], None, i, en_cok=2500)),
-    ("openrouter", "OpenRouter", "OPENROUTER_API_KEY",
-     lambda i, a: openai_uyumlu("https://openrouter.ai/api/v1", a, os.environ.get("OPENROUTER_MODEL"),
-                                ["qwen/qwen3-235b-a22b:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-chat-v3.1:free"],
-                                lambda m: m.endswith(":free") and ("70b" in m or "deepseek" in m or "qwen3" in m), i, json_modu=False, en_cok=3000)),
+    ("groq", "Groq", "GROQ_API_KEY", groq_fon),
+    ("openrouter", "OpenRouter", "OPENROUTER_API_KEY", lambda i, a: openrouter(i, a, en_cok=3000)),
 ]
 
 

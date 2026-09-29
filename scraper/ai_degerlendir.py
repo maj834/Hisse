@@ -282,7 +282,7 @@ def gemini(istem: str, anahtar: str):
     raise RuntimeError(f"Gemini hiçbir modelle çalışmadı ({son})")
 
 
-def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre, istem: str, json_modu=True, en_cok=8000):
+def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre, istem: str, json_modu=True, en_cok=8000, tekrar=3):
     bas = {"Authorization": f"Bearer {anahtar}"}
     if not model:
         r = requests.get(f"{taban}/models", headers=bas, timeout=30)
@@ -299,7 +299,7 @@ def openai_uyumlu(taban: str, anahtar: str, model: str | None, tercihler, filtre
     if json_modu:
         govde["response_format"] = {"type": "json_object"}
     r = requests.post(f"{taban}/chat/completions", headers=bas, json=govde, timeout=ZAMAN_ASIMI)
-    for _ in range(3):
+    for _ in range(tekrar):
         if r.status_code != 429:
             break
         bekle = min(65, float(r.headers.get("retry-after") or 30) + 2)
@@ -331,12 +331,37 @@ def grok(istem, anahtar):
                          lambda a: a.startswith("grok") and "image" not in a and "vision" not in a, istem)
 
 
-def openrouter(istem, anahtar):
-    return openai_uyumlu("https://openrouter.ai/api/v1", anahtar, os.environ.get("OPENROUTER_MODEL"),
-                         ["qwen/qwen3-235b-a22b:free", "meta-llama/llama-3.3-70b-instruct:free",
-                          "deepseek/deepseek-chat-v3.1:free"],
-                         lambda a: a.endswith(":free") and ("70b" in a or "deepseek" in a or "qwen3" in a), istem,
-                         json_modu=False)
+_OR_ADAYLAR: list[str] = []
+
+
+def openrouter(istem, anahtar, en_cok=8000):
+    """Ücretsiz OpenRouter modelleri sık sık 429 veriyor; sırayla birkaç ücretsiz modeli dene."""
+    global _OR_ADAYLAR
+    if os.environ.get("OPENROUTER_MODEL"):
+        adaylar = [os.environ["OPENROUTER_MODEL"]]
+    else:
+        if not _OR_ADAYLAR:
+            tercih = ["qwen/qwen3-235b-a22b:free", "deepseek/deepseek-chat-v3.1:free", "meta-llama/llama-3.3-70b-instruct:free",
+                      "moonshotai/kimi-k2:free", "openai/gpt-oss-120b:free", "z-ai/glm-4.5-air:free"]
+            try:
+                r = requests.get("https://openrouter.ai/api/v1/models", timeout=30)
+                adlar = [m["id"] for m in r.json().get("data", [])]
+            except Exception:
+                adlar = tercih
+            ucretsiz = [a for a in adlar if a.endswith(":free")]
+            buyuk = [a for a in ucretsiz if any(x in a for x in ("70b", "deepseek", "qwen3", "kimi", "gpt-oss-120b", "glm", "235b"))]
+            _OR_ADAYLAR = list(dict.fromkeys([t for t in tercih if t in ucretsiz] + sorted(buyuk, reverse=True)))[:5] or tercih[:3]
+        adaylar = _OR_ADAYLAR
+    son = None
+    for m in adaylar:
+        try:
+            return openai_uyumlu("https://openrouter.ai/api/v1", anahtar, m, [], None, istem, json_modu=False, en_cok=en_cok, tekrar=1)
+        except Exception as e:
+            son = e
+            if not any(x in str(e) for x in ("429", "404", "400", "402", "503")):
+                raise
+            log("OpenRouter", m, "olmadı, sıradaki model deneniyor:", str(e)[:80])
+    raise RuntimeError(f"OpenRouter: hiçbir ücretsiz model yanıt vermedi ({son})")
 
 
 def github_models(istem, anahtar, tercihler, filtre):
