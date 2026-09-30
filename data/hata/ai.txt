@@ -1,0 +1,30 @@
+30.09 16:50 ai.yml
+16:50:24 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+16:50:25 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+16:50:25 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+16:50:25 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+16:50:26 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+16:50:26 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+16:50:26 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+16:50:32 haber AI: @cf/openai/gpt-oss-120b 2 hisse, 2 sektör etkisi
+16:50:32 gündem: {'tavily': 296, 'alphavantage': 4, 'marketaux': 38} kalan kredi
+Traceback (most recent call last):
+  File "/home/runner/work/Hisse/Hisse/scraper/ai_degerlendir.py", line 971, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/runner/work/Hisse/Hisse/scraper/ai_degerlendir.py", line 897, in main
+    istem = istem_olustur(snap, news, outlook, temel)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/Hisse/Hisse/scraper/ai_degerlendir.py", line 192, in istem_olustur
+    satirlar = "\n".join(satir(k, h) for k, h in sorted(hisseler.items()) if h.get("g"))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/Hisse/Hisse/scraper/ai_degerlendir.py", line 192, in <genexpr>
+    satirlar = "\n".join(satir(k, h) for k, h in sorted(hisseler.items()) if h.get("g"))
+                         ^^^^^^^^^^^
+  File "/home/runner/work/Hisse/Hisse/scraper/ai_degerlendir.py", line 186, in satir
+    s = ozet_satiri(k, h) + goreli_guc(h, snap) + temel_ek(k, temel) + haber_ai_satiri(k, h.get("sektor", ""))
+                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/Hisse/Hisse/scraper/ai_degerlendir.py", line 797, in haber_ai_satiri
+    parca.append(f"sektör haberi {s_['etki']} ({s_['neden']})")
+                                                ~~^^^^^^^^^
+KeyError: 'neden'
