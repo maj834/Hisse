@@ -95,32 +95,52 @@ def yukselis_haberleri(eski: list) -> list:
 
 
 def gemini(istem: str) -> tuple[str, str, list]:
-    """Gemini + Google araması: en güncel gelişmeleri web'den bulur. Dönüş: (model, metin, kaynaklar)."""
+    """Gemini + Google araması: en güncel gelişmeleri web'den bulur. Dönüş: (model, metin, kaynaklar).
+    Ücretsiz kotası dolu/kapalı modelde (429) sıradakini dener; hiçbiri aramayla olmazsa aramasız dener."""
     anahtar = os.environ.get("GEMINI_API_KEY", "").strip()
     if not anahtar:
         raise RuntimeError("GEMINI_API_KEY yok")
     taban = "https://generativelanguage.googleapis.com/v1beta"
-    model = os.environ.get("GEMINI_MODEL", "")
-    if not model:
-        r = requests.get(f"{taban}/models", params={"pageSize": 200}, headers={"x-goog-api-key": anahtar}, timeout=30)
+    bas = {"x-goog-api-key": anahtar}
+    try:
+        r = requests.get(f"{taban}/models", params={"pageSize": 200}, headers=bas, timeout=30)
         r.raise_for_status()
         adlar = [m["name"] for m in r.json().get("models", []) if "generateContent" in (m.get("supportedGenerationMethods") or [])]
-        flash = [a for a in adlar if "flash" in a and "lite" not in a and "image" not in a and "tts" not in a and "live" not in a]
-        tercih = [a for a in ("models/gemini-flash-latest", "models/gemini-2.5-flash") if a in adlar]
-        model = (tercih or sorted(flash, reverse=True) or adlar)[0]
-    govde = {"contents": [{"role": "user", "parts": [{"text": istem}]}], "tools": [{"google_search": {}}],
-             "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2500}}
-    r = requests.post(f"{taban}/{model}:generateContent", headers={"x-goog-api-key": anahtar}, json=govde, timeout=90)
-    if not r.ok:
-        raise RuntimeError(f"{model} {r.status_code}: {r.text[:160].replace(anahtar, '***')}")
-    c = (r.json().get("candidates") or [{}])[0]
-    metin = "".join(p_.get("text", "") for p_ in (c.get("content") or {}).get("parts", []))
-    kaynaklar = []
-    for ch in ((c.get("groundingMetadata") or {}).get("groundingChunks") or [])[:10]:
-        w = ch.get("web") or {}
-        if w.get("uri"):
-            kaynaklar.append({"baslik": w.get("title", ""), "url": w["uri"]})
-    return model.replace("models/", ""), metin, kaynaklar
+    except Exception as e:
+        raise RuntimeError(f"model listesi alınamadı: {str(e)[:120]}")
+    tercih = ["models/gemini-2.5-flash", "models/gemini-flash-latest", "models/gemini-2.5-flash-lite",
+              "models/gemini-flash-lite-latest", "models/gemini-2.0-flash"]
+    if os.environ.get("GEMINI_MODEL"):
+        tercih.insert(0, "models/" + os.environ["GEMINI_MODEL"].replace("models/", ""))
+    adaylar = [a for a in tercih if a in adlar] or [a for a in adlar if "flash" in a][:3]
+    hatalar = []
+    for arama in (True, False):
+        for model in adaylar:
+            govde = {"contents": [{"role": "user", "parts": [{"text": istem}]}],
+                     "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2500}}
+            if arama:
+                govde["tools"] = [{"google_search": {}}]
+            r = requests.post(f"{taban}/{model}:generateContent", headers=bas, json=govde, timeout=90)
+            if not r.ok:
+                try:
+                    msj = r.json().get("error", {}).get("message", "")
+                except Exception:
+                    msj = r.text
+                hatalar.append(f"{model.replace('models/', '')}{'+arama' if arama else ''} {r.status_code}: {msj[:140]}")
+                if r.status_code in (429, 400, 403, 404):
+                    continue
+                break
+            c = (r.json().get("candidates") or [{}])[0]
+            metin = "".join(p_.get("text", "") for p_ in (c.get("content") or {}).get("parts", []))
+            kaynaklar = []
+            for ch in ((c.get("groundingMetadata") or {}).get("groundingChunks") or [])[:10]:
+                w = ch.get("web") or {}
+                if w.get("uri"):
+                    kaynaklar.append({"baslik": w.get("title", ""), "url": w["uri"]})
+            if hatalar:
+                log("Gemini denemeleri:", " | ".join(hatalar))
+            return model.replace("models/", "") + ("" if arama else " (aramasız)"), metin, kaynaklar
+    raise RuntimeError(" | ".join(hatalar)[:900] or "uygun Gemini modeli yok")
 
 
 def haberleri_topla(eski: list) -> list:
@@ -192,11 +212,11 @@ def ozet_yaz(haberler: list, eski: dict) -> dict:
             m = re.search(r"\{.*\}", metin, re.S)
             j = json.loads(m.group(0) if m else metin)
             return {"ozet": str(j.get("ozet", ""))[:900], "yatirimci": [str(x)[:220] for x in (j.get("yatirimci") or [])][:3],
-                    "imza": imza, "model": model, "model_ad": "Gemini + Google araması", "kaynaklar": kaynaklar,
+                    "imza": imza, "model": model, "model_ad": "Gemini + Google araması" if kaynaklar else "Gemini", "kaynaklar": kaynaklar,
                     "gemini_ts": int(time.time()), "ozet_zaman": datetime.now(TSI).isoformat(timespec="seconds")}
         except Exception as e:
             global GEMINI_HATA
-            GEMINI_HATA = str(e)[:300]
+            GEMINI_HATA = str(e)[:900]
             log("Gemini olmadı:", GEMINI_HATA)
     if eski.get("model_ad", "").startswith("Gemini") and time.time() - son_g < 3 * 3600:
         return {k: eski[k] for k in ("ozet", "yatirimci", "imza", "model", "model_ad", "kaynaklar", "gemini_ts", "ozet_zaman") if k in eski}
