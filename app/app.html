@@ -221,6 +221,7 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 .shead{display:block;font-size:14px;font-weight:800;color:var(--ink);letter-spacing:0;text-transform:none;margin-top:4px}
 .shead i{font-style:normal;margin-right:6px}
 .shead.up i{color:var(--up)}.shead.down i{color:var(--down)}
+.kriz-b{display:block;width:100%;text-align:left;border-color:rgba(244,71,92,.55);background:linear-gradient(180deg,rgba(244,71,92,.12),rgba(244,71,92,.04))}
 .secneden{border-color:rgba(76,141,255,.35)}
 .disc{font-size:12px;color:var(--faint);text-align:center;padding:8px 12px 0}
 .disc a{color:var(--muted)}
@@ -316,6 +317,7 @@ nav button[aria-selected="true"] svg{animation:zipla .45s ease}
   <section class="page" id="p-haber" hidden></section>
   <section class="page" id="p-fon" hidden></section>
   <section class="page" id="p-fondetay" hidden></section>
+  <section class="page" id="p-kriz" hidden></section>
 </main>
 
 <nav><div class="in" role="tablist">
@@ -831,7 +833,7 @@ function renderNews(){
   const all=(NEWS.items||[]).map(n=>({n,fv:favNews(n)}));
   const list=all.filter(o=>nf2==="all"||(nf2==="fav"?o.fv.length:o.n.kat===nf2));
   const favs=nf2==="all"?list.filter(o=>o.fv.length):[],rest=nf2==="all"?list.filter(o=>!o.fv.length):list;
-  $("#p-haber").innerHTML=`<div class="chips" id="nf">${kats.map(k=>`<button class="chip" data-n="${esc(k)}" aria-pressed="${k===nf2}">${k==="all"?"Tümü":k==="fav"?"★ Favorilerim":esc(k)}</button>`).join("")}</div>
+  $("#p-haber").innerHTML=`${krizBanner()}<div class="chips" id="nf">${kats.map(k=>`<button class="chip" data-n="${esc(k)}" aria-pressed="${k===nf2}">${k==="all"?"Tümü":k==="fav"?"★ Favorilerim":esc(k)}</button>`).join("")}</div>
   ${favs.length?`<div class="card" style="padding-block:4px"><div class="card-h" style="margin:12px 0 0"><h2 style="font-size:15px">★ Favorilerini ilgilendiren</h2><span class="xs muted">${favs.length} haber</span></div><div class="news">${favs.map(o=>newsRow(o.n,o.fv)).join("")}</div></div>`:""}
   <div class="card" style="padding-block:4px"><div class="news">${rest.map(o=>newsRow(o.n,o.fv)).join("")||`<p class="muted" style="padding:14px 0">${nf2==="fav"?"Favori hisse ya da takip ettiğin fonlarla ilgili haber yok. Hisse sayfasındaki ☆ ile favori ekleyebilirsin.":"Bu kategoride haber yok."}</p>`}</div></div>`;
   $("#nf").onclick=e=>{const b=e.target.closest("[data-n]");if(!b)return;nf2=b.dataset.n;store.set("nf",nf2);renderNews()};
@@ -886,6 +888,33 @@ function fonNeden(k){if(!secimTaze())return "";const x=(SEC.fon||[]).find(f=>f.k
     ${s?`<p class="xs faint" style="margin-top:6px">Seçildiği gün: ${dLbl(s.tarih)} · sonuç 1 ay sonra</p>`:""}
     <div style="height:12px"></div><span class="shead">Genel durum</span>
     <div class="sgrid"><div><span class="xs muted">Tür</span><b style="font-size:13px">${esc(x.kategori||"")}</b></div><div><span class="xs muted">1 ay getiri</span><b>${isr(x.g1a)}</b></div><div><span class="xs muted">3 ay getiri</span><b>${isr(x.g3a)}</b></div><div><span class="xs muted">Türünde sıra (1 ay)</span><b>${x.sira1a}/100</b></div></div></div>`}
+/* ================= fon krizi sayfası (data/fon_krizi.json; kriz bitince kendiliğinden gizlenir) ================= */
+let KRIZ={};
+const zamanYaz=ts=>{const d=new Date(ts*1000),dk=Math.round((Date.now()-d)/6e4);return dk<60?`${Math.max(1,dk)} dk önce`:dk<1440?`${Math.round(dk/60)} sa önce`:d.toLocaleDateString("tr-TR",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})};
+function krizBanner(){if(!KRIZ.aktif)return "";const h=(KRIZ.haberler||[])[0];
+  return `<button class="card kriz-b" data-kriz="1"><div class="card-h" style="margin-bottom:6px"><h2>🚨 Fon krizi · son gelişmeler</h2><span class="xs" style="color:var(--down)">${KRIZ.son24saat_haber||0} yeni haber</span></div>
+    ${h?`<p class="small" style="line-height:1.5">${esc(h.baslik)}</p><span class="xs faint">${esc(h.kaynak||"")} · ${zamanYaz(h.ts)}</span>`:""}
+    <span class="xs" style="display:block;margin-top:8px;color:var(--blue)">Tüm gelişmeler, etkilenen fonlar ve özet ›</span></button>`}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-kriz]");if(b)openKriz()});
+function openKriz(noPush){kaydirSakla();renderKriz();setView("kriz");if(!noPush)nav({v:"kriz"});window.scrollTo(0,0)}
+function renderKriz(){const K=KRIZ,hb=K.haberler||[],yk=K.yukselis||[];
+  $("#p-kriz").innerHTML=`
+  <div class="dtop"><button class="back" id="kback"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>${GERI_AD[tab]||"Geri"}</button></div>
+  <div class="price-block"><div class="nm">Özel sayfa · kriz sürdükçe güncellenir</div><div class="big" style="font-size:30px">🚨 Fon krizi</div>
+    <div class="meta"><span class="small muted">Son güncelleme: ${esc(fmtTime(K.updatedAt||""))} · son 5 günde ${K.son5gun_haber||0} haber</span></div></div>
+  ${K.ozet?`<div class="card"><div class="card-h"><h2>Son durum</h2><span class="xs muted">${esc(K.model_ad||"Yapay zekâ özeti")}</span></div><p style="line-height:1.65">${esc(K.ozet)}</p>
+    ${(K.yatirimci||[]).length?`<div style="height:10px"></div><span class="shead">Fon yatırımcısı için</span><ul style="margin:8px 0 0;padding-left:18px;line-height:1.6" class="small">${K.yatirimci.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
+    <p class="xs faint" style="margin-top:10px">Özet yalnızca aşağıdaki haberlere dayanır; yanılabilir. Kaynaklara bakarak doğrula.</p></div>`:""}
+  ${yk.length?`<div class="card"><div class="card-h"><h2>📈 Borsada toparlanma haberleri</h2></div>${yk.slice(0,8).map(h=>`<a class="ev" href="${esc(h.url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit"><b style="font-size:14px;line-height:1.45">${esc(h.baslik)}</b><div class="xs faint" style="margin-top:4px">${esc(h.kaynak||"")} · ${zamanYaz(h.ts)}</div></a>`).join("")}</div>`:""}
+  ${(K.kurumlar||[]).length?`<div class="card"><div class="card-h"><h2>Etkilenen kurumlar</h2></div>${K.kurumlar.map(k=>`<div class="ev"><b>${esc(k.ad)} ${k.dogrulandi?"":`<span class="xs faint">(haberlerden otomatik)</span>`}</b><p class="small muted" style="margin-top:4px;line-height:1.5">${esc(k.neden)}</p>${k.kaynak?`<a class="xs" style="color:var(--blue)" href="${esc(k.kaynak)}" target="_blank" rel="noopener">Kaynak ›</a>`:""}</div>`).join("")}</div>`:""}
+  ${(K.fonlar||[]).length?`<div class="card"><div class="card-h"><h2>Bu kurumların fonları</h2><span class="xs muted">${K.fonlar.length} fon</span></div>
+    <p class="xs muted" style="margin-bottom:8px">"Donmuş" = fiyatı güncellenmiyor, iade kısıtı olabilir. Bu fonlara uygulamada AL verilmez.</p>
+    <div class="list" style="border:0;background:none">${K.fonlar.map(f=>`<button class="row" data-f="${esc(f.kod)}" style="padding-inline:0"><div style="min-width:0;flex:1;text-align:left"><b>${esc(f.kod)}</b> ${f.donmus?`<span class="xs" style="color:var(--down)">· donmuş</span>`:""}<div class="xs muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.ad)}</div></div><div style="text-align:right" class="small">1 ay ${gp(f.g1a)}<br><span class="xs">3 ay ${gp(f.g3a)}</span></div></button>`).join("")}</div></div>`:""}
+  <div class="card"><div class="card-h"><h2>Tüm gelişmeler</h2><span class="xs muted">${hb.length} haber</span></div>
+    ${hb.map(h=>`<a class="ev" href="${esc(h.url)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit"><b style="font-size:14px;line-height:1.45">${esc(h.baslik)}</b><div class="xs faint" style="margin-top:4px">${esc(h.kaynak||"")} · ${zamanYaz(h.ts)}</div></a>`).join("")||`<p class="small muted">Henüz haber yok.</p>`}</div>
+  <p class="disc">Haberler Google Haberler ve web aramasından otomatik toplanır. Yatırım tavsiyesi değildir.</p>`;
+  $("#kback").onclick=goBack;
+  $("#p-kriz").querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>openFund(b.dataset.f))}
 function secimKart(){
   if(!SEC.updatedAt)return "";
   const eski=!secimTaze(),o=SEC.zayif_olcum||{};
@@ -913,6 +942,7 @@ function secimKart(){
 function renderOutlook(){
   const taze=outTaze();
   $("#p-beklenti").innerHTML=`
+  ${krizBanner()}
   ${secimKart()}
   ${taze?`<div class="card"><div class="card-h"><h2>Günün özeti</h2><span class="xs muted">${esc(OUT.guncelleme||"")}</span></div><p style="line-height:1.6">${esc(OUT.ozet||"")}</p></div>`:""}
   ${gundemKart()}
@@ -967,6 +997,7 @@ function renderFunds(){
   else list=list.filter(f=>f[fsort]!=null||t).sort((a,b)=>(b[fsort]??-1e9)-(a[fsort]??-1e9));
   const fn=list.length;list=list.slice(0,FLIM);
   $("#p-fon").innerHTML=`
+  ${krizBanner()}
   <div class="card"><div class="card-h"><h2>Takip ettiğim fonlar</h2>${myF.length?`<button class="xs" id="fclear" style="color:var(--muted);padding:6px 0 6px 10px">Listeyi temizle</button>`:`<span class="xs muted">${allFunds().length?allFunds().length+" fon içinde":""}</span>`}</div>
     <div class="list" style="border:0;background:none">${myF.map(k=>{const f=fInfo(k),g1=(f.getiri||{}).g1a;return `<button class="row" data-f="${esc(k)}" style="padding-inline:0">
       <span style="min-width:0"><span class="code">${esc(k)}</span><span class="name">${esc(f.ad||"TEFAS fonu")}</span></span>${fSpark(f.g)}
@@ -1032,15 +1063,15 @@ function openFund(k,noPush){
 }
 
 /* ================= gezinme (telefonun geri tuşu uygulamadan atmaz) ================= */
-const VIEWS=["piyasa","detay","beklenti","haber","fon","fondetay"];
-function setView(v){VIEWS.forEach(n=>{const el=$("#p-"+n),once=el.hidden;el.hidden=n!==v;if(n===v&&once){el.classList.remove("giris");void el.offsetWidth;el.classList.add("giris")}});const tb=v==="detay"||v==="fondetay"?(tab||"piyasa"):v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tb))}
+const VIEWS=["piyasa","detay","beklenti","haber","fon","fondetay","kriz"];
+function setView(v){VIEWS.forEach(n=>{const el=$("#p-"+n),once=el.hidden;el.hidden=n!==v;if(n===v&&once){el.classList.remove("giris");void el.offsetWidth;el.classList.add("giris")}});const tb=v==="detay"||v==="fondetay"||v==="kriz"?(tab||"piyasa"):v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tb))}
 function nav(st){try{history.pushState(st,"","#"+(st.k||st.v))}catch(e){}}
 function goBack(){if(history.state&&history.state.v&&history.state.v!=="piyasa")history.back();else showTab("piyasa",true)}
 const KAYDIR={},GERI_AD={piyasa:"Piyasa",beklenti:"Beklenti",haber:"Haberler",fon:"Fonlar"};
 function kaydirSakla(){const v=VIEWS.find(n=>!$("#p-"+n).hidden);if(v&&v!=="detay"&&v!=="fondetay")KAYDIR[v]=window.scrollY}
 function showTab(t,noPush){tab=t;cur=null;setView(t);const y=noPush?(KAYDIR[t]||0):0;window.scrollTo(0,y);if(y){requestAnimationFrame(()=>window.scrollTo(0,y));[80,250,500].forEach(ms=>setTimeout(()=>{if(tab===t&&!$("#p-"+t).hidden&&Math.abs(scrollY-y)>4)window.scrollTo(0,y)},ms))}if(!noPush){if(t==="piyasa"){try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}}else nav({v:t})}}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{if(!$("#p-"+b.dataset.tab).hidden)return;showTab(b.dataset.tab)});
-window.addEventListener("popstate",e=>{const s=e.state||{v:"piyasa"};if(s.v==="detay"&&getA(s.k))openDetail(s.k,false,true);else if(s.v==="fondetay"&&s.k)openFund(s.k,true);else showTab(VIEWS.includes(s.v)?s.v:"piyasa",true)});
+window.addEventListener("popstate",e=>{const s=e.state||{v:"piyasa"};if(s.v==="detay"&&getA(s.k))openDetail(s.k,false,true);else if(s.v==="fondetay"&&s.k)openFund(s.k,true);else if(s.v==="kriz")openKriz(true);else showTab(VIEWS.includes(s.v)?s.v:"piyasa",true)});
 // Android'in geri tuşu için: true = uygulama içinde geri gidildi
 window.hrBack=function(){const o=$("#onay");if(o&&$("#onayKapat")){o.remove();document.body.classList.remove("kilit");return true}if(o)return false;const s=history.state;if(s&&s.v&&s.v!=="piyasa"){history.back();return true}if($("#p-piyasa").hidden){showTab("piyasa",true);return true}return false};
 
@@ -1109,6 +1140,7 @@ async function pollMarket(){try{const d=await getJ(RAW("data","market.json"));if
 async function pollSlow(){
   pollMarket();loadGec();
   try{const d=await getJ(RAW("data","news.json"));if(d.items&&T(d.updatedAt)>T(NEWS.updatedAt)){NEWS=d;renderNews()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/fon_krizi.json"));if(T(d.updatedAt)>T(KRIZ.updatedAt)){KRIZ=d;renderOutlook();renderNews();renderFunds();if(!$("#p-kriz").hidden)renderKriz()}}catch(e){}
   try{const d=await getJ(RAW("main","data/secim.json"));if(T(d.updatedAt)>T(SEC.updatedAt)){SEC=d;KC={};FKC={};renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
