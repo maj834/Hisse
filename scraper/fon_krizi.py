@@ -41,6 +41,9 @@ BORSA_TR = re.compile(r"BIST|Borsa İstanbul|\bborsa", re.I)
 YABANCI = re.compile(r"New York|Nasdaq|\bDow\b|S&P|Wall Street|Avrupa|\bAsya|Japon|\bÇin\b|Almanya|Londra|Tokyo|\bDAX\b|Nikkei|futbol|Milli Takım|\bmaç|\blig\b|Süper Lig|altın|gümüş|güven endeksi|enflasyon|dolar|euro|kripto|bitcoin", re.I)
 GEMINI_EN_SIK_DK = 30   # Gemini en çok yarım saatte bir (ücretsiz kota)
 GEMINI_HATA = ""
+AIML_EN_SIK_DK = 60     # AI/ML API ücretsiz planı sınırlı: en çok saatte bir, yalnızca yeni haber gelince
+AIML_TERCIH = ["gpt-4o-mini", "deepseek/deepseek-chat", "google/gemini-2.0-flash", "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+               "Qwen/Qwen2.5-72B-Instruct-Turbo", "mistralai/Mistral-Small-24B-Instruct-2501"]
 
 
 def log(*a):
@@ -149,6 +152,36 @@ def gemini(istem: str) -> tuple[str, str, list]:
     raise RuntimeError(" | ".join(hatalar)[:900] or "uygun Gemini modeli yok")
 
 
+def aiml(istem: str) -> tuple[str, str]:
+    """AI/ML API (aimlapi.com, OpenAI uyumlu). Ücretsiz planda kapalı/kotası dolu modelde sıradakine geçer."""
+    anahtar = os.environ.get("AIML_API_KEY", "").strip()
+    if not anahtar:
+        raise RuntimeError("AIML_API_KEY yok")
+    bas = {"Authorization": f"Bearer {anahtar}", "Content-Type": "application/json"}
+    tercih = ([os.environ["AIML_MODEL"]] if os.environ.get("AIML_MODEL") else []) + AIML_TERCIH
+    hatalar = []
+    for model in tercih:
+        govde = {"model": model, "temperature": 0.2, "max_tokens": 1200,
+                 "messages": [{"role": "system", "content": "Yalnızca geçerli JSON döndür."}, {"role": "user", "content": istem}]}
+        try:
+            r = requests.post("https://api.aimlapi.com/v1/chat/completions", headers=bas, json=govde, timeout=90)
+        except Exception as e:
+            hatalar.append(f"{model}: {str(e)[:80]}")
+            continue
+        if r.ok:
+            icerik = ((r.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+            if icerik.strip():
+                if hatalar:
+                    log("AIML denemeleri:", " | ".join(hatalar))
+                return model, icerik
+            hatalar.append(f"{model}: boş yanıt")
+            continue
+        hatalar.append(f"{model} {r.status_code}: {r.text[:140].replace(anahtar, '***')}")
+        if r.status_code == 401:
+            break   # anahtar geçersiz: diğer modelleri denemek boşuna
+    raise RuntimeError(" | ".join(hatalar)[:900])
+
+
 def haberleri_topla(eski: list) -> list:
     oturum = requests.Session()
     oturum.headers.update({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0 Safari/537.36"})
@@ -202,33 +235,26 @@ def ozet_yaz(haberler: list, eski: dict) -> dict:
         'Şu JSON\'u döndür: {"ozet":"3-4 cümle: krizde son durum ne, en son ne oldu","yatirimci":["fon yatırımcısı için 2-3 kısa, somut not"]}\n\n'
         f"Başlıklar:\n{satirlar}"
     )
-    # 1) Gemini + Google araması (en güncel, web'den); yarım saatte bir en fazla
-    son_g = eski.get("gemini_ts", 0)
-    if os.environ.get("GEMINI_API_KEY") and time.time() - son_g >= GEMINI_EN_SIK_DK * 60:
-        g_istem = (
-            f"Bugün {datetime.now(TSI):%d.%m.%Y %H:%M} (Türkiye saati). Google'da ara: Türkiye'deki fon krizi (Tera Portföy, Pusula Portföy, "
-            "fon soruşturması, fon tasfiyeleri, iade kısıtları, SPK kararları) ile ilgili SON 48 SAATTEKİ en güncel gelişmeler neler? "
-            "Ayrıca Borsa İstanbul'un bugünkü seyri (kriz etkisi, toparlanma var mı).\n"
-            "Yalnızca bulduğun kaynaklara dayan, uydurma. 18 yaşındaki sıradan bir yatırımcının anlayacağı sade Türkçe yaz.\n"
-            'Sadece şu JSON\'u döndür: {"ozet":"3-4 cümle son durum","yatirimci":["fon yatırımcısı için 2-3 kısa, somut not"]}\n\n'
-            f"Bildiğimiz son başlıklar:\n{satirlar}"
-        )
+    # 1) AI/ML API (kullanıcının anahtarı): en çok saatte bir ve yalnızca başlıklar değişince
+    son_a = eski.get("aiml_ts", 0)
+    anahtarlar = ("ozet", "yatirimci", "imza", "model", "model_ad", "aiml_ts", "ozet_zaman")
+    if os.environ.get("AIML_API_KEY") and eski.get("imza") != imza and time.time() - son_a >= AIML_EN_SIK_DK * 60:
         try:
-            model, metin, kaynaklar = gemini(g_istem)
+            model, metin = aiml(istem)
             m = re.search(r"\{.*\}", metin, re.S)
             j = json.loads(m.group(0) if m else metin)
             return {"ozet": str(j.get("ozet", ""))[:900], "yatirimci": [str(x)[:220] for x in (j.get("yatirimci") or [])][:3],
-                    "imza": imza, "model": model, "model_ad": "Gemini + Google araması" if kaynaklar else "Gemini", "kaynaklar": kaynaklar,
-                    "gemini_ts": int(time.time()), "ozet_zaman": datetime.now(TSI).isoformat(timespec="seconds")}
+                    "imza": imza, "model": model, "model_ad": "AI/ML API · " + model.split("/")[-1], "aiml_ts": int(time.time()),
+                    "ozet_zaman": datetime.now(TSI).isoformat(timespec="seconds")}
         except Exception as e:
             global GEMINI_HATA
-            GEMINI_HATA = str(e)[:900]
-            log("Gemini olmadı:", GEMINI_HATA)
-    if eski.get("model_ad", "").startswith("Gemini") and time.time() - son_g < 3 * 3600:
-        return {k: eski[k] for k in ("ozet", "yatirimci", "imza", "model", "model_ad", "kaynaklar", "gemini_ts", "ozet_zaman") if k in eski}
+            GEMINI_HATA = "AIML: " + str(e)[:900]
+            log("AI/ML API olmadı:", GEMINI_HATA)
+    if str(eski.get("model_ad", "")).startswith("AI/ML") and (eski.get("imza") == imza or time.time() - son_a < AIML_EN_SIK_DK * 60):
+        return {k: eski[k] for k in anahtarlar if k in eski}
     # 2) yedek: ücretsiz haber yapay zekâsı (yalnızca başlıklardan)
     if eski.get("imza") == imza and eski.get("ozet"):
-        return {k: eski[k] for k in ("ozet", "yatirimci", "imza", "model", "model_ad", "kaynaklar", "gemini_ts", "ozet_zaman") if k in eski}
+        return {k: eski[k] for k in ("ozet", "yatirimci", "imza", "model", "model_ad", "aiml_ts", "ozet_zaman") if k in eski}
     try:
         import ai_degerlendir
         model, metin = ai_degerlendir.haber_modeli(istem)
@@ -238,7 +264,7 @@ def ozet_yaz(haberler: list, eski: dict) -> dict:
                 "imza": imza, "model": model, "model_ad": "Haber yapay zekâsı", "ozet_zaman": datetime.now(TSI).isoformat(timespec="seconds")}
     except Exception as e:
         log("özet yazılamadı:", str(e)[:120])
-        return {k: eski[k] for k in ("ozet", "yatirimci", "imza", "model", "model_ad", "kaynaklar", "gemini_ts", "ozet_zaman") if k in eski}
+        return {k: eski[k] for k in ("ozet", "yatirimci", "imza", "model", "model_ad", "aiml_ts", "ozet_zaman") if k in eski}
 
 
 def main() -> int:
@@ -280,7 +306,7 @@ def main() -> int:
         "fonlar": fonlar,
         "haberler": haberler,
         "yukselis": yukselis_haberleri(eski.get("yukselis") or []),
-        "gemini_hata": GEMINI_HATA,
+        "ai_hata": GEMINI_HATA,
     }
     CIKTI.write_text(json.dumps(sonuc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     log("yazıldı: aktif", aktif, "| kurum", len(kurumlar), "| fon", len(fonlar), "| haber", len(haberler))

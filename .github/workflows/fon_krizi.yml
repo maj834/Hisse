@@ -1,10 +1,10 @@
 name: Fon krizi
 
-# Fon krizi sayfası: haberler, borsa toparlanma haberleri, Gemini (Google aramalı) son durum özeti,
-# etkilenen kurum ve fonlar -> data/fon_krizi.json. Gemini YALNIZCA burada kullanılır.
+# Fon krizi sayfası: haberler, borsa toparlanma haberleri, son durum özeti (AI/ML API; yoksa ücretsiz haber AI),
+# etkilenen kurum ve fonlar -> data/fon_krizi.json. AIML_API_KEY YALNIZCA burada kullanılır.
 on:
   schedule:
-    - cron: "*/15 * * * *"   # 15 dakikada bir (Gemini en çok yarım saatte bir çağrılır)
+    - cron: "*/15 * * * *"   # 15 dakikada bir (AI/ML API en çok saatte bir çağrılır)
   workflow_dispatch:
 
 permissions:
@@ -34,7 +34,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AIML_API_KEY: ${{ secrets.AIML_API_KEY }}
           FUNDS: /tmp/funds.json
         run: python scraper/fon_krizi.py
       - name: kaydet
