@@ -36,7 +36,9 @@ EN_ESKI_GUN = 21
 # borsada toparlanma / yükseliş haberleri (krizin piyasaya etkisi geçiyor mu?)
 YUKSELIS_SORGULARI = ["BIST 100 yükseldi", "borsa toparlandı", "borsa güne yükselişle başladı", "Borsa İstanbul yükseliş"]
 YUKSELIS = re.compile(r"yüksel|toparlan|pozitif|artı|rekor|tepki alım|kazandır|yeşil", re.I)
-DUSUS = re.compile(r"düş|geriled|kayıp|sert satış|çöktü|eksi", re.I)
+DUSUS = re.compile(r"düş|geriled|kayıp|sert satış|çöktü|\beksi\b|ekside", re.I)
+BORSA_TR = re.compile(r"BIST|Borsa İstanbul|borsa|endeks", re.I)
+YABANCI = re.compile(r"New York|Nasdaq|\bDow\b|S&P|Wall Street|Avrupa|\bAsya|Japon|\bÇin\b|Almanya|Londra|Tokyo|\bDAX\b|Nikkei|futbol|Milli Takım|\bmaç|\blig\b|Süper Lig", re.I)
 GEMINI_EN_SIK_DK = 30   # Gemini en çok yarım saatte bir (ücretsiz kota)
 
 
@@ -79,10 +81,12 @@ def rss(sorgu: str, gun: int, adet: int = 15) -> list:
 
 
 def yukselis_haberleri(eski: list) -> list:
-    kayit = {h["baslik"]: h for h in eski}
+    # eski kayıtlar da yeni filtreden geçsin
+    kayit = {h["baslik"]: h for h in eski if BORSA_TR.search(h["baslik"]) and not YABANCI.search(h["baslik"]) and not DUSUS.search(h["baslik"])}
     for s in YUKSELIS_SORGULARI:
         for h in rss(s, 2, 12):
-            if YUKSELIS.search(h["baslik"]) and not DUSUS.search(h["baslik"]):
+            b = h["baslik"]
+            if YUKSELIS.search(b) and BORSA_TR.search(b) and not DUSUS.search(b) and not YABANCI.search(b):
                 kayit.setdefault(h["baslik"], h)
         time.sleep(1)
     liste = [h for h in kayit.values() if h["ts"] >= time.time() - 3 * 86400]
