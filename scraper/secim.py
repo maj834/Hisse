@@ -312,7 +312,8 @@ def main():
     eski = oku("secim.json")
     gecmis = eski.get("gecmis", [])
     cer = eski.get("cerebras", {})
-    ai, genis, gundem, outlook = oku("ai.json"), oku("ai_genis.json"), oku("gundem.json"), oku("outlook.json")
+    ai, genis, gundem = oku("ai.json"), oku("ai_genis.json"), oku("gundem.json")
+    outlook = {}  # Claude analizi sistemden kaldırıldı (30 Eylül 2026)
     market = {}
     try:
         md = requests.get("https://raw.githubusercontent.com/maj834/Hisse/data/market.json", timeout=30).json()

@@ -884,7 +884,7 @@ def gundem_guncelle(hisseler: dict) -> None:
 def main() -> int:
     snap = oku(os.environ.get("SNAPSHOT", KOK / "data" / "snapshot.json"), {})
     news = oku(os.environ.get("NEWS", KOK / "data" / "news.json"), {})
-    outlook = oku(os.environ.get("OUTLOOK", KOK / "data" / "outlook.json"), {})
+    outlook = {}  # Claude analizi sistemden kaldırıldı (30 Eylül 2026); eski outlook.json bayat haber olarak istemlere girmesin
     hisseler = snap.get("hisseler") or {}
     if not hisseler:
         log("snapshot boş")

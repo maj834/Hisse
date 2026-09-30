@@ -409,9 +409,9 @@ const kText={AL:"AL",TUT:"TUT",SAT:"SAT"};
 const HLIM={"1h":.10,"1a":.20,"3a":.35};
 function hedefOk(karar,h,last){if(!h||!last)return false;const r=h/last-1;if(Math.abs(r)>HLIM[HZ])return false;if(karar==="AL"&&r<=0)return false;if(karar==="SAT"&&r>=0)return false;return true}
 function atHZ(v){if(!v)return null;if(HZ==="1h")return v.karar?{karar:v.karar,hedef:v.hedef}:null;const kk=v["karar"+HZ];return kk?{karar:kk,hedef:v["hedef"+HZ]}:null}
-// Claude'un saatlik yorumu: 8 saatten eskiyse "önceki analiz", 36 saatten eskiyse hiç kullanılmaz (bayat haber yanıltmasın)
+// Claude analizi sistemden kaldırıldı (30 Eylül 2026): outlook.json artık kullanılmaz
 const outYas=()=>(Date.now()-T(OUT.updatedAt))/36e5;
-const outTaze=()=>outYas()<36;
+const outTaze=()=>false;
 const gSev=g=>g==null?"":g>=70?"yüksek":g>=50?"orta":"düşük";
 function isabetTxt(id){const x=((AI.isabet||{})[id]||{})[HZ];if(!x)return "";return x.n>=20?`<span class="xs faint" style="display:block">Son 30 gün isabet: %${nf(x.oran,0)} (${x.n} karar)</span>`:`<span class="xs faint" style="display:block">İsabet ölçülüyor (${x.n}/20 karar)</span>`}
 function votes(k){
@@ -716,7 +716,7 @@ function openDetail(k,keepScroll,fromPop){
     ${hzSeg("hzD")}<div style="height:12px"></div>
     ${a.lite?talepHtml(k):""}
     <div class="ask" id="ask" ${asked?"hidden":""}>
-      <p class="small muted">${a.lite?((AIG.hisseler||{})[k]?"Yapay zekâ, ":"")+(a.noHist?"TradingView göstergeleri":"TradingView göstergeleri ve teknik analiz"):aiNames.length?esc(aiNames.join(", "))+", Claude ve teknik analiz":"Claude ve teknik analiz"} bu hisseyi değerlendirdi. Kararı görmek için sor.</p>
+      <p class="small muted">${a.lite?((AIG.hisseler||{})[k]?"Yapay zekâ, ":"")+(a.noHist?"TradingView göstergeleri":"TradingView göstergeleri ve teknik analiz"):aiNames.length?esc(aiNames.join(", "))+" ve teknik analiz":"Teknik analiz"} bu hisseyi değerlendirdi. Kararı görmek için sor.</p>
       <button class="btn primary" id="askBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>Yapay zekâlara sor</button>
     </div>
     <div id="answer" ${asked?"":"hidden"}>
@@ -970,7 +970,7 @@ function renderFunds(){
       <span class="r"><span class="px">${f.fiyat?nf(f.fiyat,4):"–"}</span>${f.gunluk!=null?`<span class="ch ${cls(f.gunluk)} ${cls(f.gunluk)}">${pct(f.gunluk)}</span>`:g1!=null?`<span class="xs muted">1 ay ${gp(g1)}</span>`:""}</span></button>`}).join("")||`<p class="muted small" style="padding:6px 0 10px">Henüz takip ettiğin fon yok. Aşağıdan bir fona girip <b>Takip et</b>'e basarak buraya ekleyebilirsin.</p>`}</div></div>
   <input class="search" id="fq" type="search" placeholder="${allFunds().length?allFunds().length+" fon içinde ara: kod, isim ya da tür":"Fon ara: kod, isim ya da tür (ör. altın, teknoloji)"}" value="${esc(fq)}" aria-label="Fon ara">
   <div class="seg" id="ff">${[["all","Tümü"],["al","AL"],["sat","SAT"]].map(([k,l])=>`<button data-ff="${k}" aria-pressed="${k===ffilt}">${l}</button>`).join("")}</div>
-  ${fk?`<div class="card" style="padding:12px 14px">${hzSeg("hzFL")}<p class="xs muted" style="margin-top:8px">${fn} fon ${HZL[HZ]} vadesinde ${ffilt==="al"?"AL":"SAT"} diyor. Yapay zekâ, Claude, kategori içi getiri momentumu ve grafik oylarının en az %60'ı aynı yönde olmalı. Ayrıntı için fona dokun.</p></div>`:`<div class="seg" id="fs">${FSORT.map(([k,l])=>`<button data-s="${k}" aria-pressed="${k===fsort}">${l}</button>`).join("")}</div>`}
+  ${fk?`<div class="card" style="padding:12px 14px">${hzSeg("hzFL")}<p class="xs muted" style="margin-top:8px">${fn} fon ${HZL[HZ]} vadesinde ${ffilt==="al"?"AL":"SAT"} diyor. Yapay zekâ, kategori içi getiri momentumu ve grafik oylarının en az %60'ı aynı yönde olmalı. Ayrıntı için fona dokun.</p></div>`:`<div class="seg" id="fs">${FSORT.map(([k,l])=>`<button data-s="${k}" aria-pressed="${k===fsort}">${l}</button>`).join("")}</div>`}
   <div class="card" style="padding-block:4px"><div class="card-h" style="margin:12px 0 4px"><h2 style="font-size:15px">${fk?(ffilt==="al"?"AL diyen fonlar":"SAT diyen fonlar"):t?"Arama sonuçları":"En çok kazandıranlar"}</h2><span class="xs muted">${FSORT.find(x=>x[0]===fsort)[1]} getirisi</span></div>
     ${list.map(f=>{const c=fk?fKarar(f.k):null;return `<button class="frow" data-f="${esc(f.k)}"><span style="min-width:0"><b>${esc(f.k)}</b>${c?`<span class="ai-dot pill ${kCls(c.karar)} ${kCls(c.karar)}">${c.karar}</span>`:""} <span class="xs muted">${esc(f.tur||"")}</span><span class="name">${esc(f.ad)}</span></span><b>${gp(f[fsort])}</b></button>`}).join("")||`<p class="muted small" style="padding:12px 0">${!allFunds().length?"Fon listesi yükleniyor.":fk?"Şu an bu yönde güçlü sinyal veren fon yok.":"Eşleşen fon yok."}</p>`}
     ${fn>FLIM?`<button class="btn ghost" id="fmore" style="margin:8px 0 12px;width:100%">Daha fazla göster (${fn-FLIM} fon daha)</button>`:""}</div>
