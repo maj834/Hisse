@@ -238,7 +238,8 @@ def ozet_yaz(haberler: list, eski: dict) -> dict:
     # 1) AI/ML API (kullanıcının anahtarı): en çok saatte bir ve yalnızca başlıklar değişince
     son_a = eski.get("aiml_ts", 0)
     anahtarlar = ("ozet", "yatirimci", "imza", "model", "model_ad", "aiml_ts", "ozet_zaman")
-    if os.environ.get("AIML_API_KEY") and eski.get("imza") != imza and time.time() - son_a >= AIML_EN_SIK_DK * 60:
+    elle = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"   # elle başlatınca her durumda dene (test için)
+    if os.environ.get("AIML_API_KEY") and (elle or (eski.get("imza") != imza and time.time() - son_a >= AIML_EN_SIK_DK * 60)):
         try:
             model, metin = aiml(istem)
             m = re.search(r"\{.*\}", metin, re.S)
