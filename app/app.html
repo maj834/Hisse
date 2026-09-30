@@ -901,7 +901,7 @@ function renderKriz(){const K=KRIZ,hb=K.haberler||[],yk=K.yukselis||[];
   $("#p-kriz").innerHTML=`
   <div class="dtop"><button class="back" id="kback"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>${GERI_AD[tab]||"Geri"}</button></div>
   <div class="price-block"><div class="nm">Özel sayfa · kriz sürdükçe güncellenir</div><div class="big" style="font-size:30px">🚨 Fon krizi</div>
-    <div class="meta"><span class="small muted">Son güncelleme: ${esc(fmtTime(K.updatedAt||""))} · son 5 günde ${K.son5gun_haber||0} haber</span></div></div>
+    <div class="meta"><span class="small muted">Son güncelleme: ${K.updatedAt?zamanYaz(T(K.updatedAt)/1000):"–"} · son 5 günde ${K.son5gun_haber||0} haber</span></div></div>
   ${K.ozet?`<div class="card"><div class="card-h"><h2>Son durum</h2><span class="xs muted">${esc(K.model_ad||"Yapay zekâ özeti")}</span></div><p style="line-height:1.65">${esc(K.ozet)}</p>
     ${(K.yatirimci||[]).length?`<div style="height:10px"></div><span class="shead">Fon yatırımcısı için</span><ul style="margin:8px 0 0;padding-left:18px;line-height:1.6" class="small">${K.yatirimci.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
     <p class="xs faint" style="margin-top:10px">Özet yalnızca aşağıdaki haberlere dayanır; yanılabilir. Kaynaklara bakarak doğrula.</p></div>`:""}
