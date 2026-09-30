@@ -37,8 +37,8 @@ EN_ESKI_GUN = 21
 YUKSELIS_SORGULARI = ["BIST 100 yükseldi", "borsa toparlandı", "borsa güne yükselişle başladı", "Borsa İstanbul yükseliş"]
 YUKSELIS = re.compile(r"yüksel|toparlan|pozitif|artı|rekor|tepki alım|kazandır|yeşil", re.I)
 DUSUS = re.compile(r"düş|geriled|kayıp|sert satış|çöktü|\beksi\b|ekside", re.I)
-BORSA_TR = re.compile(r"BIST|Borsa İstanbul|borsa|endeks", re.I)
-YABANCI = re.compile(r"New York|Nasdaq|\bDow\b|S&P|Wall Street|Avrupa|\bAsya|Japon|\bÇin\b|Almanya|Londra|Tokyo|\bDAX\b|Nikkei|futbol|Milli Takım|\bmaç|\blig\b|Süper Lig", re.I)
+BORSA_TR = re.compile(r"BIST|Borsa İstanbul|borsa|hisse", re.I)
+YABANCI = re.compile(r"New York|Nasdaq|\bDow\b|S&P|Wall Street|Avrupa|\bAsya|Japon|\bÇin\b|Almanya|Londra|Tokyo|\bDAX\b|Nikkei|futbol|Milli Takım|\bmaç|\blig\b|Süper Lig|altın|gümüş|güven endeksi|enflasyon|dolar|euro|kripto|bitcoin", re.I)
 GEMINI_EN_SIK_DK = 30   # Gemini en çok yarım saatte bir (ücretsiz kota)
 
 
