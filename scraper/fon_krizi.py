@@ -108,8 +108,14 @@ def gemini(istem: str) -> tuple[str, str, list]:
         adlar = [m["name"] for m in r.json().get("models", []) if "generateContent" in (m.get("supportedGenerationMethods") or [])]
     except Exception as e:
         raise RuntimeError(f"model listesi alınamadı: {str(e)[:120]}")
-    tercih = ["models/gemini-2.5-flash", "models/gemini-flash-latest", "models/gemini-2.5-flash-lite",
-              "models/gemini-flash-lite-latest", "models/gemini-2.0-flash"]
+    # en yeni sürüm numaralı "flash" modeller önce, sonra "flash-lite" (Google eski modelleri yeni hesaplara kapatıyor)
+    def surum(a):
+        m = re.match(r"models/gemini-(\d+(?:\.\d+)?)-flash(-lite)?$", a)
+        return (float(m.group(1)), bool(m.group(2))) if m else None
+    numarali = [a for a in adlar if surum(a)]
+    tercih = sorted([a for a in numarali if not surum(a)[1]], key=lambda a: -surum(a)[0]) + \
+        sorted([a for a in numarali if surum(a)[1]], key=lambda a: -surum(a)[0]) + \
+        ["models/gemini-flash-latest", "models/gemini-flash-lite-latest"]
     if os.environ.get("GEMINI_MODEL"):
         tercih.insert(0, "models/" + os.environ["GEMINI_MODEL"].replace("models/", ""))
     adaylar = [a for a in tercih if a in adlar] or [a for a in adlar if "flash" in a][:3]
