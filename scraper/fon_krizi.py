@@ -37,9 +37,10 @@ EN_ESKI_GUN = 21
 YUKSELIS_SORGULARI = ["BIST 100 yükseldi", "borsa toparlandı", "borsa güne yükselişle başladı", "Borsa İstanbul yükseliş"]
 YUKSELIS = re.compile(r"yüksel|toparlan|pozitif|artı|rekor|tepki alım|kazandır|yeşil", re.I)
 DUSUS = re.compile(r"düş|geriled|kayıp|sert satış|çöktü|\beksi\b|ekside", re.I)
-BORSA_TR = re.compile(r"BIST|Borsa İstanbul|borsa|hisse", re.I)
+BORSA_TR = re.compile(r"BIST|Borsa İstanbul|\bborsa", re.I)
 YABANCI = re.compile(r"New York|Nasdaq|\bDow\b|S&P|Wall Street|Avrupa|\bAsya|Japon|\bÇin\b|Almanya|Londra|Tokyo|\bDAX\b|Nikkei|futbol|Milli Takım|\bmaç|\blig\b|Süper Lig|altın|gümüş|güven endeksi|enflasyon|dolar|euro|kripto|bitcoin", re.I)
 GEMINI_EN_SIK_DK = 30   # Gemini en çok yarım saatte bir (ücretsiz kota)
+GEMINI_HATA = ""
 
 
 def log(*a):
@@ -194,7 +195,9 @@ def ozet_yaz(haberler: list, eski: dict) -> dict:
                     "imza": imza, "model": model, "model_ad": "Gemini + Google araması", "kaynaklar": kaynaklar,
                     "gemini_ts": int(time.time()), "ozet_zaman": datetime.now(TSI).isoformat(timespec="seconds")}
         except Exception as e:
-            log("Gemini olmadı:", str(e)[:160])
+            global GEMINI_HATA
+            GEMINI_HATA = str(e)[:300]
+            log("Gemini olmadı:", GEMINI_HATA)
     if eski.get("model_ad", "").startswith("Gemini") and time.time() - son_g < 3 * 3600:
         return {k: eski[k] for k in ("ozet", "yatirimci", "imza", "model", "model_ad", "kaynaklar", "gemini_ts", "ozet_zaman") if k in eski}
     # 2) yedek: ücretsiz haber yapay zekâsı (yalnızca başlıklardan)
@@ -251,6 +254,7 @@ def main() -> int:
         "fonlar": fonlar,
         "haberler": haberler,
         "yukselis": yukselis_haberleri(eski.get("yukselis") or []),
+        "gemini_hata": GEMINI_HATA,
     }
     CIKTI.write_text(json.dumps(sonuc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     log("yazıldı: aktif", aktif, "| kurum", len(kurumlar), "| fon", len(fonlar), "| haber", len(haberler))
