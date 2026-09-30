@@ -43,8 +43,11 @@ h1,h2,h3{margin:0}
 .appbar{position:sticky;top:0;z-index:10;background:rgba(10,15,22,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding-top:env(safe-area-inset-top,0px)}
 .appbar .in{display:flex;align-items:center;gap:12px;height:60px}
 .appbar h1{font-size:19px;font-weight:800;letter-spacing:-.02em;flex:1}
+.appbar h1{white-space:nowrap;min-width:0}
+.appbar .live{white-space:nowrap;flex-shrink:0;font-size:12px;padding:5px 10px}
+@media (max-width:420px){.appbar .in{gap:10px}.appbar h1{font-size:17px}.appbar .live{font-size:11px;padding:4px 9px;gap:5px}}
 .logo{width:30px;height:30px;border-radius:9px;background:var(--blue);display:grid;place-items:center;flex:none}
-.live{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--muted);background:var(--s1);border:1px solid var(--line);padding:6px 11px;border-radius:999px}
+.live{cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--muted);background:var(--s1);border:1px solid var(--line);padding:6px 11px;border-radius:999px}
 .live i{width:8px;height:8px;border-radius:50%;background:var(--faint)}
 .live.on i{background:var(--up);animation:beat 2s infinite}
 @keyframes beat{0%{box-shadow:0 0 0 0 rgba(34,195,142,.55)}70%{box-shadow:0 0 0 8px rgba(34,195,142,0)}100%{box-shadow:0 0 0 0 rgba(34,195,142,0)}}
@@ -303,7 +306,7 @@ nav button[aria-selected="true"] svg{animation:zipla .45s ease}
 <header class="appbar"><div class="wrap in">
   <span class="logo"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 12v-3M7 14V5M11 11V8M15 9V3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></span>
   <h1 id="title">Hisse Radar</h1>
-  <span class="live" id="live"><i></i><span id="liveTxt">Yükleniyor</span></span>
+  <span class="live" id="live" role="button" tabindex="0" aria-label="Veri gecikmesi hakkında bilgi"><i></i><span id="liveTxt">Yükleniyor</span></span>
 </div></header>
 
 <main class="wrap">
@@ -1083,7 +1086,18 @@ const APK_MIN=9;
 /* ================= canlılık ================= */
 function isOpen(){const n=new Date(),d=n.getUTCDay(),m=n.getUTCHours()*60+n.getUTCMinutes();return d>=1&&d<=5&&m>=420&&m<=915}
 function updateLive(){const t=T(SNAP.updatedAt),age=(Date.now()-t)/6e4,on=t&&age<6&&isOpen();$("#live").classList.toggle("on",!!on);
-  const lt=(SNAP.guncelleme||"").split(", ").pop();$("#liveTxt").textContent=on?"Canlı · "+lt:isOpen()?"Veri "+lt:"Kapanış "+lt}
+  const lt=(SNAP.guncelleme||"").split(", ").pop();$("#liveTxt").textContent=isOpen()?(innerWidth<365?"Gecikmeli · ":"15 dk gecikmeli · ")+lt:"Kapanış "+lt}
+// "15 dk gecikmeli" yazısına dokununca açıklama
+function gecikmeBilgi(){if($("#onay"))return;const d=document.createElement("div");d.className="onay";d.id="onay";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");
+  d.innerHTML=`<div class="kutu"><h2>Fiyatlar neden 15 dakika gecikmeli?</h2><div class="yazi">
+    <p>Borsa İstanbul, <b>anlık (gerçek zamanlı) fiyat verisini yalnızca lisans ücreti ödeyen kurumlara</b> satar. Ücretsiz yayınlanan bütün BIST fiyatları (Yahoo, TradingView, haber siteleri) borsa kuralı gereği <b>15 dakika gecikmeli</b> verilir.</p>
+    <p>Hisse Radar ücretsiz olduğu için bu gecikmeli veriyi kullanır. Veriyi aldıktan sonra uygulamaya ulaştırmamız yalnızca 1–2 dakika sürer; saat, ekrandaki fiyatın borsadaki zamanını gösterir.</p>
+    <p><b>Alım-satım yaparken</b> aracı kurumunun (banka ya da yatırım uygulaman) ekranındaki anlık fiyatı esas al.</p>
+    <p class="small muted">Yeşil nokta: veri akışı çalışıyor. Gri: borsa kapalı ya da veri gecikti.</p></div>
+    <button class="btn primary" id="onayKapat">Anladım</button></div>`;
+  document.body.appendChild(d);document.body.classList.add("kilit");
+  const kapat=()=>{d.remove();document.body.classList.remove("kilit")};$("#onayKapat").onclick=kapat;d.onclick=e=>{if(e.target===d)kapat()}}
+$("#live").addEventListener("click",gecikmeBilgi);$("#live").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")gecikmeBilgi()});
 function renderAll(){rebuild();if($("#q")&&$("#idx")){$("#idx").innerHTML=idxCard();drawIdx();renderRows()}else renderMarket();renderOutlook();renderNews();renderFunds();updateLive();FKC={};if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true);if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}
 function flash(){document.body.classList.add("flash");setTimeout(()=>document.body.classList.remove("flash"),1500)}
 
