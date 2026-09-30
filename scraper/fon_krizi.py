@@ -262,7 +262,7 @@ def ozet_yaz(haberler: list, eski: dict) -> dict:
         m = re.search(r"\{.*\}", metin, re.S)
         j = json.loads(m.group(0) if m else metin)
         return {"ozet": str(j.get("ozet", ""))[:900], "yatirimci": [str(x)[:220] for x in (j.get("yatirimci") or [])][:3],
-                "imza": imza, "model": model, "model_ad": "Haber yapay zekâsı", "ozet_zaman": datetime.now(TSI).isoformat(timespec="seconds")}
+                "imza": imza, "model": model, "model_ad": ("Cloudflare · " if "@cf/" in model else "") + model.split("/")[-1], "ozet_zaman": datetime.now(TSI).isoformat(timespec="seconds")}
     except Exception as e:
         log("özet yazılamadı:", str(e)[:120])
         return {k: eski[k] for k in ("ozet", "yatirimci", "imza", "model", "model_ad", "aiml_ts", "ozet_zaman") if k in eski}
