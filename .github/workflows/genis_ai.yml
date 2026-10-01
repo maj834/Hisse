@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  actions: write     # bekçi: fiyat döngüsü durursa veri.yml'yi yeniden başlatır
 
 concurrency:
   group: genis-ai
@@ -47,6 +48,7 @@ jobs:
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           MARKETAUX_API_KEY: ${{ secrets.MARKETAUX_API_KEY }}
           GROQ_GENIS_MODEL: ${{ vars.GROQ_GENIS_MODEL }}
+          GH_TOKEN: ${{ github.token }}
           MARKET: /tmp/veri/market.json
           GECMIS: /tmp/veri/gecmis.json
           SNAPSHOT: /tmp/veri/snapshot.json
@@ -65,10 +67,29 @@ jobs:
           }
           veri_al
           BITIS=$(( $(date +%s) + SURE_DK * 60 ))
-          SON_VERI=$(date +%s); SON_POPULER=""
+          SON_VERI=$(date +%s); SON_POPULER=""; SON_BEKCI=0
+          # BEKÇİ: GitHub zamanlayıcısı bazen sabah başlatıcılarını atlıyor. Borsa açıkken (hafta içi 07:00-15:10 UTC)
+          # fiyat verisi 8 dakikadan eskiyse ve çalışan/sıradaki bir "Veri güncelle" yoksa dakikalık döngüyü başlat.
+          bekci() {
+            local g s d son yas calisan
+            g=$(date -u +%u); s=$(date -u +%H); d=$(date -u +%M)
+            [ "$g" -le 5 ] || return 0
+            [ $((10#$s * 60 + 10#$d)) -ge 420 ] && [ $((10#$s * 60 + 10#$d)) -le 905 ] || return 0
+            git fetch --quiet --depth 1 origin data 2>/dev/null || return 0
+            son=$(git log -1 --format=%ct origin/data 2>/dev/null || echo 0)
+            yas=$(( $(date +%s) - son ))
+            [ "$yas" -ge 480 ] || return 0
+            calisan=$(curl -s -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/veri.yml/runs?per_page=5" \
+              | python3 -c "import json,sys;print(sum(r['status'] in ('in_progress','queued','waiting','pending') for r in json.load(sys.stdin).get('workflow_runs',[])))" 2>/dev/null || echo 1)
+            [ "$calisan" = "0" ] || return 0
+            echo "BEKÇİ: veri $((yas / 60)) dk eski ve döngü yok -> başlatılıyor"
+            curl -s -o /dev/null -w "dispatch %{http_code}\n" -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/veri.yml/dispatches" -d '{"ref":"main","inputs":{"mod":"dongu"}}'
+          }
           while [ "$(date +%s)" -lt "$BITIS" ]; do
             git fetch --quiet --depth 1 origin main && git reset --quiet --hard origin/main
             if [ $(( $(date +%s) - SON_VERI )) -ge 300 ]; then veri_al; SON_VERI=$(date +%s); fi
+            if [ $(( $(date +%s) - SON_BEKCI )) -ge 120 ]; then bekci || true; SON_BEKCI=$(date +%s); fi
             MOD=talep python scraper/genis_ai.py || true
             SAAT=$(date -u +%H); GUN=$(date -u +%u); DK=$(date -u +%M)
             if [ "$GUN" -le 5 ] && [ "$SAAT" -ge 7 ] && [ "$SAAT" -le 15 ] && [ "$DK" -ge 35 ] && [ "$SON_POPULER" != "$SAAT" ]; then
