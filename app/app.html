@@ -590,6 +590,10 @@ function spark(a){
 }
 
 /* ================= sayfalar ================= */
+// endeks filtresi: data/endeksler.json (günlük, TradingView); BIST 30 için yedek = uygulamanın kendi listesi
+let ENDK={},endeks=store.get("endeks","all");if(!["all","XU030","XU050","XU100"].includes(endeks))endeks="all";
+const ENDEKS_AD={XU030:"BIST 30",XU050:"BIST 50",XU100:"BIST 100"};
+function endeksUye(e){const l=(((ENDK.endeksler||{})[e])||{}).hisseler;if(l&&l.length)return l;return e==="XU030"?Object.keys(SNAP.hisseler||{}):null}
 let filt=store.get("filt","all"),q="",LIM=100,irng=store.get("irng","gun"),idxAnim=true,rowsAnim=true,chartAnim=true;
 const PXS={};
 // yeni çizilen grafik çizgisini soldan sağa "çiz" (yalnızca ilk açılışta ya da aralık değişince)
@@ -642,12 +646,15 @@ function renderMarket(){
   <input class="search" id="q" type="search" placeholder="${n>40?n+" hisse içinde ara":"Hisse ya da şirket ara"}" value="${esc(q)}" aria-label="Hisse ara">
   ${FAV.filter(k=>getA(k)).length?`<div class="card" style="padding-bottom:6px"><div class="card-h" style="margin-bottom:4px"><h2>★ Favorilerim</h2><span class="xs muted">${FAV.filter(k=>getA(k)).length} hisse</span></div><div class="list" style="border:0;background:none" id="favrows"></div></div>`:""}
   <div class="seg" id="filt">${[["all","Tümü"],["fav","★"],["up","Yükselen"],["down","Düşen"],["al","AL"],["sat","SAT"]].map(([k,l])=>`<button data-f="${k}" aria-pressed="${k===filt}">${l}</button>`).join("")}</div>
+  <div class="seg sm" id="endeks" style="margin-top:8px">${[["all","Tüm hisseler"],["XU030","BIST 30"],["XU050","BIST 50"],["XU100","BIST 100"]].map(([k,l])=>`<button data-e="${k}" aria-pressed="${k===endeks}">${l}</button>`).join("")}</div>
   <div id="kinfo"></div>
+  <p class="xs muted" id="einfo" style="padding:8px 4px 0"></p>
   <div class="list" id="rows"></div>
   <p class="disc">Fiyatlar yaklaşık 15 dk gecikmelidir. AL/SAT kararları yapay zekâ ve formül tahminidir, yatırım tavsiyesi değildir; tahminler yanılabilir. <a href="#" data-yasal>Gizlilik ve yasal bilgilendirme</a></p>`;
   drawIdx();renderRows();
   $("#q").addEventListener("input",e=>{q=e.target.value;LIM=100;renderRows()});
   $("#filt").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(!b)return;filt=b.dataset.f;LIM=100;rowsAnim=true;store.set("filt",filt);[...$("#filt").children].forEach(x=>x.setAttribute("aria-pressed",x===b));renderRows()});
+  $("#endeks").addEventListener("click",e=>{const b=e.target.closest("[data-e]");if(!b)return;endeks=b.dataset.e;LIM=100;rowsAnim=true;store.set("endeks",endeks);[...$("#endeks").children].forEach(x=>x.setAttribute("aria-pressed",x===b));renderRows()});
   $("#idx").addEventListener("click",e=>{const b=e.target.closest("[data-ir]");if(!b)return;irng=b.dataset.ir;store.set("irng",irng);idxAnim=true;$("#idx").innerHTML=idxCard();drawIdx()});
 }
 function badge(k){const c=kararK(k);return c?`<span class="ai-dot pill ${kCls(c.karar)} ${kCls(c.karar)}">${c.karar}</span>`:""}
@@ -670,6 +677,8 @@ function renderRows(){
   const t=nrm(q.trim()),kd=filt==="al"||filt==="sat";
   const kod=[...new Set([...MKL.map(m=>m.k),...ALL.map(a=>a.k)])];
   let arr=kod.filter(k=>{if(!t)return true;const n=(BY[k]?BY[k].s.ad:(MK[k]||{}).ad)||"";return nrm(k).includes(t)||nrm(n).includes(t)});
+  const uye=endeks!=="all"?endeksUye(endeks):null;
+  if(uye){const u=new Set(uye);arr=arr.filter(k=>u.has(k))}
   const chOf=k=>BY[k]?BY[k].ch:MK[k].ch,pdOf=k=>(MK[k]&&MK[k].pd)||0;
   if(!t&&!kd)arr.sort((x,y)=>pdOf(y)-pdOf(x));
   if(filt==="fav")arr=arr.filter(isFav);
@@ -678,6 +687,9 @@ function renderRows(){
   else if(kd){const w=filt==="al"?"AL":"SAT";arr=arr.map(k=>({k,c:kararK(k)})).filter(o=>o.c&&o.c.karar===w).sort((x,y)=>w==="AL"?y.c.guc-x.c.guc||y.c.n-x.c.n:x.c.guc-y.c.guc||y.c.n-x.c.n).map(o=>o.k)}
   const ki=$("#kinfo");if(ki)ki.innerHTML=kd?`<div class="card" style="padding:12px 14px">${hzSeg("hzM")}<p class="xs muted" style="margin-top:8px">${arr.length} hisse ${HZL[HZ]} vadesinde ${filt==="al"?"AL":"SAT"} diyor. Karar için kaynakların en az %60'ının aynı yönde olması gerekir; en güçlü sinyal en üstte. Ayrıntı için hisseye dokun.</p>${GEC?"":`<p class="xs faint" style="margin-top:4px">Tüm hisselerin geçmiş verisi yükleniyor, liste birazdan uzayacak…</p>`}<p class="xs faint" style="margin-top:4px">Yapay zekâ BIST 30'u ve en popüler 100 hisseyi düzenli değerlendirir; diğer hisseleri hisse sayfasındaki "Yapay zekâya analiz ettir" düğmesiyle sen istersin.${AIG.ilerleme?` Şu an ${AIG.ilerleme.yapilan} hissede yapay zekâ analizi var.`:""}</p></div>`:"";
   const n=arr.length;
+  const ei=$("#einfo");if(ei){if(uye){const yuk=arr.filter(k=>chOf(k)>0).length,dus=arr.filter(k=>chOf(k)<0).length;
+    ei.innerHTML=`<b>${ENDEKS_AD[endeks]}</b> · ${n} hisse${filt==="all"&&!t?` · <span class="up">${yuk} yükselen</span> · <span class="down">${dus} düşen</span>`:""}`;ei.hidden=false}
+    else if(endeks!=="all"){ei.textContent=ENDEKS_AD[endeks]+" listesi yükleniyor…";ei.hidden=false}else{ei.hidden=true}}
   rows.classList.toggle("anim",rowsAnim);if(rowsAnim)setTimeout(()=>rows.classList.remove("anim"),700);rowsAnim=false;
   rows.innerHTML=(arr.slice(0,LIM).map(k=>anyRow(k,kd)).join("")||`<p class="muted" style="padding:18px">${!kod.length?"Hisse listesi yükleniyor…":filt==="fav"?"Henüz favori hisse yok. Hisse sayfasındaki ☆ ile ekle.":kd?"Şu an bu yönde güçlü sinyal veren hisse yok.":"Eşleşen hisse yok."}</p>`)+(n>LIM?`<button class="btn ghost" id="more" style="margin:12px;width:calc(100% - 24px)">Daha fazla göster (${n-LIM} hisse daha)</button>`:"");
   const mb=$("#more");if(mb)mb.onclick=()=>{LIM+=150;renderRows()};
@@ -1140,6 +1152,7 @@ async function pollMarket(){try{const d=await getJ(RAW("data","market.json"));if
 async function pollSlow(){
   pollMarket();loadGec();
   try{const d=await getJ(RAW("data","news.json"));if(d.items&&T(d.updatedAt)>T(NEWS.updatedAt)){NEWS=d;renderNews()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/endeksler.json"));if(T(d.updatedAt)>T(ENDK.updatedAt)){ENDK=d;renderRows()}}catch(e){}
   try{const d=await getJ(RAW("main","data/fon_krizi.json"));if(T(d.updatedAt)>T(KRIZ.updatedAt)){KRIZ=d;renderOutlook();renderNews();renderFunds();if(!$("#p-kriz").hidden)renderKriz()}}catch(e){}
   try{const d=await getJ(RAW("main","data/secim.json"));if(T(d.updatedAt)>T(SEC.updatedAt)){SEC=d;KC={};FKC={};renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
