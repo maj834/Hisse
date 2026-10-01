@@ -1,0 +1,34 @@
+name: Endeks üyelikleri
+
+# BIST 30 / 50 / 100 üyelik listeleri -> data/endeksler.json (uygulamadaki endeks filtreleri)
+on:
+  schedule:
+    - cron: "10 4 * * 1-5"   # 07:10 TSİ
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  endeks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet requests curl_cffi
+      - run: python scraper/endeksler.py
+      - name: kaydet
+        run: |
+          git config user.name "hisse-radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/endeksler.json
+          git diff --cached --quiet && exit 0
+          git commit --quiet -m "Endeks üyelikleri $(TZ=Europe/Istanbul date '+%d.%m')"
+          for i in 1 2 3; do
+            git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
