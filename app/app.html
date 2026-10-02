@@ -480,7 +480,7 @@ async function talepGonder(k){
 }
 function talepIzle(){if(talepTimer)return;talepTimer=setInterval(async()=>{const bekleyen=Object.keys(TALEP).filter(k=>talepDurum(k)==="bekliyor");
   if(!bekleyen.length){clearInterval(talepTimer);talepTimer=null;return}
-  try{const d=await getJ(RAW("main","data/ai_genis.json"));if(T(d.updatedAt)>T(AIG.updatedAt)){AIG=d;KC={};renderRows();if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}},20000)}
+  try{const d=await getJ(RAW("main","data/ai_genis.json"));if(T(d.updatedAt)>T(AIG.updatedAt)){AIG=d;KC={};renderRows();renderNews();if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}},20000)}
 function hisseKarar(k,vs){const a=getA(k),c=consensus(vs||votes(k));const rk=riskHisse(k);if(rk&&c.karar==="AL")return {...c,karar:"TUT",not:"Risk uyarısı: "+rk+" Bu yüzden AL verilmiyor."};if(!a||HZ!=="1h")return c;const r=(MK[k]&&MK[k].rsi!=null)?MK[k].rsi:a.noHist?null:a.R;
   if(r!=null&&c.karar==="SAT"&&r<30)return {...c,karar:"TUT",not:`Oylar SAT yönünde ama RSI ${nf(r,0)} ile aşırı satım bölgesinde; bu seviyeden satmak geç kalmış olabilir, tepki alımı da gelebilir. Bu yüzden TUT.`};
   if(r!=null&&c.karar==="AL"&&r>75)return {...c,karar:"TUT",not:`Oylar AL yönünde ama RSI ${nf(r,0)} ile aşırı alım bölgesinde; bu seviyeden almak riskli, düzeltme gelebilir. Bu yüzden TUT.`};
@@ -836,18 +836,35 @@ const KONU=[[/PETROL|ENERJİ/,["PETROL","BRENT","OPEC","ENERJİ"]],[/ALTIN|KIYME
 function fundTopics(f){const s=up((f.ad||"")+" "+(f.tur||"")+" "+(f.kategori||""));const w=new Set();KONU.forEach(([re,ks])=>{if(re.test(s))ks.forEach(k=>w.add(k))});if(!w.size)["FON","BORSA"].forEach(k=>w.add(k));return [...w]}
 function newsForFund(k){const f=fInfo(k),ws=fundTopics(f);return (NEWS.items||[]).filter(n=>{const t=up(n.title);return t.includes(" "+k+" ")||ws.some(w=>t.includes(" "+w+" ")||(w.length>5&&t.includes(w)))})}
 const GENEL=new Set(["BORSA","BORSA İSTANBUL","BIST","FON","ABD","FED","S&P","WALL STREET"]);
-function favNews(n){const h=hits(n.title,n).filter(isFav);const t=up(n.title);const fs=(typeof myF!=="undefined"&&myF?myF:[]).filter(k=>t.includes(" "+k+" ")||fundTopics(fInfo(k)).filter(w=>!GENEL.has(w)).some(w=>t.includes(" "+w+" ")));return [...h,...fs]}
+// Favori haberi = başlıkta favori hissenin KODU, bilinen adı (ALIAS) ya da şirket adının ilk kelimesi geçiyor.
+// Fonlar için yalnızca fon kodu. (Eskiden fonların konuları — petrol, faiz, dolar… — da sayılıyordu; neredeyse her haber favori görünüyordu.)
+// Karşılaştırma Türkçe harflerden arındırılarak yapılır (TradingView "Bahadir", haber "Bahadır" yazabilir).
+const GENEL_AD=new Set(["TURKIYE","TURK","ANADOLU","BORSA","ISTANBUL","GLOBAL","YENI","DOGU","BATI","EGE","GRUP","HOLDING"]);
+const upN=s=>up(s).replace(/İ/g,"I").replace(/Ş/g,"S").replace(/Ğ/g,"G").replace(/Ü/g,"U").replace(/Ö/g,"O").replace(/Ç/g,"C");
+function adAnahtar(k){const ad=(BY[k]&&BY[k].s?BY[k].s.ad:(MK[k]||{}).ad)||"";const w=upN(ad).trim().split(" ")[0]||"";return w.length>=4&&!GENEL_AD.has(w)?w:null}
+function hisseAnilir(k,baslik,sym){const t=upN(baslik);return sym===k||t.includes(" "+k+" ")||(ALIAS[k]||[]).some(w=>t.includes(upN(w)))||(a=>!!a&&t.includes(" "+a))(adAnahtar(k))}
+function favNews(n){const t=upN(n.title);
+  const hs=FAV.filter(k=>hisseAnilir(k,n.title,n.sym));
+  const fs=(typeof myF!=="undefined"&&myF?myF:[]).filter(k=>t.includes(" "+k+" "));
+  return [...hs,...fs]}
+// Favori hisselerin şirket haberleri (haber akışında yoksa): BIST 30 şirket haberleri + yapay zekâ analizindeki haberler
+function favEkHaber(){const out=[],gor=new Set((NEWS.items||[]).map(n=>n.title));
+  FAV.forEach(k=>{const k1=((GUN.sirket||{})[k]||{}).haberler||[],k2=((AIG.hisseler||{})[k]||{}).haber||[],ts=((AIG.hisseler||{})[k]||{}).ts||0;
+    [...k1,...k2].forEach(h=>{const b=h.baslik||"";if(!b||gor.has(b)||!hisseAnilir(k,b))return;gor.add(b);
+      const z=Date.parse(h.zaman||"")||(/^\d{8}T/.test(h.zaman||"")?Date.parse(h.zaman.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/,"$1-$2-$3T$4:$5:$6Z")):0);
+      out.push({n:{title:b,url:h.url||"#",kaynak:h.kaynak==="web"?"Web":(h.kaynak||""),kat:"Şirket",ts:z?Math.round(z/1000):(ts||0)},fv:[k]})})});
+  return out.sort((a,b)=>(b.n.ts||0)-(a.n.ts||0))}
 function ago(n){if(n.ts){const m=Math.round((Date.now()/1000-n.ts)/60);if(m<60)return m+" dk önce";if(m<1440)return Math.floor(m/60)+" sa önce";}return n.t||""}
 function newsRow(n,fv){const h=hits(n.title,n);fv=fv||[];return `<a class="nw${fv.length?" fav":""}" href="${esc(n.url)}" target="_blank" rel="noopener"><b>${fv.length?`<span class="star">★</span>`:""}${esc(n.title)}</b><span class="m">${n.kat?`<span class="kat">${esc(n.kat)}</span>`:""}<span>${esc(n.kaynak||"")}</span><span>${esc(ago(n))}</span>${h.map(k=>`<span class="tag">${k}</span>`).join("")}</span></a>`}
 let nf2=store.get("nf","all");
 function renderNews(){
   const kats=["all","fav",...new Set((NEWS.items||[]).map(n=>n.kat).filter(Boolean))];
-  const all=(NEWS.items||[]).map(n=>({n,fv:favNews(n)}));
+  const all=[...(NEWS.items||[]).map(n=>({n,fv:favNews(n)})),...favEkHaber()];
   const list=all.filter(o=>nf2==="all"||(nf2==="fav"?o.fv.length:o.n.kat===nf2));
   const favs=nf2==="all"?list.filter(o=>o.fv.length):[],rest=nf2==="all"?list.filter(o=>!o.fv.length):list;
   $("#p-haber").innerHTML=`${krizBanner()}<div class="chips" id="nf">${kats.map(k=>`<button class="chip" data-n="${esc(k)}" aria-pressed="${k===nf2}">${k==="all"?"Tümü":k==="fav"?"★ Favorilerim":esc(k)}</button>`).join("")}</div>
   ${favs.length?`<div class="card" style="padding-block:4px"><div class="card-h" style="margin:12px 0 0"><h2 style="font-size:15px">★ Favorilerini ilgilendiren</h2><span class="xs muted">${favs.length} haber</span></div><div class="news">${favs.map(o=>newsRow(o.n,o.fv)).join("")}</div></div>`:""}
-  <div class="card" style="padding-block:4px"><div class="news">${rest.map(o=>newsRow(o.n,o.fv)).join("")||`<p class="muted" style="padding:14px 0">${nf2==="fav"?"Favori hisse ya da takip ettiğin fonlarla ilgili haber yok. Hisse sayfasındaki ☆ ile favori ekleyebilirsin.":"Bu kategoride haber yok."}</p>`}</div></div>`;
+  <div class="card" style="padding-block:4px"><div class="news">${rest.map(o=>newsRow(o.n,o.fv)).join("")||`<p class="muted" style="padding:14px 0">${nf2==="fav"?(FAV.length?`Favori hisselerinle (${FAV.join(", ")}) ilgili son günlerde haber yok. Yeni haber çıkınca burada görünür.`:"Henüz favori hissen yok. Hisse sayfasındaki ☆ ile favori ekleyebilirsin."):"Bu kategoride haber yok."}</p>`}</div></div>`;
   $("#nf").onclick=e=>{const b=e.target.closest("[data-n]");if(!b)return;nf2=b.dataset.n;store.set("nf",nf2);renderNews()};
 }
 
@@ -1148,7 +1165,7 @@ function flash(){document.body.classList.add("flash");setTimeout(()=>document.bo
 async function getJ(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error(r.status);return r.json()}
 let busy=false;
 async function poll(){if(busy||document.hidden)return;busy=true;try{const d=await getJ(RAW("data","snapshot.json"));if(d.hisseler&&T(d.updatedAt)>T(SNAP.updatedAt)){SNAP=d;renderAll();flash()}}catch(e){}busy=false;updateLive()}
-async function pollMarket(){try{const d=await getJ(RAW("data","market.json"));if(d.hisseler&&T(d.updatedAt)>T(MKD.updatedAt)){const ilk=!MKL.length;setMarket(d);if(ilk)renderMarket();else renderRows();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}}
+async function pollMarket(){try{const d=await getJ(RAW("data","market.json"));if(d.hisseler&&T(d.updatedAt)>T(MKD.updatedAt)){const ilk=!MKL.length;setMarket(d);if(ilk)renderMarket();else renderRows();if(FAV.length)renderNews();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}}
 async function pollSlow(){
   pollMarket();loadGec();
   try{const d=await getJ(RAW("data","news.json"));if(d.items&&T(d.updatedAt)>T(NEWS.updatedAt)){NEWS=d;renderNews()}}catch(e){}
@@ -1158,8 +1175,8 @@ async function pollSlow(){
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/temel.json"));if(T(d.updatedAt)>T(TEMEL.updatedAt)){TEMEL=d;renderAll()}}catch(e){}
-  try{const d=await getJ(RAW("main","data/gundem.json"));if(T(d.updatedAt)>T(GUN.updatedAt)){GUN=d;renderOutlook()}}catch(e){}
-  try{const d=await getJ(RAW("main","data/ai_genis.json"));if(T(d.updatedAt)>T(AIG.updatedAt)){AIG=d;KC={};renderRows();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}
+  try{const d=await getJ(RAW("main","data/gundem.json"));if(T(d.updatedAt)>T(GUN.updatedAt)){GUN=d;renderOutlook();renderNews()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/ai_genis.json"));if(T(d.updatedAt)>T(AIG.updatedAt)){AIG=d;KC={};renderRows();renderNews();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}
   try{const d=await getJ(RAW("main","data/fon_ai.json"));if(T(d.updatedAt)>T(FAI.updatedAt)){FAI=d;FKC={};renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}
   if(Date.now()-lastFunds>6e5){lastFunds=Date.now();try{const d=await getJ(RAW("data","funds.json"));if(T(d.updatedAt)>T(FUNDS.updatedAt)){FUNDS=d;renderFunds();if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}}catch(e){}}
 }
