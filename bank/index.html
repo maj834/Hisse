@@ -49,6 +49,14 @@ h3{font-size:16px;margin-bottom:6px}
 .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
 .quick div{background:var(--card);border-radius:14px;padding:12px 4px;text-align:center;font-size:12px;color:var(--mut);box-shadow:0 2px 10px rgba(15,23,42,.05)}
 .quick div{cursor:pointer;user-select:none}.quick div:active{transform:scale(.96);background:#eef2ff}
+.ph{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.ph:last-child{border-bottom:0}
+.ph .t{flex:1;min-width:0;font-size:14px;font-weight:600}
+.ph .t small{display:block;font-weight:400;color:var(--mut);font-size:12px;margin-top:2px}
+.ph .c{font-size:12px;font-weight:700;color:var(--red);background:#fee2e2;border-radius:99px;padding:4px 9px;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip2{border:1px solid var(--line);background:#f8fafc;border-radius:99px;padding:8px 12px;font-size:13px;color:var(--ink)}
+.chip2:active{background:#fee2e2;border-color:var(--red)}
 .camp{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px}
 .camp b{display:block;font-size:15px}.camp p{font-size:13px;color:var(--mut);margin:4px 0 0}
 .camp .btn{margin-top:10px;padding:10px}
@@ -127,9 +135,15 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
     <div class="bar" id="bar"><div id="barIn" style="width:0"></div></div>
     <div class="kv"><span>Toplam Boş Yapma Kotası</span><b id="total">0</b></div>
     <div class="kv"><span>Bu Dönem Yapılan Boş</span><b id="spent">0</b></div>
-    <p class="note" style="margin-top:10px">Söylenen her kelime 1 boş yapma hakkı harcar.</p>
+    <p class="note" style="margin-top:10px">Söylenen her kelime 1 Boş YPH (Boş Yapma Hakkı) harcar.</p>
   </div>
   <button class="apply" onclick="startApply(true)">Kota Artırım Başvurusu</button>
+  </div>
+
+  <div class="box">
+    <h3>🔥 Boş Tarifesi</h3>
+    <p class="lbl" style="margin-bottom:4px">En sık yapılan boşlar ve fiyatları</p>
+    <div id="phList"></div>
   </div>
 
   <div class="quick">
@@ -163,8 +177,12 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
 <div class="ov" id="admOv"><div class="sheet">
   <h2>Yönetici Paneli <button onclick="closeOv('admOv')">Kapat</button></h2>
 
+  <h3>Hızlı Düş (dokun, hemen düşsün)</h3>
+  <div class="chips" id="admChips"></div>
+  <div class="two" style="margin-top:8px"><input id="newPh" placeholder="Yeni kalıp cümle ekle"><button class="btn" style="margin:0" onclick="addPhrase()">Ekle</button></div>
+  <div class="sep"></div>
   <h3>Boş Yaptı (kotadan düşer)</h3>
-  <label>Ne dedi? (her kelime 1 boş)</label>
+  <label>Ne dedi? (her kelime 1 Boş YPH)</label>
   <textarea id="exText" placeholder="Örn. Bizim zamanımızda böyle şeyler yoktu"></textarea>
   <div class="wc" id="wc">0 kelime</div>
   <label>…ya da sadece kelime sayısı</label><input id="exAmt" inputmode="numeric" placeholder="Örn. 50">
@@ -199,7 +217,9 @@ let S=load();
 
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.tx))return Object.assign({},DEF,s)}catch(e){}return JSON.parse(JSON.stringify(DEF))}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Kaydedilemedi')}}
-const fmt=n=>Math.round(n).toLocaleString('tr-TR')+' boş';
+const PH=['Ders çalış','Okula git','Kardeşine kötü örnek oluyorsun','Bak komşunun oğlu ne yapmış','Telefonu bırak artık','Bizim zamanımızda böyle şeyler yoktu','Ben senin yaşındayken çalışıyordum','Odanı topla','Üşüteceksin üstüne bir şey al','Gece gece nereye','Elalem ne der','Bu saate kadar ne yaptın','Ne zaman evleneceksin','Babana söylerim','Yemeğini bitir','Sen daha çok küçüksün'];
+function phrases(){return PH.concat(S.myPh||[])}
+const fmt=n=>Math.round(n).toLocaleString('tr-TR')+' Boş YPH';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const words=t=>(t.trim().match(/[\p{L}\p{N}]+/gu)||[]).length;
@@ -221,6 +241,7 @@ function render(){
   $('spent').textContent=fmt(spent);
   $('barIn').style.width=pct+'%';
   $('bar').className='bar'+(pct<20?' low':pct<50?' warn':'');
+  renderPh();
   const L=$('list');
   if(!S.tx.length){L.innerHTML='<div class="empty">Henüz boş yapılmadı (şaşırtıcı)</div>';return}
   L.innerHTML=S.tx.slice().reverse().map(t=>{
@@ -266,6 +287,18 @@ function saveSettings(){
   S.name=$('setName').value.trim()||DEF.name;S.limit=lim;S.pin=pin;S.no=/^\d{4}$/.test(no)?no:S.no;
   save();render();toast('Kaydedildi');
 }
+// ---- Klasik boşlar ----
+function phUses(p){const q=p.toLocaleLowerCase('tr');return S.tx.filter(t=>t.amt<0&&t.text&&t.text.toLocaleLowerCase('tr').includes(q)).length}
+function renderPh(){
+  const list=phrases().map(p=>({p,n:phUses(p)})).sort((a,b)=>b.n-a.n).slice(0,8);
+  $('phList').innerHTML=list.map(x=>`<div class="ph"><div class="t">“${esc(x.p)}”<small>${x.n?x.n+' kez yapıldı':'Henüz yapılmadı'}</small></div><span class="c">${fmt(words(x.p))}</span></div>`).join('');
+  if($('admChips'))$('admChips').innerHTML=phrases().map((p,i)=>`<button class="chip2" onclick="quickPh(${i})">${esc(p)} · ${words(p)}</button>`).join('');
+}
+function quickPh(i){const p=phrases()[i];S.tx.push({at:Date.now(),text:p,amt:-words(p)});save();render();toast('“'+p+'” · '+fmt(words(p))+' düşüldü')}
+function addPhrase(){const v=$('newPh').value.trim();if(!words(v)){toast('Cümle yaz');return}S.myPh=(S.myPh||[]).concat(v);$('newPh').value='';save();render();toast('Eklendi')}
+function chipHtml(target){return phrases().slice(0,8).map(p=>`<button class="chip2" onclick="addTo('${target}',this.textContent)">${esc(p)}</button>`).join('')}
+function addTo(id,p){const e=$(id);e.value=(e.value.trim()?e.value.trim()+' ':'')+p;e.dispatchEvent(new Event('input'))}
+
 // ---- Hızlı işlemler ----
 function avail(){return Math.max(0,S.limit+S.tx.reduce((a,t)=>a+t.amt,0))}
 function needCard(){if(!S.card){toast('Önce Boş Yapma Kartı başvurusu yapın');return true}return false}
@@ -275,14 +308,14 @@ function spend(n,o){
   if(n>avail()){toast('Yetersiz boş yapma kotası! 🤐');return false}
   S.tx.push(Object.assign({at:Date.now(),amt:-n},o));save();render();return true}
 function done(icon,msg){$('qBody').innerHTML=`<div class="center"><div class="ok">${icon}</div><div class="q">${msg}</div><button class="btn" onclick="qClose()">Tamam</button></div>`}
-function liveCount(inp,out,mul){$(inp).addEventListener('input',()=>{const n=words($(inp).value)*mul;$(out).textContent=n+' boş harcanacak · Kalan: '+fmt(avail())})}
+function liveCount(inp,out,mul){$(inp).addEventListener('input',()=>{const n=words($(inp).value)*mul;$(out).textContent=fmt(n)+' harcanacak · Kalan: '+fmt(avail())})}
 
 function qSend(){
   if(needCard())return;
-  qOpen('Boş Gönder',`<p class="lbl">Birine boş yap, her kelime 1 boş harcar.</p>
+  qOpen('Boş Gönder',`<p class="lbl">Birine boş yap, her kelime 1 Boş YPH harcar.</p>
     <label>Kime?</label><input id="sTo" placeholder="Örn. Teyzem">
-    <label>Mesaj</label><textarea id="sMsg" placeholder="Ne söylemek istiyorsun?"></textarea>
-    <div class="wc" id="sWc">0 boş harcanacak · Kalan: ${fmt(avail())}</div>
+    <label>Mesaj</label><div class="chips">${chipHtml('sMsg')}</div><textarea id="sMsg" style="margin-top:8px" placeholder="Ne söylemek istiyorsun?"></textarea>
+    <div class="wc" id="sWc">0 Boş YPH harcanacak · Kalan: ${fmt(avail())}</div>
     <button class="btn" onclick="doSend()">Gönder</button>`);
   liveCount('sMsg','sWc',1);
 }
@@ -295,10 +328,10 @@ function doSend(){
 
 function qGossip(){
   if(needCard())return;
-  qOpen('Dedikodu',`<span class="badge">⚠️ Dedikodu kelimesi 2 boş harcar</span>
+  qOpen('Dedikodu',`<span class="badge">⚠️ Dedikodu kelimesi 2 Boş YPH harcar</span>
     <label>Kim hakkında?</label><input id="gWho" placeholder="Örn. Üst kat komşu">
     <label>Dedikodu</label><textarea id="gMsg" placeholder="Duydun mu, …"></textarea>
-    <div class="wc" id="gWc">0 boş harcanacak · Kalan: ${fmt(avail())}</div>
+    <div class="wc" id="gWc">0 Boş YPH harcanacak · Kalan: ${fmt(avail())}</div>
     <button class="btn red" onclick="doGossip()">Dedikoduyu Yap</button>`);
   liveCount('gMsg','gWc',2);
 }
@@ -342,7 +375,7 @@ function qSilence(){
     <div class="kv"><span>Kazanılan bonus</span><b>${bonus}</b></div>
     <div class="sep"></div>
     <h3>Sessizlik Meydan Okuması</h3>
-    <p class="lbl">Sayacı başlat ve sessiz kal. Bitirince her 5 dakika için 10 boş bonus talep edilir (yönetici onaylar).</p>
+    <p class="lbl">Sayacı başlat ve sessiz kal. Bitirince her 5 dakika için 10 Boş YPH bonus talep edilir (yönetici onaylar).</p>
     <div class="timer" id="tm">00:00</div>
     <button class="btn green" id="tmBtn" onclick="silToggle()">Başlat</button>`);
 }
@@ -382,7 +415,10 @@ const QS=[
  {k:'tv',q:'Haberleri / diziyi izlerken yorum yapar mısınız?',o:[['Sessizce izlerim',1.2],['Arada bir',1.05],['Her sahneye yorum',.8],['Diziden çok ben konuşurum',.6]]},
  {k:'wa',q:'WhatsApp\'ta "Günaydın" çiçekli mesaj atar mısınız?',o:[['Asla',1.15],['Bayramdan bayrama',1.05],['Her sabah',.85],['Her sabah + gece de',.7]]},
  {k:'evlilik',q:'Akrabalara "Ne zaman evleniyorsun?" diye sorar mısınız?',o:[['Hayır',1.2],['Bazen',1],['Her düğünde',.85],['Her karşılaşmada',.7]]},
- {k:'nasihat',q:'Çocuklara günde kaç nasihat verirsiniz?',o:[['0',1.25],['1-2',1.05],['5-10',.85],['Sayamıyorum',.65]]}
+ {k:'nasihat',q:'Çocuklara günde kaç nasihat verirsiniz?',o:[['0',1.25],['1-2',1.05],['5-10',.85],['Sayamıyorum',.65]]},
+ {k:'ders',q:'Günde kaç kez "Ders çalış!" dersiniz?',o:[['Hiç',1.3],['1-2 kez',1.05],['Her saat başı',.8],['Kapıyı her açışımda',.6]]},
+ {k:'kiyas',q:'"Bak komşunun oğlu ne yapmış" der misiniz?',o:[['Asla kıyaslamam',1.25],['Nadiren',1.05],['Karne günlerinde',.85],['Her fırsatta',.6]]},
+ {k:'ornek',q:'"Kardeşine kötü örnek oluyorsun" cümlesini kullanır mısınız?',o:[['Hayır',1.2],['Bazen',1],['Sık sık',.8],['Favori cümlem',.6]]}
 ];
 let A={},step=0,raise=false;
 function startApply(r){raise=!!r;A={};step=r?1:0;if(r)A.name=S.name;showQ();openOv('apOv')}
@@ -409,7 +445,7 @@ function verdict(l){
 }
 function evaluate(){
   $('apBody').innerHTML=`<div class="center"><div class="spin"></div><div class="q" id="evT">Bilgileriniz kontrol ediliyor…</div><p class="lbl">Lütfen bekleyin (ve sessiz olun)</p></div>`;
-  const msgs=['Komşulardan referans alınıyor…','"Bizim zamanımızda" sayınız hesaplanıyor…','Boş yapma notunuz belirleniyor…'];
+  const msgs=['Komşulardan referans alınıyor…','"Ders çalış" sayınız hesaplanıyor…','Kardeşlere kötü örnek analizi yapılıyor…','Boş yapma notunuz belirleniyor…'];
   msgs.forEach((m,i)=>setTimeout(()=>{const e=$('evT');if(e)e.textContent=m},(i+1)*1100));
   setTimeout(()=>{
     const lim=calcLimit();
@@ -424,9 +460,9 @@ function evaluate(){
       <p class="lbl" style="margin-top:8px">${esc(A.name)}, size tanımlanan aylık boş yapma kotası:</p>
       <div class="big" style="margin:10px 0">${fmt(lim)}</div>
       <p class="lbl">${verdict(lim)}</p>
-      <p class="lbl" style="margin-top:6px">Unutmayın: her kelime 1 boş yapma hakkı harcar.</p>
+      <p class="lbl" style="margin-top:6px">Unutmayın: her kelime 1 Boş YPH harcar.</p>
       <button class="btn" onclick="closeOv('apOv')">Kartıma Git</button></div>`;
-  },4500);
+  },5600);
 }
 
 render();
