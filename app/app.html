@@ -188,7 +188,7 @@ h1,h2,h3{margin:0}
 
 /* alt menü */
 nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(13,26,32,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 nav button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 12px;font-size:12px;font-weight:600;color:var(--faint)}
 nav button svg{width:24px;height:24px}
 nav button[aria-selected="true"]{color:var(--ink);box-shadow:inset 0 2px 0 var(--brass)}
@@ -318,6 +318,7 @@ nav button[aria-selected="true"] svg{animation:zipla .45s ease}
   <section class="page" id="p-fon" hidden></section>
   <section class="page" id="p-fondetay" hidden></section>
   <section class="page" id="p-kriz" hidden></section>
+  <section class="page" id="p-portfoy" hidden></section>
 </main>
 
 <nav><div class="in" role="tablist">
@@ -325,6 +326,7 @@ nav button[aria-selected="true"] svg{animation:zipla .45s ease}
   <button role="tab" data-tab="beklenti" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>Beklenti</button>
   <button role="tab" data-tab="haber" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>Haberler</button>
   <button role="tab" data-tab="fon" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.6 5 3.2 5 1.4 5 3.3-2.2 3.3-5 3.3-5-1.2-5-3.3"/></svg>Fonlar</button>
+  <button role="tab" data-tab="portfoy" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg>Portföy</button>
 </div></nav>
 
 <script>
@@ -981,6 +983,84 @@ function renderOutlook(){
 }
 $("#p-beklenti").addEventListener("click",e=>{const f=e.target.closest("[data-f]");if(f){openFund(f.dataset.f);return}const b=e.target.closest("[data-k]");if(b&&getA(b.dataset.k))openDetail(b.dataset.k)});
 
+/* portföyüm + sanal trader (data/trader.json, scraper/trader.py) */
+let PORT=(a=>Array.isArray(a)?a.filter(x=>x&&x.k):[])(store.get("port",[])),TRD={};
+const trA=k=>((TRD.analiz||{})[k])||null;
+const trFiyat=k=>{const m=MK[k];if(m&&m.last)return m.last;const a=BY[k];if(a&&a.last)return a.last;const t=trA(k);return t?t.f:null};
+const tl=v=>nf(Math.round(v),0)+" TL";
+const tlS=v=>(v>=0?"+":"−")+nf(Math.abs(Math.round(v)),0)+" TL";
+function portKaydet(){store.set("port",PORT)}
+function portGorus(h){
+  const f=trFiyat(h.k),t0=trA(h.k),t=t0&&f&&Math.abs(f/t0.f-1)<.25?t0:null,c=getA(h.k)?kararK(h.k):null; // bölünme vb. sonrası eski analizi kullanma
+  const kz=f?(f-h.m)*h.a:null,kzp=f?(f/h.m-1)*100:null;
+  let karar=t?t.karar:c?c.karar:null,ne=[];
+  if(t){
+    const atr=t.atr_yuzde/100*f;let stop=t.stop;
+    if(karar==="SAT")ne.push(`<b class="down">Satmayı düşün:</b> ${esc(t.neden.join("; "))}.`);
+    else{
+      if(stop<h.m&&f-1.5*atr>h.m){stop=h.m;ne.push(`<b class="up">Kârdasın:</b> zarar-kesi maliyetine (${px(h.m)}) çekip kârı koru.`)}
+      if(karar==="AL")ne.push(`<b class="up">Ekleme yapılabilir:</b> ${esc(t.neden.slice(0,3).join("; "))}.`);
+      else ne.push(`<b class="hold">Tut:</b> ${esc((t.neden[0]||"trend sürüyor, belirgin al/sat sinyali yok"))}.`);
+      ne.push(`Zarar-kes: <b>${px(stop)}</b> (${pct((stop/f-1)*100)}) · Hedef: <b>${px(t.hedef)}</b> (${pct((t.hedef/f-1)*100)})`);
+      if(t.rsi>=75)ne.push(`RSI ${nf(t.rsi,0)}: aşırı alım, bir kısmını satıp kâr almak düşünülebilir.`);
+    }
+    if(t.neden.some(x=>/riskli|yapay zekâ/.test(x))&&karar!=="SAT")ne.push(`<span class="down">${esc(t.neden.filter(x=>/riskli|yapay zekâ/.test(x)).join("; "))}</span>`);
+  }else if(c)ne.push(`Bot bu hisseyi izlemiyor; uygulama görüşü: <b>${c.karar}</b>.`);
+  else ne.push("Bu hisse için veri yok.");
+  if(t&&c&&c.karar!==karar)ne.push(`<span class="xs faint">Yapay zekâ/uygulama görüşü (${HZL[HZ]}): ${c.karar}</span>`);
+  return {f,kz,kzp,karar,ne};
+}
+function egriSvg(e){if(!e||e.length<3)return "";const W=340,H=120,P=6,a=e.map(r=>r[1]),b=e.map(r=>r[2]),lo=Math.min(...a,...b),hi=Math.max(...a,...b);
+  const yy=v=>H-P-(v-lo)/(hi-lo||1)*(H-2*P),xx=i=>P+i*(W-2*P)/(e.length-1),yol=s=>s.map((v,i)=>(i?"L":"M")+xx(i).toFixed(1)+" "+yy(v).toFixed(1)).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin-top:10px" aria-label="Bot ve BIST 100 karşılaştırması"><path d="${yol(b)}" fill="none" stroke="var(--faint)" stroke-width="1.5"/><path d="${yol(a)}" fill="none" stroke="var(--brass)" stroke-width="2"/></svg>
+  <div class="legend"><span><i style="background:var(--brass)"></i>Bot</span><span><i style="background:var(--faint)"></i>BIST 100</span><span>${dLbl(e[0][0])} ${e[0][0].slice(0,4)} = 100</span></div>`}
+function simSatir(s,bas){if(!s||s.getiri==null)return "";return `<div class="small" style="line-height:1.7;padding:8px 0;border-bottom:1px solid var(--line)"><b>${esc(bas)}</b> (${dLbl(s.bas)} ${s.bas.slice(0,4)} – ${dLbl(s.son)} ${s.son.slice(0,4)})<br>
+  Bot <b class="${cls(s.getiri)}">${pct(s.getiri)}</b> · BIST 100 <b class="${cls(s.xu_getiri)}">${pct(s.xu_getiri)}</b> · En büyük düşüş ${pct(s.max_dusus)} (endeks ${pct(s.xu_max_dusus)})<br>
+  <span class="xs muted">${s.islem} işlem · kazanan %${nf(s.isabet||0,0)} · ort. kazanç ${pct(s.ort_kazanc||0)} / kayıp ${pct(s.ort_kayip||0)} · kâr faktörü ${s.kar_faktoru!=null?nf(s.kar_faktoru,2):"–"} · ort. ${s.ort_gun} gün</span></div>`}
+function islemSatir(i){return `<div class="small" style="padding:9px 0;border-bottom:1px solid var(--line);line-height:1.5"><span class="pill ${i.tur==="AL"?"up":"down"}">${i.tur}</span> <b data-k="${esc(i.kod)}">${esc(i.kod)}</b> ${nf(i.adet,0)} adet × ${px(i.fiyat)} <span class="xs faint">${dLbl(i.tarih)}</span>
+  ${i.tur==="SAT"?` · <b class="${cls(i.kz)}">${tlS(i.kz)} (${pct(i.kz_yuzde)})</b>`:""}<br><span class="xs muted">${esc(i.neden||"")}${i.stop?` · zarar-kes ${px(i.stop)}`:""}</span></div>`}
+function traderKart(){
+  const c=TRD.canli,s=TRD.sim;if(!c)return `<div class="card"><div class="card-h"><h2>Sanal trader</h2></div><p class="small muted">Bot ilk çalışmasını bekliyor (her işlem günü 18:40).</p></div>`;
+  const bg=c.bugun||[],poz=c.pozisyonlar||[];
+  return `<div class="card"><div class="card-h"><h2>Sanal trader</h2><span class="xs muted">${c.son_tarih?dLbl(c.son_tarih):""}</span></div>
+  <p class="small muted" style="line-height:1.55;margin-bottom:12px">Gerçek para kullanmayan, kurallarla al-sat yapan bot. ${dLbl(c.baslangic_tarih)} ${c.baslangic_tarih.slice(0,4)}'de ${tl(c.baslangic)} ile başladı. Kurallar: yükselen trend + piyasadan güçlü + zirveye yakın hisseyi alır, zarar-kes ve iz süren stop ile satar; işlem başına sermayenin %1'ini riske eder, komisyon ve kayma düşülür.${TRD.piyasa_ok===false?` <b>BIST 100 200 günlük ortalamanın altında; bot şu an yeni alım yapmıyor.</b>`:""}</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+    <div><span class="xs muted">Değer</span><br><b style="font-size:20px">${tl(c.deger)}</b><br><span class="small ${cls(c.getiri)}">${pct(c.getiri)}</span></div>
+    <div><span class="xs muted">Aynı dönemde BIST 100</span><br><b style="font-size:20px" class="${cls(c.xu_getiri)}">${pct(c.xu_getiri)}</b><br><span class="xs muted">Nakit ${tl(c.nakit)}</span></div></div>
+  <span class="shead">Bugün yaptığı işlemler</span>${bg.map(islemSatir).join("")||`<p class="small muted" style="padding:6px 0 10px">Bugün işlem yok.</p>`}
+  <div style="height:12px"></div><span class="shead">Elindeki hisseler (${poz.length})</span>
+  ${poz.map(p=>`<div class="small" style="padding:9px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px"><span><b data-k="${esc(p.kod)}">${esc(p.kod)}</b> <span class="xs muted">${nf(p.adet,0)} × ${px(p.giris)} · ${dLbl(p.tarih)}</span><br><span class="xs faint">Zarar-kes ${px(p.stop)} (${pct(p.stopa_uzaklik)})</span></span><span style="text-align:right">${px(p.son)}<br><b class="${cls(p.kz)}">${pct(p.kz_yuzde)}</b></span></div>`).join("")||`<p class="small muted" style="padding:6px 0">Şu an hisse yok, nakitte.</p>`}
+  ${c.kapanan?`<p class="xs muted" style="margin-top:10px">Kapanan ${c.kapanan} işlemin ${c.kazanan}'i kârlı · gerçekleşen ${tlS(c.gerceklesen_kz)}</p>`:""}
+  ${(c.islemler||[]).length>bg.length?`<div style="height:12px"></div><span class="shead">Son işlemler</span>${c.islemler.slice(-10).reverse().filter(i=>i.tarih!==c.son_tarih||!bg.length).map(islemSatir).join("")}`:""}
+  ${s&&s.getiri!=null?`<div style="height:16px"></div><span class="shead">Aynı kurallar geçmişte ne yapardı?</span>${egriSvg(s.egri)}${simSatir(s,"Tüm dönem")}${simSatir(s.test,"2025'ten bugüne")}<p class="xs faint" style="margin-top:8px;line-height:1.5">${esc(s.not||"")}</p>`:""}</div>`}
+function renderPortfoy(zorla){
+  const el=$("#p-portfoy");if(!el)return;const fm=$("#pform");if(!zorla&&fm&&fm.contains(document.activeElement))return;
+  const g=PORT.map(h=>({h,...portGorus(h)})),fiyatli=g.filter(x=>x.f);
+  const top=fiyatli.reduce((s,x)=>s+x.f*x.h.a,0),mal=fiyatli.reduce((s,x)=>s+x.h.m*x.h.a,0);
+  const kodlar=[...new Set([...Object.keys(TRD.analiz||{}),...MKL.map(m=>m.k),...Object.keys(BY)])].sort();
+  el.innerHTML=`<div class="card"><div class="card-h"><h2>Portföyüm</h2>${PORT.length?`<span class="xs muted">${PORT.length} hisse</span>`:""}</div>
+  ${PORT.length&&mal?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"><div><span class="xs muted">Toplam değer</span><br><b style="font-size:20px">${tl(top)}</b></div><div><span class="xs muted">Kâr / zarar</span><br><b style="font-size:20px" class="${cls(top-mal)}">${tlS(top-mal)}</b><br><span class="small ${cls(top-mal)}">${pct((top/mal-1)*100)}</span></div></div>`:`<p class="small muted" style="line-height:1.55;margin-bottom:12px">Elindeki hisseleri ekle; bot her birine trend, zarar-kes ve hedefe bakarak <b>AL / TUT / SAT</b> der. Bilgiler yalnızca bu cihazda saklanır.</p>`}
+  ${g.map(x=>`<div class="exp" style="margin-bottom:8px;border-left-color:var(--${x.karar==="AL"?"up":x.karar==="SAT"?"down":"s3"})">
+    <div class="top" style="display:flex;justify-content:space-between;gap:10px"><div><button class="code" data-k="${esc(x.h.k)}" style="padding:0">${esc(x.h.k)}</button> ${x.karar?`<span class="pill ${kCls(x.karar)}">${x.karar}</span>`:""}<br><span class="xs muted">${nf(x.h.a,0)} adet × ${px(x.h.m)} maliyet</span></div>
+    <div style="text-align:right">${x.f?`<b>${px(x.f)}</b><br><span class="small ${cls(x.kz)}">${tlS(x.kz)} (${pct(x.kzp)})</span>`:`<span class="xs muted">fiyat yok</span>`}</div></div>
+    <div class="small" style="line-height:1.6">${x.ne.join("<br>")}</div>
+    <button class="xs faint" data-sil="${esc(x.h.k)}" style="align-self:flex-start;padding:4px 0">Portföyden çıkar</button></div>`).join("")}
+  <form id="pform" style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px;margin-top:10px" autocomplete="off">
+    <input class="search" name="k" list="pkod" placeholder="Hisse kodu" aria-label="Hisse kodu" required style="text-transform:uppercase">
+    <input class="search" name="a" type="number" inputmode="decimal" min="0" step="any" placeholder="Adet" aria-label="Adet" required>
+    <input class="search" name="m" type="number" inputmode="decimal" min="0" step="any" placeholder="Maliyet (TL)" aria-label="Alış fiyatı" required>
+    <datalist id="pkod">${kodlar.map(k=>`<option value="${esc(k)}">`).join("")}</datalist>
+    <button class="btn primary" style="grid-column:1/-1;min-height:44px" type="submit">Ekle</button></form>
+  <p class="xs faint" id="pmsg" style="margin-top:6px"></p></div>
+  ${traderKart()}
+  <p class="disc">Bot ve öneriler kurallara dayalı otomatik hesaplamalardır; kâr garantisi yoktur, geçmiş sonuçlar geleceği göstermez. Yatırım tavsiyesi değildir. Bot gerçek alım-satım yapmaz.</p>`;
+  $("#pform").onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),k=String(f.get("k")||"").trim().toLocaleUpperCase("tr").replace(/İ/g,"I"),a=+f.get("a"),m=+f.get("m");
+    if(!/^[A-Z0-9]{3,6}$/.test(k)||!(a>0)||!(m>0)){$("#pmsg").textContent="Kod, adet ve maliyeti kontrol et.";return}
+    const v=PORT.find(x=>x.k===k);if(v){v.m=(v.m*v.a+m*a)/(v.a+a);v.a+=a}else PORT.push({k,a,m});portKaydet();renderPortfoy(true)};
+}
+$("#p-portfoy").addEventListener("click",e=>{const s=e.target.closest("[data-sil]");if(s){if(confirm(s.dataset.sil+" portföyden çıkarılsın mı?")){PORT=PORT.filter(x=>x.k!==s.dataset.sil);portKaydet();renderPortfoy(true)}return}
+  const b=e.target.closest("[data-k]");if(b&&getA(b.dataset.k))openDetail(b.dataset.k)});
+
 /* fonlar */
 // Takip listesi boş başlar; fonlar yalnızca kullanıcı "Takip et" deyince eklenir (eskiden 10 fon otomatik takipteydi)
 let myF=(a=>Array.isArray(a)?a:[])(store.get("funds2",[])),fq="",fsort=store.get("fsort","g1a"),curF=null,ffilt=store.get("ffilt","all"),FLIM=40,FAI=seed("seed-fai");
@@ -1092,11 +1172,11 @@ function openFund(k,noPush){
 }
 
 /* ================= gezinme (telefonun geri tuşu uygulamadan atmaz) ================= */
-const VIEWS=["piyasa","detay","beklenti","haber","fon","fondetay","kriz"];
+const VIEWS=["piyasa","detay","beklenti","haber","fon","fondetay","kriz","portfoy"];
 function setView(v){VIEWS.forEach(n=>{const el=$("#p-"+n),once=el.hidden;el.hidden=n!==v;if(n===v&&once){el.classList.remove("giris");void el.offsetWidth;el.classList.add("giris")}});const tb=v==="detay"||v==="fondetay"||v==="kriz"?(tab||"piyasa"):v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tb))}
 function nav(st){try{history.pushState(st,"","#"+(st.k||st.v))}catch(e){}}
 function goBack(){if(history.state&&history.state.v&&history.state.v!=="piyasa")history.back();else showTab("piyasa",true)}
-const KAYDIR={},GERI_AD={piyasa:"Piyasa",beklenti:"Beklenti",haber:"Haberler",fon:"Fonlar"};
+const KAYDIR={},GERI_AD={piyasa:"Piyasa",beklenti:"Beklenti",haber:"Haberler",fon:"Fonlar",portfoy:"Portföy"};
 function kaydirSakla(){const v=VIEWS.find(n=>!$("#p-"+n).hidden);if(v&&v!=="detay"&&v!=="fondetay")KAYDIR[v]=window.scrollY}
 function showTab(t,noPush){tab=t;cur=null;setView(t);const y=noPush?(KAYDIR[t]||0):0;window.scrollTo(0,y);if(y){requestAnimationFrame(()=>window.scrollTo(0,y));[80,250,500].forEach(ms=>setTimeout(()=>{if(tab===t&&!$("#p-"+t).hidden&&Math.abs(scrollY-y)>4)window.scrollTo(0,y)},ms))}if(!noPush){if(t==="piyasa"){try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}}else nav({v:t})}}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{if(!$("#p-"+b.dataset.tab).hidden)return;showTab(b.dataset.tab)});
@@ -1158,7 +1238,7 @@ function gecikmeBilgi(){if($("#onay"))return;const d=document.createElement("div
   document.body.appendChild(d);document.body.classList.add("kilit");
   const kapat=()=>{d.remove();document.body.classList.remove("kilit")};$("#onayKapat").onclick=kapat;d.onclick=e=>{if(e.target===d)kapat()}}
 $("#live").addEventListener("click",gecikmeBilgi);$("#live").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")gecikmeBilgi()});
-function renderAll(){rebuild();if($("#q")&&$("#idx")){$("#idx").innerHTML=idxCard();drawIdx();renderRows()}else renderMarket();renderOutlook();renderNews();renderFunds();updateLive();FKC={};if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true);if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}
+function renderAll(){rebuild();if($("#q")&&$("#idx")){$("#idx").innerHTML=idxCard();drawIdx();renderRows()}else renderMarket();renderOutlook();renderNews();renderFunds();renderPortfoy();updateLive();FKC={};if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true);if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}
 function flash(){document.body.classList.add("flash");setTimeout(()=>document.body.classList.remove("flash"),1500)}
 
 /* ================= veri: 5 saniyede bir ================= */
@@ -1171,6 +1251,7 @@ async function pollSlow(){
   try{const d=await getJ(RAW("data","news.json"));if(d.items&&T(d.updatedAt)>T(NEWS.updatedAt)){NEWS=d;renderNews()}}catch(e){}
   try{const d=await getJ(RAW("main","data/endeksler.json"));if(T(d.updatedAt)>T(ENDK.updatedAt)){ENDK=d;renderRows()}}catch(e){}
   try{const d=await getJ(RAW("main","data/fon_krizi.json"));if(T(d.updatedAt)>T(KRIZ.updatedAt)){KRIZ=d;renderOutlook();renderNews();renderFunds();if(!$("#p-kriz").hidden)renderKriz()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/trader.json"));if(T(d.updatedAt)>T(TRD.updatedAt)){TRD=d;renderPortfoy()}}catch(e){}
   try{const d=await getJ(RAW("main","data/secim.json"));if(T(d.updatedAt)>T(SEC.updatedAt)){SEC=d;KC={};FKC={};renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
@@ -1186,7 +1267,7 @@ renderAll();talepIzle();
 (function(){const sp=$("#splash"),hazir=()=>{sp.classList.add("bitti");setTimeout(()=>{sp.remove();onayGoster(false)},520)};
   const az=matchMedia("(prefers-reduced-motion:reduce)").matches?200:1300;setTimeout(hazir,az)})();
 const h=location.hash.slice(1);try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}
-if(["beklenti","haber","fon"].includes(h))showTab(h);else if(getA(h.toUpperCase()))openDetail(h.toUpperCase());
+if(["beklenti","haber","fon","portfoy"].includes(h))showTab(h);else if(getA(h.toUpperCase()))openDetail(h.toUpperCase());
 poll();pollSlow();
 setInterval(poll,5000);setInterval(pollSlow,60000);setInterval(updateLive,15000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){poll();pollSlow()}});

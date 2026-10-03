@@ -10,6 +10,7 @@ BIST 30 hisseleri için telefondan açılan borsa uygulaması: dokunmatik fiyat 
 | `index.html` (GitHub Pages) | Uygulamanın kendisi; `data` dalındaki dosyaları kontrol eder, değişince ekranı günceller | 5 saniyede bir |
 | `data/outlook.json` | Claude'un haber ve fiyatlara bakarak yazdığı beklenti analizi, kararları ve 1 haftalık hedefleri | Borsa açıkken saatte bir |
 | `scraper/ai_degerlendir.py` | Llama (Groq), OpenRouter ve isteğe bağlı Grok, Mistral, GPT, DeepSeek'e 30 hisse için AL/TUT/SAT ve 1 haftalık hedef sorar; `data/ai.json` | Borsa açıkken saatte bir |
+| `scraper/trader.py` | Sanal trader: kurallarla (trend, piyasaya göre güç, zarar-kes, iz süren stop, %1 risk) gerçek para olmadan al-sat yapar; aynı kuralları 2022'den bugüne geçmişte de dener ve BIST 100 ile karşılaştırır; her hisse için AL/TUT/SAT, zarar-kes ve hedef yazar (`data/trader.json`). Uygulamadaki **Portföy** sekmesi bununla kullanıcının kendi hisselerini değerlendirir | Her işlem günü 18:40 TSİ |
 | `android/` | Uygulamanın APK'sı; açılışta güncel sayfayı yükler, internet yoksa içindeki kopyayı açar | Her değişiklikte derlenir |
 
 ## APK

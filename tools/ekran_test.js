@@ -12,7 +12,7 @@ const { chromium } = require("playwright");
   const onay = await p.$("#onay1");
   if (onay) { await p.check("#onay1"); await p.check("#onay2"); await p.click("#onayBtn"); await p.waitForTimeout(500); }
   const satir = await p.$$eval("#p-piyasa [data-k]", e => e.length);
-  for (const t of ["beklenti", "haber", "fon", "piyasa"]) { await p.click(`nav button[data-tab="${t}"]`); await p.waitForTimeout(700); }
+  for (const t of ["beklenti", "haber", "fon", "portfoy", "piyasa"]) { await p.click(`nav button[data-tab="${t}"]`); await p.waitForTimeout(700); }
   console.log("satır:", satir, "hatalar:", hatalar, "onay ekranı:", !!onay);
   await b.close();
   process.exit(hatalar.length || satir < 20 ? 1 : 0);
