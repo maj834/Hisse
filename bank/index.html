@@ -100,12 +100,39 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
 .wc{font-size:13px;color:var(--mut);margin-top:6px}
 .tx .t small.qt{display:block;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style>
+<style>
+/* giriş */
+#login{position:fixed;inset:0;background:linear-gradient(160deg,#0b1f3a,#1e3a8a);z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+#login .lc{background:var(--card);border-radius:22px;padding:24px 20px;width:100%;max-width:400px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+#login .lg{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;justify-content:center;margin-bottom:6px}
+#login .lg i{width:40px;height:40px;border-radius:12px;background:var(--gold);color:var(--brand);display:grid;place-items:center;font-style:normal}
+#login .sub{text-align:center;color:var(--mut);font-size:14px;margin-bottom:6px}
+.link{display:block;width:100%;border:0;background:none;color:#2563eb;font-size:14px;margin-top:14px;padding:6px}
+.hbtn{border:0;background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:7px 10px;font-size:13px;margin-left:6px}
+select{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;color:var(--ink)}
+.amts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.amts button{border:1px solid var(--line);background:#f8fafc;border-radius:10px;padding:10px 0;font-size:14px;font-weight:700;color:var(--ink)}
+.conn{font-size:11px;text-align:center;color:var(--mut);margin-top:18px}
+/* tanıtım turu */
+#tour{position:fixed;inset:0;z-index:30;display:none}
+#tour.on{display:block}
+#tHole{position:absolute;border-radius:16px;box-shadow:0 0 0 9999px rgba(15,23,42,.72);transition:all .35s;pointer-events:none}
+#tCard{position:absolute;left:16px;right:16px;max-width:488px;margin:0 auto;background:var(--card);border-radius:18px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.35);transition:top .35s}
+#tCard .tn{font-size:12px;color:var(--mut)}
+#tCard b{display:block;font-size:17px;margin:4px 0 6px}
+#tCard p{font-size:14px;color:#334155;line-height:1.5}
+#tCard .row2{display:flex;gap:10px;margin-top:14px}
+#tCard .row2 .btn{margin:0}
+</style>
 </head>
 <body>
+<!-- GİRİŞ -->
+<div id="login"><div class="lc" id="loginBox"></div></div>
+
 <header>
   <div class="top">
     <div class="logo" id="logo"><i>B</i>Boş Bank</div>
-    <div style="font-size:22px">🔔</div>
+    <div id="hdrBtns"><button class="hbtn" onclick="startTour()">❓ Rehber</button><button class="hbtn" onclick="logout()">Çıkış</button></div>
   </div>
   <div class="hi">İyi günler,<b id="hiName">-</b></div>
 </header>
@@ -115,10 +142,10 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
     <div style="font-size:44px">🗣️</div>
     <b>Henüz Boş Yapma Kartınız yok</b>
     <p>Birkaç soruyu yanıtlayın, size özel boş yapma kotanızı hemen belirleyelim.</p>
-    <button class="apply" onclick="startApply()">Boş Yapma Kartı Başvurusu</button>
+    <button class="apply" id="applyBtn" onclick="startApply()">Boş Yapma Kartı Başvurusu</button>
   </div>
   <div id="hasCard">
-  <div class="cc">
+  <div class="cc" id="ccEl">
     <div class="row"><div class="chip"></div><small>BOŞ YAPMA KARTI</small></div>
     <div class="num" id="cardNo">**** **** **** 0000</div>
     <div class="row">
@@ -129,7 +156,7 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
 
   <div class="alert" id="alert">🤐 Boş yapma kotanız doldu! Lütfen bir süre sessiz kalın.</div>
 
-  <div class="box">
+  <div class="box" id="limBox">
     <div class="lbl">Kalan Boş Yapma Hakkı</div>
     <div class="big" id="avail">0</div>
     <div class="bar" id="bar"><div id="barIn" style="width:0"></div></div>
@@ -137,27 +164,30 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
     <div class="kv"><span>Bu Dönem Yapılan Boş</span><b id="spent">0</b></div>
     <p class="note" style="margin-top:10px">Söylenen her kelime 1 Boş YPH (Boş Yapma Hakkı) harcar.</p>
   </div>
-  <button class="apply" onclick="startApply(true)">Kota Artırım Başvurusu</button>
+  <button class="apply" id="raiseBtn" onclick="startApply(true)">Kota Artırım Başvurusu</button>
   </div>
 
-  <div class="box">
+  <div class="box" id="phBox">
     <h3>🔥 Boş Tarifesi</h3>
     <p class="lbl" style="margin-bottom:4px">En sık yapılan boşlar ve fiyatları</p>
     <div id="phList"></div>
   </div>
 
-  <div class="quick">
-    <div onclick="qSend()"><span>🗣️</span>Boş Gönder</div>
+  <div class="quick" id="quickEl">
+    <div onclick="qSend()"><span>📤</span>Boş Gönder</div>
     <div onclick="qGossip()"><span>☕</span>Dedikodu</div>
     <div onclick="qCamps()"><span>🎁</span>Kampanyalar</div>
     <div onclick="qSilence()"><span>🤐</span>Sessizlik Puanı</div>
   </div>
 
-  <div class="box">
-    <h3>Son Boş Yapmalar</h3>
+  <div class="box" id="txBox">
+    <h3>Son İşlemler</h3>
     <div id="list"></div>
   </div>
 </main>
+
+<!-- TANITIM TURU -->
+<div id="tour"><div id="tHole"></div><div id="tCard"></div></div>
 
 <!-- HIZLI İŞLEMLER -->
 <div class="ov" id="qOv"><div class="sheet" id="qBody"></div></div>
@@ -176,8 +206,9 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
 <!-- YÖNETİCİ PANELİ -->
 <div class="ov" id="admOv"><div class="sheet">
   <h2>Yönetici Paneli <button onclick="closeOv('admOv')">Kapat</button></h2>
+  <label>Yönetilen hesap</label><select id="admUser" onchange="admSelect(this.value)"></select>
 
-  <h3>Hızlı Düş (dokun, hemen düşsün)</h3>
+  <h3 style="margin-top:16px">Hızlı Düş (dokun, hemen düşsün)</h3>
   <div class="chips" id="admChips"></div>
   <div class="two" style="margin-top:8px"><input id="newPh" placeholder="Yeni kalıp cümle ekle"><button class="btn" style="margin:0" onclick="addPhrase()">Ekle</button></div>
   <div class="sep"></div>
@@ -192,140 +223,240 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
   <div id="pendBox"></div>
 
   <div class="sep"></div>
-  <h3>Kart Ayarları</h3>
-  <label>Kart sahibinin adı</label><input id="setName">
+  <h3>Hesap Ayarları</h3>
+  <label>Ad</label><input id="setName">
   <div class="two">
     <div><label>Toplam kota (kelime)</label><input id="setLimit" inputmode="numeric"></div>
-    <div><label>Kartın son 4 hanesi</label><input id="setNo" inputmode="numeric" maxlength="4"></div>
+    <div><label>Giriş şifresi (4 hane)</label><input id="setUPin" inputmode="numeric" maxlength="4"></div>
   </div>
-  <label>Yönetici PIN (4 hane)</label><input id="setPin" inputmode="numeric" maxlength="4">
   <button class="btn" onclick="saveSettings()">Kaydet</button>
+  <button class="btn ghost" onclick="newPeriod()">Yeni Dönem (işlemleri sil, kota dolsun)</button>
+  <button class="btn ghost" onclick="resetCard()">Kartı Kapat (yeniden başvuru yapılsın)</button>
+  <button class="btn red" onclick="delUser()">Hesabı Sil</button>
 
   <div class="sep"></div>
-  <button class="btn ghost" onclick="newPeriod()">Yeni Dönem (kotayı doldur)</button>
-  <button class="btn ghost" onclick="resetCard()">Kartı Kapat (yeniden başvuru yapılsın)</button>
+  <h3>Genel</h3>
+  <label>Yönetici PIN (4 hane)</label><input id="setPin" inputmode="numeric" maxlength="4">
+  <button class="btn" onclick="saveAdminPin()">PIN'i Kaydet</button>
 
-  <p class="note">Bu bir şaka uygulamasıdır; gerçek bir banka değildir, para ile ilgisi yoktur. Veriler yalnızca bu telefonda saklanır.<br>Paneli açmak için üstteki <b>Boş Bank</b> logosuna art arda 5 kez dokunun. Varsayılan PIN: <b>0000</b>.</p>
+  <p class="note">Bu bir şaka uygulamasıdır; gerçek bir banka değildir, para ile ilgisi yoktur.<br>Paneli açmak için üstteki <b>Boş Bank</b> logosuna art arda 5 kez dokunun. Varsayılan yönetici PIN: <b>0000</b>.<br><span id="modeNote"></span></p>
 </div></div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const KEY='bosBank.v1';
-const DEF={name:'Annem',limit:0,no:'4821',pin:'0000',card:false,tx:[]};
-let S=load();
+// ================= VERİ KATMANI =================
+// FIREBASE_URL doluysa tüm telefonlar ortak veritabanını kullanır (gönderimler gerçekten karşıya gider).
+// Boşsa veriler sadece bu telefonda tutulur (aynı telefondaki hesaplar arasında gönderim çalışır).
+const FIREBASE_URL='';
+const ROOT='bosbank';
+const REMOTE=!!FIREBASE_URL;
+const LKEY='bosBank.db.v2';
+function ldb(){try{return JSON.parse(localStorage.getItem(LKEY))||{}}catch(e){return{}}}
+function lsave(d){try{localStorage.setItem(LKEY,JSON.stringify(d))}catch(e){}}
+function walk(d,path,make){const k=path.split('/').filter(Boolean);let o=d;for(let i=0;i<k.length-1;i++){if(o[k[i]]==null){if(!make)return[null];o[k[i]]={}}o=o[k[i]]}return[o,k[k.length-1]]}
+function rid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+const db={
+  async get(p){if(REMOTE){const r=await fetch(`${FIREBASE_URL}/${ROOT}/${p}.json`);if(!r.ok)throw 0;return await r.json()}
+    const d=ldb();if(!p)return d;const[o,k]=walk(d,p);return o?(o[k]??null):null},
+  async put(p,v){if(REMOTE){const r=await fetch(`${FIREBASE_URL}/${ROOT}/${p}.json`,{method:'PUT',body:JSON.stringify(v)});if(!r.ok)throw 0;return}
+    const d=ldb();const[o,k]=walk(d,p,true);if(v==null)delete o[k];else o[k]=v;lsave(d)},
+  async patch(p,v){if(REMOTE){const r=await fetch(`${FIREBASE_URL}/${ROOT}/${p}.json`,{method:'PATCH',body:JSON.stringify(v)});if(!r.ok)throw 0;return}
+    const d=ldb();const[o,k]=walk(d,p,true);o[k]=Object.assign(o[k]||{},v);lsave(d)},
+  async push(p,v){const id=rid();await this.put(p+'/'+id,v);return id},
+  async del(p){return this.put(p,null)}
+};
 
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.tx))return Object.assign({},DEF,s)}catch(e){}return JSON.parse(JSON.stringify(DEF))}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Kaydedilemedi')}}
-const PH=['Ders çalış','Okula git','Kardeşine kötü örnek oluyorsun','Bak komşunun oğlu ne yapmış','Telefonu bırak artık','Bizim zamanımızda böyle şeyler yoktu','Ben senin yaşındayken çalışıyordum','Odanı topla','Üşüteceksin üstüne bir şey al','Gece gece nereye','Elalem ne der','Bu saate kadar ne yaptın','Ne zaman evleneceksin','Babana söylerim','Yemeğini bitir','Sen daha çok küçüksün'];
-function phrases(){return PH.concat(S.myPh||[])}
-const fmt=n=>Math.round(n).toLocaleString('tr-TR')+' Boş YPH';
+// ================= YARDIMCILAR =================
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const words=t=>(t.trim().match(/[\p{L}\p{N}]+/gu)||[]).length;
-let admin=false;
+const fmt=n=>Math.round(n).toLocaleString('tr-TR')+' Boş YPH';
+const words=t=>(String(t).trim().match(/[\p{L}\p{N}]+/gu)||[]).length;
+const lc=s=>s.trim().toLocaleLowerCase('tr');
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2200)}
+function openOv(id){$(id).classList.add('on')}
+function closeOv(id){$(id).classList.remove('on');if(id==='admOv'){admin=false;refresh()}}
+function lget(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lset(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
+
+// ================= DURUM =================
+let ME=null;          // giriş yapan hesabın id'si
+let U=null;           // giriş yapan hesabın bilgileri {name,pin,limit,card,no,tour,myPh}
+let TX=[];            // işlemler (yeni→eski değil, eski→yeni)
+let PEND=[];
+let USERS={};         // tüm hesaplar
+let admin=false,AU=null;   // yönetici panelinde seçili hesap
+let seen=new Set();
+
+function txArr(o){return Object.entries(o||{}).map(([id,t])=>Object.assign({id},t)).sort((a,b)=>a.at-b.at)}
+function balance(tx,lim){return Math.max(0,lim+tx.reduce((a,t)=>a+t.amt,0))}
+function avail(){return U?balance(TX,U.limit||0):0}
+
+async function loadMe(){
+  const [u,t,p]=await Promise.all([db.get('users/'+ME),db.get('tx/'+ME),db.get('pend/'+ME)]);
+  if(!u){logout();return}
+  U=u;const nt=txArr(t);
+  // gelen yeni gönderimleri bildir
+  if(seen.size)nt.filter(x=>!seen.has(x.id)&&x.from&&x.amt>0).forEach(x=>toast(`📥 ${x.fromName} size ${fmt(x.amt)} gönderdi!`));
+  nt.forEach(x=>seen.add(x.id));
+  TX=nt;PEND=Object.entries(p||{}).map(([id,v])=>Object.assign({id},v));
+}
+async function refresh(){if(!ME)return;try{await loadMe()}catch(e){toast('Bağlantı hatası');return}render()}
+
+// ================= GİRİŞ =================
+function loginView(mode){
+  const reg=mode==='reg';
+  $('loginBox').innerHTML=`<div class="lg"><i>B</i>Boş Bank</div>
+    <div class="sub">${reg?'Yeni hesap oluşturun':'Hesabınıza giriş yapın'}</div>
+    <label>Adınız</label><input id="lName" placeholder="Örn. Annem" autocomplete="off">
+    <label>Şifre (4 rakam)</label><input id="lPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••">
+    ${reg?'<label>Şifre tekrar</label><input id="lPin2" type="password" inputmode="numeric" maxlength="4" placeholder="••••">':''}
+    <button class="btn" onclick="${reg?'doRegister()':'doLogin()'}">${reg?'Hesap Oluştur':'Giriş Yap'}</button>
+    <button class="link" onclick="loginView('${reg?'':'reg'}')">${reg?'Zaten hesabım var, giriş yap':'Hesabın yok mu? Hesap oluştur'}</button>
+    <div class="conn">${REMOTE?'🟢 Çevrimiçi: tüm telefonlar bağlı':'📱 Yerel mod: veriler bu telefonda'}</div>`;
+}
+async function findUser(name){USERS=await db.get('users')||{};return Object.entries(USERS).find(([id,u])=>lc(u.name)===lc(name))}
+async function doLogin(){
+  const n=$('lName').value,p=$('lPin').value;
+  if(!n.trim()||!/^\d{4}$/.test(p)){toast('Ad ve 4 haneli şifre girin');return}
+  try{const f=await findUser(n);
+    if(!f){toast('Böyle bir hesap yok');return}
+    if(f[1].pin!==p){toast('Şifre yanlış');return}
+    enter(f[0]);
+  }catch(e){toast('Bağlantı hatası')}
+}
+async function doRegister(){
+  const n=$('lName').value.trim(),p=$('lPin').value,p2=$('lPin2').value;
+  if(n.length<2){toast('Adınızı yazın');return}
+  if(!/^\d{4}$/.test(p)){toast('Şifre 4 rakam olmalı');return}
+  if(p!==p2){toast('Şifreler aynı değil');return}
+  try{if(await findUser(n)){toast('Bu ad zaten alınmış');return}
+    const id=rid();await db.put('users/'+id,{name:n,pin:p,limit:0,card:false,no:'0000',tour:false,at:Date.now()});
+    enter(id);
+  }catch(e){toast('Bağlantı hatası')}
+}
+async function enter(id){
+  ME=id;lset('bosBank.me',id);seen=new Set();
+  await refresh();if(!U)return;
+  $('login').style.display='none';
+  if(!U.tour)setTimeout(startTour,400);
+}
+function logout(){ME=null;U=null;TX=[];lset('bosBank.me',null);$('login').style.display='';loginView()}
+
+// ================= EKRAN =================
+const PH=['Ders çalış','Okula git','Kardeşine kötü örnek oluyorsun','Bak komşunun oğlu ne yapmış','Telefonu bırak artık','Bizim zamanımızda böyle şeyler yoktu','Ben senin yaşındayken çalışıyordum','Odanı topla','Üşüteceksin üstüne bir şey al','Gece gece nereye','Elalem ne der','Bu saate kadar ne yaptın','Ne zaman evleneceksin','Babana söylerim','Yemeğini bitir','Sen daha çok küçüksün'];
+function phrases(u){return PH.concat((u||U||{}).myPh||[])}
+function phUses(p,tx){const q=lc(p);return tx.filter(t=>t.amt<0&&t.text&&lc(t.text).includes(q)).length}
 
 function render(){
-  const net=S.tx.reduce((a,t)=>a+t.amt,0);
-  const spent=S.tx.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
-  const avail=Math.max(0,S.limit+net);
-  const pct=S.limit>0?Math.min(100,avail/S.limit*100):0;
-  $('noCard').style.display=S.card?'none':'';
-  $('hasCard').style.display=S.card?'':'none';
-  $('alert').classList.toggle('on',S.card&&avail<=0);
-  $('hiName').textContent=S.name;
-  $('cardName').textContent=S.name;
-  $('cardNo').textContent='**** **** **** '+(S.no||'0000');
-  $('avail').textContent=fmt(avail);
-  $('total').textContent=fmt(S.limit);
+  if(!U)return;
+  const spent=TX.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
+  const av=avail(),lim=U.limit||0;
+  const pct=lim>0?Math.min(100,av/lim*100):0;
+  $('noCard').style.display=U.card?'none':'';
+  $('hasCard').style.display=U.card?'':'none';
+  $('alert').classList.toggle('on',U.card&&av<=0);
+  $('hiName').textContent=U.name;
+  $('cardName').textContent=U.name;
+  $('cardNo').textContent='**** **** **** '+(U.no||'0000');
+  $('avail').textContent=fmt(av);
+  $('total').textContent=fmt(lim);
   $('spent').textContent=fmt(spent);
   $('barIn').style.width=pct+'%';
   $('bar').className='bar'+(pct<20?' low':pct<50?' warn':'');
-  renderPh();
-  const L=$('list');
-  if(!S.tx.length){L.innerHTML='<div class="empty">Henüz boş yapılmadı (şaşırtıcı)</div>';return}
-  L.innerHTML=S.tx.slice().reverse().map(t=>{
-    const d=new Date(t.at);
-    return `<div class="tx"><div class="ico">${esc(t.ico||(t.amt<0?'🗣️':'🤐'))}</div>
-      <div class="t"><b>${esc(t.title||(t.amt<0?'Boş yaptı':'Sessiz kaldı bonusu'))}</b>${t.text?`<small class="qt">“${esc(t.text)}”</small>`:''}<small>${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</small></div>
-      <div class="amt ${t.amt<0?'neg':'pos'}">${t.amt<0?'-':'+'}${fmt(Math.abs(t.amt))}</div>
-      ${admin?`<button class="del" onclick="delTx(${t.at})">Sil</button>`:''}</div>`}).join('');
-}
-
-function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),1800)}
-function openOv(id){$(id).classList.add('on')}
-function closeOv(id){$(id).classList.remove('on');if(id==='admOv'){admin=false;render()}}
-
-// Logoya 5 kez dokununca PIN ekranı
-let taps=0,tapT;
-$('logo').addEventListener('click',()=>{taps++;clearTimeout(tapT);tapT=setTimeout(()=>taps=0,1500);
-  if(taps>=5){taps=0;const ins=[...$('pinBox').children];ins.forEach(i=>i.value='');openOv('pinOv');setTimeout(()=>ins[0].focus(),50)}});
-[...$('pinBox').children].forEach((inp,i,all)=>{
-  inp.addEventListener('input',()=>{inp.value=inp.value.replace(/\D/g,'');
-    if(inp.value&&i<3)all[i+1].focus();
-    const p=all.map(x=>x.value).join('');
-    if(p.length===4){if(p===S.pin){closeOv('pinOv');openAdmin()}else{toast('Hatalı PIN');all.forEach(x=>x.value='');all[0].focus()}}});
-  inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!inp.value&&i>0)all[i-1].focus()});
-});
-
-function openAdmin(){admin=true;renderPend();$('setName').value=S.name;$('setLimit').value=S.limit;$('setNo').value=S.no;$('setPin').value=S.pin;render();openOv('admOv')}
-$('exText').addEventListener('input',()=>{$('wc').textContent=words($('exText').value)+' kelime'});
-
-function addTx(sign){
-  const text=$('exText').value.trim();
-  const n=text?words(text):parseInt($('exAmt').value,10);
-  if(!(n>0)){toast('Ne dediğini yaz ya da kelime sayısı gir');return}
-  S.tx.push({at:Date.now(),text,amt:sign*n});
-  save();render();$('exText').value='';$('exAmt').value='';$('wc').textContent='0 kelime';
-  toast(sign<0?fmt(n)+' düşüldü':fmt(n)+' eklendi');
-}
-function delTx(at){S.tx=S.tx.filter(t=>t.at!==at);save();render()}
-function saveSettings(){
-  const lim=parseInt($('setLimit').value,10),pin=$('setPin').value.trim(),no=$('setNo').value.trim();
-  if(!(lim>=0)){toast('Kota geçersiz');return}
-  if(!/^\d{4}$/.test(pin)){toast('PIN 4 rakam olmalı');return}
-  S.name=$('setName').value.trim()||DEF.name;S.limit=lim;S.pin=pin;S.no=/^\d{4}$/.test(no)?no:S.no;
-  save();render();toast('Kaydedildi');
-}
-// ---- Klasik boşlar ----
-function phUses(p){const q=p.toLocaleLowerCase('tr');return S.tx.filter(t=>t.amt<0&&t.text&&t.text.toLocaleLowerCase('tr').includes(q)).length}
-function renderPh(){
-  const list=phrases().map(p=>({p,n:phUses(p)})).sort((a,b)=>b.n-a.n).slice(0,8);
+  const list=phrases().map(p=>({p,n:phUses(p,TX)})).sort((a,b)=>b.n-a.n).slice(0,8);
   $('phList').innerHTML=list.map(x=>`<div class="ph"><div class="t">“${esc(x.p)}”<small>${x.n?x.n+' kez yapıldı':'Henüz yapılmadı'}</small></div><span class="c">${fmt(words(x.p))}</span></div>`).join('');
-  if($('admChips'))$('admChips').innerHTML=phrases().map((p,i)=>`<button class="chip2" onclick="quickPh(${i})">${esc(p)} · ${words(p)}</button>`).join('');
+  const L=$('list');
+  L.innerHTML=TX.length?TX.slice().reverse().slice(0,40).map(txHtml).join(''):'<div class="empty">Henüz işlem yok (şaşırtıcı)</div>';
 }
-function quickPh(i){const p=phrases()[i];S.tx.push({at:Date.now(),text:p,amt:-words(p)});save();render();toast('“'+p+'” · '+fmt(words(p))+' düşüldü')}
-function addPhrase(){const v=$('newPh').value.trim();if(!words(v)){toast('Cümle yaz');return}S.myPh=(S.myPh||[]).concat(v);$('newPh').value='';save();render();toast('Eklendi')}
-function chipHtml(target){return phrases().slice(0,8).map(p=>`<button class="chip2" onclick="addTo('${target}',this.textContent)">${esc(p)}</button>`).join('')}
-function addTo(id,p){const e=$(id);e.value=(e.value.trim()?e.value.trim()+' ':'')+p;e.dispatchEvent(new Event('input'))}
+function txHtml(t){
+  const d=new Date(t.at);
+  return `<div class="tx"><div class="ico">${esc(t.ico||(t.amt<0?'🗣️':'🤐'))}</div>
+    <div class="t"><b>${esc(t.title||(t.amt<0?'Boş yaptı':'Sessiz kaldı bonusu'))}</b>${t.text?`<small class="qt">“${esc(t.text)}”</small>`:''}<small>${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</small></div>
+    <div class="amt ${t.amt<0?'neg':'pos'}">${t.amt<0?'-':'+'}${fmt(Math.abs(t.amt))}</div></div>`;
+}
 
-// ---- Hızlı işlemler ----
-function avail(){return Math.max(0,S.limit+S.tx.reduce((a,t)=>a+t.amt,0))}
-function needCard(){if(!S.card){toast('Önce Boş Yapma Kartı başvurusu yapın');return true}return false}
+// ================= TANITIM TURU =================
+const TOUR=[
+ {el:null,t:'Boş Bank\'a hoş geldiniz! 👋',d:'Burası paranın değil, boş yapma hakkının bankası. Söylediğiniz her kelime 1 Boş YPH (Boş Yapma Hakkı) harcar. Size uygulamayı adım adım tanıtalım.'},
+ {el:'applyBtn',nc:1,t:'Kart başvurusu',d:'Önce buradan Boş Yapma Kartı başvurusu yapın. Size birkaç soru sorulacak ("Günde kaç kez ders çalış dersiniz?" gibi) ve cevaplarınıza göre aylık boş yapma kotanız belirlenecek. Çok konuşan riskli müşteridir, kotası düşük çıkar!'},
+ {el:'ccEl',c:1,t:'Boş Yapma Kartınız',d:'Size özel kart. Üzerinde adınız ve kart numaranız yazar.'},
+ {el:'limBox',c:1,t:'Kalan Boş Yapma Hakkı',d:'Kaç kelime daha boş yapabileceğiniz burada yazar. Çubuk yeşilden sarıya, sonra kırmızıya döner. Sıfıra inerse susmanız gerekir 🤐'},
+ {el:'raiseBtn',c:1,t:'Kota Artırım',d:'Kotanız yetmiyorsa artırım başvurusu yapabilirsiniz. Ama dikkat: boş yapma geçmişinize göre reddedilebilir!'},
+ {el:'phBox',t:'Boş Tarifesi',d:'"Ders çalış", "Okula git", "Kardeşine kötü örnek oluyorsun"… En sık yapılan boşlar ve kaç Boş YPH tuttukları. En çok söylediğiniz en üste çıkar.'},
+ {el:'quickEl',q:0,t:'Boş Gönder',d:'Kendi Boş YPH\'nizden başka bir hesaba istediğiniz kadar gönderin. Gönderdiğiniz miktar sizden düşer, karşı tarafa gerçekten eklenir.'},
+ {el:'quickEl',q:1,t:'Dedikodu',d:'Dedikodu yapmak pahalıdır: her kelime 2 Boş YPH harcar!'},
+ {el:'quickEl',q:2,t:'Kampanyalar',d:'"1 saat sessiz kal" gibi kampanyalara katılın, şartı yerine getirince bonus Boş YPH kazanın.'},
+ {el:'quickEl',q:3,t:'Sessizlik Puanı',d:'Ne kadar sessiz olduğunuzu gösteren puanınız. Sessizlik sayacıyla sessiz kaldığınız süre için bonus da isteyebilirsiniz.'},
+ {el:'txBox',t:'Son İşlemler',d:'Yaptığınız her boş, gönderdiğiniz ve size gelen Boş YPH\'ler burada listelenir.'},
+ {el:'hdrBtns',t:'Rehber ve Çıkış',d:'Bu tanıtımı tekrar görmek için "❓ Rehber"e, hesaptan çıkmak için "Çıkış"a dokunun. İyi susmalar! 🤐'}
+];
+let tSteps=[],tI=0;
+function startTour(){
+  tSteps=TOUR.filter(s=>!(s.c&&!U.card)&&!(s.nc&&U.card));tI=0;
+  window.scrollTo(0,0);$('tour').classList.add('on');showStep();
+}
+function showStep(){
+  const s=tSteps[tI],hole=$('tHole'),card=$('tCard');
+  card.innerHTML=`<div class="tn">${tI+1} / ${tSteps.length}</div><b>${s.t}</b><p>${s.d}</p>
+    <div class="row2">${tI>0?'<button class="btn ghost" onclick="tGo(-1)">Geri</button>':'<button class="btn ghost" onclick="endTour()">Atla</button>'}
+    <button class="btn" onclick="tGo(1)">${tI===tSteps.length-1?'Bitir':'İleri'}</button></div>`;
+  let el=s.el&&$(s.el);
+  if(el&&s.q!=null)el=el.children[s.q];
+  if(!el){tEl=null;hole.style.cssText='left:50%;top:40%;width:0;height:0';card.style.top='30%';return}
+  tEl=el;el.scrollIntoView({block:'center',behavior:'instant'});
+  tPos();setTimeout(tPos,120);setTimeout(tPos,400);
+}
+let tEl=null;
+function tPos(){
+  if(!tEl||!$('tour').classList.contains('on'))return;
+  const r=tEl.getBoundingClientRect(),pad=6,hole=$('tHole'),card=$('tCard');
+  hole.style.cssText=`left:${r.left-pad}px;top:${r.top-pad}px;width:${r.width+pad*2}px;height:${r.height+pad*2}px`;
+  const below=r.bottom+14,h=card.offsetHeight;
+  card.style.top=(below+h<innerHeight-10?below:Math.max(10,r.top-h-14))+'px';
+}
+addEventListener('scroll',tPos);addEventListener('resize',tPos);
+function tGo(d){tI+=d;if(tI>=tSteps.length){endTour();return}showStep()}
+async function endTour(){$('tour').classList.remove('on');window.scrollTo(0,0);if(U&&!U.tour){U.tour=true;try{await db.patch('users/'+ME,{tour:true})}catch(e){}}}
+
+// ================= HIZLI İŞLEMLER =================
+function needCard(){if(!U.card){toast('Önce Boş Yapma Kartı başvurusu yapın');return true}return false}
 function qOpen(title,html){$('qBody').innerHTML=`<h2>${title} <button onclick="qClose()">Kapat</button></h2>`+html;openOv('qOv')}
-function qClose(){clearInterval(silT);closeOv('qOv')}
-function spend(n,o){
-  if(n>avail()){toast('Yetersiz boş yapma kotası! 🤐');return false}
-  S.tx.push(Object.assign({at:Date.now(),amt:-n},o));save();render();return true}
+function qClose(){clearInterval(silT);silStart=0;closeOv('qOv')}
 function done(icon,msg){$('qBody').innerHTML=`<div class="center"><div class="ok">${icon}</div><div class="q">${msg}</div><button class="btn" onclick="qClose()">Tamam</button></div>`}
-function liveCount(inp,out,mul){$(inp).addEventListener('input',()=>{const n=words($(inp).value)*mul;$(out).textContent=fmt(n)+' harcanacak · Kalan: '+fmt(avail())})}
+async function spend(n,o){
+  await refresh();
+  if(n>avail()){toast('Yetersiz boş yapma kotası! 🤐');return false}
+  await db.push('tx/'+ME,Object.assign({at:Date.now(),amt:-n},o));await refresh();return true}
 
-function qSend(){
+async function qSend(){
   if(needCard())return;
-  qOpen('Boş Gönder',`<p class="lbl">Birine boş yap, her kelime 1 Boş YPH harcar.</p>
-    <label>Kime?</label><input id="sTo" placeholder="Örn. Teyzem">
-    <label>Mesaj</label><div class="chips">${chipHtml('sMsg')}</div><textarea id="sMsg" style="margin-top:8px" placeholder="Ne söylemek istiyorsun?"></textarea>
-    <div class="wc" id="sWc">0 Boş YPH harcanacak · Kalan: ${fmt(avail())}</div>
+  try{USERS=await db.get('users')||{}}catch(e){toast('Bağlantı hatası');return}
+  const others=Object.entries(USERS).filter(([id])=>id!==ME).sort((a,b)=>a[1].name.localeCompare(b[1].name,'tr'));
+  if(!others.length){qOpen('Boş Gönder',`<p class="lbl">Gönderebileceğiniz başka hesap yok. Önce karşı tarafın bir hesap oluşturması gerekiyor.</p>`);return}
+  qOpen('Boş Gönder',`<p class="lbl">Kalan hakkınız: <b>${fmt(avail())}</b></p>
+    <label>Kime?</label><select id="sTo">${others.map(([id,u])=>`<option value="${id}">${esc(u.name)}</option>`).join('')}</select>
+    <label>Kaç Boş YPH?</label><input id="sAmt" inputmode="numeric" placeholder="Örn. 50">
+    <div class="amts">${[10,25,50,100].map(n=>`<button onclick="$('sAmt').value=${n}">${n}</button>`).join('')}</div>
+    <label>Not (isteğe bağlı)</label><input id="sNote" placeholder="Örn. Al, sen de biraz boş yap">
     <button class="btn" onclick="doSend()">Gönder</button>`);
-  liveCount('sMsg','sWc',1);
 }
-function doSend(){
-  const to=$('sTo').value.trim(),msg=$('sMsg').value.trim(),n=words(msg);
-  if(!to){toast('Kime göndereceğini yaz');return}
-  if(!n){toast('Mesaj boş olamaz (ironik)');return}
-  if(spend(n,{ico:'📤',title:to+' kişisine boş gönderildi',text:msg}))done('📤',`${esc(to)} kişisine ${fmt(n)} gönderildi`);
+async function doSend(){
+  const to=$('sTo').value,n=parseInt($('sAmt').value,10),note=$('sNote').value.trim();
+  if(!(n>0)){toast('Kaç Boş YPH göndereceğini yaz');return}
+  const toU=USERS[to];if(!toU){toast('Alıcı bulunamadı');return}
+  try{
+    await refresh();
+    if(n>avail()){toast('Yetersiz bakiye! Kalan: '+fmt(avail()));return}
+    const at=Date.now();
+    await db.push('tx/'+ME,{at,amt:-n,ico:'📤',title:toU.name+' kişisine gönderildi',text:note||undefined,to});
+    await db.push('tx/'+to,{at,amt:n,ico:'📥',title:U.name+' size gönderdi',text:note||undefined,from:ME,fromName:U.name});
+    await refresh();
+    done('📤',`${esc(toU.name)} kişisine ${fmt(n)} gönderildi!<br><small class="lbl">Kalan: ${fmt(avail())}</small>`);
+  }catch(e){toast('Gönderilemedi, bağlantıyı kontrol edin')}
 }
 
+function liveCount(inp,out,mul){$(inp).addEventListener('input',()=>{$(out).textContent=fmt(words($(inp).value)*mul)+' harcanacak · Kalan: '+fmt(avail())})}
 function qGossip(){
   if(needCard())return;
   qOpen('Dedikodu',`<span class="badge">⚠️ Dedikodu kelimesi 2 Boş YPH harcar</span>
@@ -335,39 +466,38 @@ function qGossip(){
     <button class="btn red" onclick="doGossip()">Dedikoduyu Yap</button>`);
   liveCount('gMsg','gWc',2);
 }
-function doGossip(){
+async function doGossip(){
   const who=$('gWho').value.trim()||'Birisi',msg=$('gMsg').value.trim(),n=words(msg)*2;
   if(!n){toast('Dedikodu yazmadın');return}
-  if(spend(n,{ico:'☕',title:'Dedikodu: '+who,text:msg}))done('☕',`Dedikodu yapıldı, ${fmt(n)} harcandı.<br><small class="lbl">Bu bilgi komşulara iletilmeyecektir.</small>`);
+  try{if(await spend(n,{ico:'☕',title:'Dedikodu: '+who,text:msg}))done('☕',`Dedikodu yapıldı, ${fmt(n)} harcandı.<br><small class="lbl">Bu bilgi komşulara iletilmeyecektir.</small>`)}catch(e){toast('Bağlantı hatası')}
 }
 
 const CAMPS=[
  {id:'sus1',t:'1 saat sessiz kal',d:'Bir saat boyunca hiç boş yapma.',b:100},
- {id:'dizi',t:'Diziyi sessiz izle',d:'Bir bölüm boyunca tek yorum yapma.',b:150},
+ {id:'ders',t:'"Ders çalış" demeden 1 gün',d:'Bir gün boyunca kimseye "ders çalış" deme.',b:200},
+ {id:'kiyas',t:'Kıyaslama yok',d:'Bir hafta "Bak komşunun oğlu…" deme.',b:350},
  {id:'zaman',t:'"Bizim zamanımızda" orucu',d:'Bir gün boyunca bu cümleyi kurma.',b:300},
- {id:'evlen',t:'Evlilik sorusu yok',d:'Bir düğünde kimseye "sıra sende" deme.',b:250},
  {id:'gunay',t:'Çiçekli mesaj yok',d:'Bir hafta "Günaydın" görseli atma.',b:400}
 ];
 function qCamps(){
   if(needCard())return;
-  S.pend=S.pend||[];
-  qOpen('Kampanyalar','<p class="lbl">Şartı yerine getir, onaylanınca kotana bonus boş eklensin.</p>'+CAMPS.map(c=>{
-    const p=S.pend.find(x=>x.id===c.id);
+  qOpen('Kampanyalar','<p class="lbl">Şartı yerine getir, onaylanınca kotana bonus Boş YPH eklensin.</p>'+CAMPS.map(c=>{
+    const p=PEND.find(x=>x.cid===c.id);
     return `<div class="camp"><b>${c.t} <span class="badge">+${fmt(c.b)}</span></b><p>${c.d}</p>
       ${p?'<button class="btn ghost" disabled>Onay bekliyor ⏳</button>':`<button class="btn" onclick="joinCamp('${c.id}')">Katıl</button>`}</div>`}).join(''));
 }
-function joinCamp(id){
-  const c=CAMPS.find(x=>x.id===id);S.pend=S.pend||[];
-  S.pend.push({id,t:c.t,b:c.b,at:Date.now()});save();
+async function joinCamp(id){
+  const c=CAMPS.find(x=>x.id===id);
+  try{await db.push('pend/'+ME,{cid:id,t:c.t,b:c.b,at:Date.now()});await refresh()}catch(e){toast('Bağlantı hatası');return}
   done('🎁',`"${c.t}" kampanyasına katıldınız!<br><small class="lbl">Şartı yerine getirince bonus, yönetici onayıyla hesabınıza eklenecek.</small>`);
 }
 
-let silT;
+let silT,silStart=0;
 function qSilence(){
   if(needCard())return;
-  const used=S.tx.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
-  const bonus=S.tx.filter(t=>t.amt>0).length;
-  const score=Math.max(0,Math.min(1000,Math.round((S.limit?(1-used/S.limit):0)*800+bonus*40)));
+  const used=TX.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
+  const bonus=TX.filter(t=>t.amt>0&&!t.from).length;
+  const score=Math.max(0,Math.min(1000,Math.round((U.limit?(1-used/U.limit):0)*800+bonus*40)));
   const lvl=score>=800?['🏆','Sessizlik Ustası']:score>=600?['🥈','Ölçülü Konuşan']:score>=400?['🙂','Ortalama Vatandaş']:score>=200?['🗣️','Geveze']:['📢','Mahallenin Hoparlörü'];
   qOpen('Sessizlik Puanı',`<div class="center"><div class="ok">${lvl[0]}</div><div class="big" style="margin:0">${score} / 1000</div>
     <span class="badge">${lvl[1]}</span></div>
@@ -379,36 +509,89 @@ function qSilence(){
     <div class="timer" id="tm">00:00</div>
     <button class="btn green" id="tmBtn" onclick="silToggle()">Başlat</button>`);
 }
-let silStart=0;
-function silToggle(){
+async function silToggle(){
   if(!silStart){silStart=Date.now();$('tmBtn').textContent='Bitir';$('tmBtn').className='btn red';
     silT=setInterval(()=>{const s=Math.floor((Date.now()-silStart)/1000);const e=$('tm');if(e)e.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')},500);return}
   clearInterval(silT);const min=Math.floor((Date.now()-silStart)/60000);silStart=0;
   const b=Math.floor(min/5)*10;
   if(!b){done('😅',`Sadece ${min} dakika dayanabildiniz.<br><small class="lbl">Bonus için en az 5 dakika sessiz kalın.</small>`);return}
-  S.pend=S.pend||[];S.pend.push({id:'sil'+Date.now(),t:min+' dk sessizlik',b,at:Date.now()});save();
+  try{await db.push('pend/'+ME,{t:min+' dk sessizlik',b,at:Date.now()})}catch(e){toast('Bağlantı hatası');return}
   done('🤐',`${min} dakika sessiz kaldınız! ${fmt(b)} bonus talebiniz yöneticiye iletildi.`);
 }
 
-function renderPend(){
-  const P=S.pend||[];
-  $('pendBox').innerHTML=P.length?'<div class="sep"></div><h3>Onay Bekleyen Bonuslar</h3>'+P.map(p=>`<div class="camp"><b>${esc(p.t)} <span class="badge">+${fmt(p.b)}</span></b>
-    <div class="two"><button class="btn green" onclick="pendOk('${p.id}',1)">Onayla</button><button class="btn ghost" onclick="pendOk('${p.id}',0)">Reddet</button></div></div>`).join(''):'';
+// ================= YÖNETİCİ =================
+let taps=0,tapT;
+$('logo').addEventListener('click',()=>{taps++;clearTimeout(tapT);tapT=setTimeout(()=>taps=0,1500);
+  if(taps>=5){taps=0;const ins=[...$('pinBox').children];ins.forEach(i=>i.value='');openOv('pinOv');setTimeout(()=>ins[0].focus(),50)}});
+[...$('pinBox').children].forEach((inp,i,all)=>{
+  inp.addEventListener('input',async()=>{inp.value=inp.value.replace(/\D/g,'');
+    if(inp.value&&i<3)all[i+1].focus();
+    const p=all.map(x=>x.value).join('');
+    if(p.length===4){let ap='0000';try{ap=(await db.get('config/adminPin'))||'0000'}catch(e){}
+      if(p===ap){closeOv('pinOv');openAdmin()}else{toast('Hatalı PIN');all.forEach(x=>x.value='');all[0].focus()}}});
+  inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!inp.value&&i>0)all[i-1].focus()});
+});
+async function openAdmin(){
+  admin=true;
+  try{USERS=await db.get('users')||{}}catch(e){toast('Bağlantı hatası');return}
+  const ids=Object.keys(USERS);
+  if(!ids.length){toast('Henüz hesap yok');return}
+  if(!AU||!USERS[AU])AU=ME&&USERS[ME]?ME:ids[0];
+  $('admUser').innerHTML=ids.map(id=>`<option value="${id}" ${id===AU?'selected':''}>${esc(USERS[id].name)}${id===ME?' (bu telefon)':''}</option>`).join('');
+  $('modeNote').textContent=REMOTE?'🟢 Çevrimiçi mod: tüm telefonlardaki hesapları buradan yönetebilirsiniz.':'📱 Yerel mod: sadece bu telefondaki hesaplar görünür.';
+  $('setPin').value='';
+  await admSelect(AU);openOv('admOv');
 }
-function pendOk(id,ok){
-  const p=(S.pend||[]).find(x=>x.id===id);if(!p)return;
-  S.pend=S.pend.filter(x=>x.id!==id);
-  if(ok)S.tx.push({at:Date.now(),amt:p.b,ico:'🎁',title:'Bonus: '+p.t});
-  save();render();renderPend();toast(ok?'Bonus eklendi':'Reddedildi');
+let AT=[];
+async function admSelect(id){
+  AU=id;const u=USERS[id];
+  const [t,p]=await Promise.all([db.get('tx/'+id),db.get('pend/'+id)]);
+  AT=txArr(t);
+  $('setName').value=u.name;$('setLimit').value=u.limit||0;$('setUPin').value=u.pin;
+  $('admChips').innerHTML=phrases(u).map((ph,i)=>`<button class="chip2" onclick="quickPh(${i})">${esc(ph)} · ${words(ph)}</button>`).join('');
+  const P=Object.entries(p||{});
+  $('pendBox').innerHTML=P.length?'<div class="sep"></div><h3>Onay Bekleyen Bonuslar</h3>'+P.map(([pid,x])=>`<div class="camp"><b>${esc(x.t)} <span class="badge">+${fmt(x.b)}</span></b>
+    <div class="two"><button class="btn green" onclick="pendOk('${pid}',1)">Onayla</button><button class="btn ghost" onclick="pendOk('${pid}',0)">Reddet</button></div></div>`).join(''):'';
 }
+async function admDone(msg){USERS=await db.get('users')||{};await admSelect(AU);if(AU===ME)await refresh();if(msg)toast(msg)}
+async function quickPh(i){const ph=phrases(USERS[AU])[i];await db.push('tx/'+AU,{at:Date.now(),text:ph,amt:-words(ph)});admDone('“'+ph+'” · '+fmt(words(ph))+' düşüldü')}
+async function addPhrase(){const v=$('newPh').value.trim();if(!words(v)){toast('Cümle yaz');return}
+  await db.patch('users/'+AU,{myPh:(USERS[AU].myPh||[]).concat(v)});$('newPh').value='';admDone('Eklendi')}
+$('exText').addEventListener('input',()=>{$('wc').textContent=words($('exText').value)+' kelime'});
+async function addTx(sign){
+  const text=$('exText').value.trim();
+  const n=text?words(text):parseInt($('exAmt').value,10);
+  if(!(n>0)){toast('Ne dediğini yaz ya da kelime sayısı gir');return}
+  await db.push('tx/'+AU,{at:Date.now(),text:text||undefined,amt:sign*n});
+  $('exText').value='';$('exAmt').value='';$('wc').textContent='0 kelime';
+  admDone(sign<0?fmt(n)+' düşüldü':fmt(n)+' eklendi');
+}
+async function pendOk(pid,ok){
+  const x=await db.get('pend/'+AU+'/'+pid);if(!x)return;
+  await db.del('pend/'+AU+'/'+pid);
+  if(ok)await db.push('tx/'+AU,{at:Date.now(),amt:x.b,ico:'🎁',title:'Bonus: '+x.t});
+  admDone(ok?'Bonus eklendi':'Reddedildi');
+}
+async function saveSettings(){
+  const lim=parseInt($('setLimit').value,10),up=$('setUPin').value.trim(),name=$('setName').value.trim();
+  if(!(lim>=0)){toast('Kota geçersiz');return}
+  if(!/^\d{4}$/.test(up)){toast('Şifre 4 rakam olmalı');return}
+  if(name.length<2){toast('Ad geçersiz');return}
+  if(Object.entries(USERS).some(([id,u])=>id!==AU&&lc(u.name)===lc(name))){toast('Bu ad başka hesapta var');return}
+  await db.patch('users/'+AU,{name,limit:lim,pin:up});
+  await openAdmin();if(AU===ME)await refresh();toast('Kaydedildi');
+}
+async function saveAdminPin(){const p=$('setPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN 4 rakam olmalı');return}await db.put('config/adminPin',p);$('setPin').value='';toast('Yönetici PIN değişti')}
+async function newPeriod(){if(!confirm('Bu hesabın tüm işlemleri silinsin ve kota dolsun mu?'))return;await db.del('tx/'+AU);admDone('Yeni dönem başladı')}
+async function resetCard(){if(!confirm('Kart kapatılsın mı? İşlemler silinir, yeniden başvuru yapılabilir.'))return;
+  await db.patch('users/'+AU,{card:false,limit:0});await db.del('tx/'+AU);await db.del('pend/'+AU);admDone('Kart kapatıldı')}
+async function delUser(){if(!confirm(USERS[AU].name+' hesabı tamamen silinsin mi?'))return;
+  const was=AU;await db.del('users/'+was);await db.del('tx/'+was);await db.del('pend/'+was);AU=null;
+  if(was===ME){closeOv('admOv');logout();toast('Hesap silindi');return}
+  await openAdmin();toast('Hesap silindi')}
 
-function newPeriod(){if(confirm('Tüm boş yapmalar silinsin ve kota dolsun mu?')){S.tx=[];save();render();toast('Yeni dönem başladı')}}
-function resetCard(){if(confirm('Kart kapatılsın mı? Her şey silinir, yeniden başvuru yapılabilir.')){S.card=false;S.limit=0;S.tx=[];S.pend=[];save();render();closeOv('admOv');toast('Kart kapatıldı')}}
-
-// ---- Boş Yapma Kartı başvurusu ----
-// Çok konuşan "riskli müşteri" sayılır, kotası düşer.
+// ================= BAŞVURU =================
 const QS=[
- {k:'name',q:'Adınız ve soyadınız?',input:true},
  {k:'tel',q:'Telefonda günde ne kadar konuşursunuz?',o:[['5 dakikadan az',1.4],['Yarım saat kadar',1.1],['1-2 saat',.85],['Şarjım bitene kadar',.6]]},
  {k:'zaman',q:'Ne sıklıkla "Bizim zamanımızda…" diye başlarsınız?',o:[['Hiç',1.3],['Ara sıra',1.05],['Her gün',.8],['Her cümlede',.6]]},
  {k:'dedi',q:'Komşularla dedikodu sıklığınız?',o:[['Hiç yapmam',1.3],['Haftada bir çay',1.05],['Her gün kapı önünde',.75],['Mahallenin haber ajansıyım',.55]]},
@@ -421,20 +604,17 @@ const QS=[
  {k:'ornek',q:'"Kardeşine kötü örnek oluyorsun" cümlesini kullanır mısınız?',o:[['Hayır',1.2],['Bazen',1],['Sık sık',.8],['Favori cümlem',.6]]}
 ];
 let A={},step=0,raise=false;
-function startApply(r){raise=!!r;A={};step=r?1:0;if(r)A.name=S.name;showQ();openOv('apOv')}
+function startApply(r){raise=!!r;A={};step=0;showQ();openOv('apOv')}
 function showQ(){
-  const q=QS[step],B=$('apBody');
-  const head=`<h2>${raise?'Kota Artırım Başvurusu':'Boş Yapma Kartı Başvurusu'} <button onclick="closeOv('apOv')">Vazgeç</button></h2>
-    <div class="step">Adım ${step+1-(raise?1:0)} / ${QS.length-(raise?1:0)}</div><div class="q">${esc(q.q)}</div>`;
-  if(q.input){B.innerHTML=head+`<input id="apIn" value="${esc(A.name||'')}" placeholder="Ad Soyad"><button class="btn" onclick="ansName()">Devam</button>`;setTimeout(()=>{const e=$('apIn');if(e)e.focus()},50);return}
-  B.innerHTML=head+q.o.map((o,i)=>`<button class="opt" onclick="ans(${i})">${esc(o[0])}</button>`).join('');
+  const q=QS[step];
+  $('apBody').innerHTML=`<h2>${raise?'Kota Artırım Başvurusu':'Boş Yapma Kartı Başvurusu'} <button onclick="closeOv('apOv')">Vazgeç</button></h2>
+    <div class="step">Adım ${step+1} / ${QS.length}</div><div class="q">${esc(q.q)}</div>`+
+    q.o.map((o,i)=>`<button class="opt" onclick="ans(${i})">${esc(o[0])}</button>`).join('');
 }
-function ansName(){const v=$('apIn').value.trim();if(v.length<2){toast('Adınızı yazın');return}A.name=v;step++;showQ()}
 function ans(i){A[QS[step].k]=QS[step].o[i][1];step++;if(step<QS.length)showQ();else evaluate()}
 function calcLimit(){
-  let l=1000;                                         // taban: 1000 kelime
-  QS.slice(1).forEach(q=>l*=A[q.k]);
-  l*=0.95+Math.random()*0.1;                          // ±%5 "banka takdiri"
+  let l=1000;QS.forEach(q=>l*=A[q.k]);
+  l*=0.95+Math.random()*0.1;
   return Math.max(50,Math.round(l/50)*50);
 }
 function verdict(l){
@@ -445,27 +625,33 @@ function verdict(l){
 }
 function evaluate(){
   $('apBody').innerHTML=`<div class="center"><div class="spin"></div><div class="q" id="evT">Bilgileriniz kontrol ediliyor…</div><p class="lbl">Lütfen bekleyin (ve sessiz olun)</p></div>`;
-  const msgs=['Komşulardan referans alınıyor…','"Ders çalış" sayınız hesaplanıyor…','Kardeşlere kötü örnek analizi yapılıyor…','Boş yapma notunuz belirleniyor…'];
-  msgs.forEach((m,i)=>setTimeout(()=>{const e=$('evT');if(e)e.textContent=m},(i+1)*1100));
-  setTimeout(()=>{
+  ['Komşulardan referans alınıyor…','"Ders çalış" sayınız hesaplanıyor…','Kardeşlere kötü örnek analizi yapılıyor…','Boş yapma notunuz belirleniyor…']
+    .forEach((m,i)=>setTimeout(()=>{const e=$('evT');if(e)e.textContent=m},(i+1)*1100));
+  setTimeout(async()=>{
     const lim=calcLimit();
-    if(raise&&lim<=S.limit){
+    if(raise&&lim<=U.limit){
       $('apBody').innerHTML=`<div class="center"><div class="ok">😔</div><div class="q">Kota artırım talebiniz olumsuz</div>
-        <p class="lbl" style="margin-top:8px">Son dönemdeki boş yapma alışkanlıklarınız nedeniyle mevcut kotanız (${fmt(S.limit)}) korunmuştur.</p>
+        <p class="lbl" style="margin-top:8px">Son dönemdeki boş yapma alışkanlıklarınız nedeniyle mevcut kotanız (${fmt(U.limit)}) korunmuştur.</p>
         <button class="btn" onclick="closeOv('apOv')">Tamam</button></div>`;return}
-    S.name=A.name;S.limit=lim;
-    if(!S.card){S.card=true;S.no=String(1000+Math.floor(Math.random()*9000));S.tx=[]}
-    save();render();
+    const first=!U.card;
+    const upd={limit:lim,card:true};if(first)upd.no=String(1000+Math.floor(Math.random()*9000));
+    try{await db.patch('users/'+ME,upd);await refresh()}catch(e){toast('Bağlantı hatası');closeOv('apOv');return}
     $('apBody').innerHTML=`<div class="center"><div class="ok">🎉</div><div class="q">${raise?'Kotanız artırıldı!':'Başvurunuz onaylandı!'}</div>
-      <p class="lbl" style="margin-top:8px">${esc(A.name)}, size tanımlanan aylık boş yapma kotası:</p>
+      <p class="lbl" style="margin-top:8px">${esc(U.name)}, size tanımlanan aylık boş yapma kotası:</p>
       <div class="big" style="margin:10px 0">${fmt(lim)}</div>
       <p class="lbl">${verdict(lim)}</p>
       <p class="lbl" style="margin-top:6px">Unutmayın: her kelime 1 Boş YPH harcar.</p>
-      <button class="btn" onclick="closeOv('apOv')">Kartıma Git</button></div>`;
+      <button class="btn" onclick="closeOv('apOv');${first?'startTour()':''}">Kartıma Git</button></div>`;
   },5600);
 }
 
-render();
+// ================= BAŞLANGIÇ =================
+(async()=>{
+  const me=lget('bosBank.me');
+  if(me){ME=me;await refresh();if(U){$('login').style.display='none';return}}
+  loginView();
+})();
+setInterval(()=>{if(ME&&!admin&&document.visibilityState==='visible')refresh()},REMOTE?5000:3000);
 </script>
 </body>
 </html>
