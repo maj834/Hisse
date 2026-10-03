@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Aile Bank">
+<meta name="apple-mobile-web-app-title" content="Boş Bank">
 <meta name="theme-color" content="#0b1f3a">
-<title>Aile Bank</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1f3a'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23f5c542' font-family='Arial' font-weight='bold'%3EA%3C/text%3E%3C/svg%3E">
+<title>Boş Bank</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1f3a'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23f5c542' font-family='Arial' font-weight='bold'%3EB%3C/text%3E%3C/svg%3E">
 <style>
 :root{--bg:#f2f4f8;--card:#fff;--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--brand:#0b1f3a;--gold:#f5c542;--red:#dc2626;--green:#16a34a}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -79,11 +79,18 @@ input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border
 .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:10}
 .toast.on{opacity:1}
 </style>
+<style>
+.alert{display:none;margin-top:16px;border-radius:16px;padding:14px 16px;background:#fee2e2;color:#991b1b;font-weight:700;font-size:15px;text-align:center}
+.alert.on{display:block}
+textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;color:var(--ink);min-height:80px;font-family:inherit;resize:vertical}
+.wc{font-size:13px;color:var(--mut);margin-top:6px}
+.tx .t small.qt{display:block;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
 </head>
 <body>
 <header>
   <div class="top">
-    <div class="logo" id="logo"><i>A</i>Aile Bank</div>
+    <div class="logo" id="logo"><i>B</i>Boş Bank</div>
     <div style="font-size:22px">🔔</div>
   </div>
   <div class="hi">İyi günler,<b id="hiName">-</b></div>
@@ -91,14 +98,14 @@ input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border
 
 <main>
   <div id="noCard" class="nocard" style="display:none">
-    <div style="font-size:44px">💳</div>
-    <b>Henüz kredi kartınız yok</b>
-    <p>Birkaç soruyu yanıtlayın, size özel limitinizi hemen belirleyelim.</p>
-    <button class="apply" onclick="startApply()">Kredi Kartı Başvurusu Yap</button>
+    <div style="font-size:44px">🗣️</div>
+    <b>Henüz Boş Yapma Kartınız yok</b>
+    <p>Birkaç soruyu yanıtlayın, size özel boş yapma kotanızı hemen belirleyelim.</p>
+    <button class="apply" onclick="startApply()">Boş Yapma Kartı Başvurusu</button>
   </div>
   <div id="hasCard">
   <div class="cc">
-    <div class="row"><div class="chip"></div><small>AİLE KREDİ KARTI</small></div>
+    <div class="row"><div class="chip"></div><small>BOŞ YAPMA KARTI</small></div>
     <div class="num" id="cardNo">**** **** **** 0000</div>
     <div class="row">
       <div><small>KART SAHİBİ</small><div id="cardName" style="font-weight:700;text-transform:uppercase">-</div></div>
@@ -106,25 +113,28 @@ input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border
     </div>
   </div>
 
+  <div class="alert" id="alert">🤐 Boş yapma kotanız doldu! Lütfen bir süre sessiz kalın.</div>
+
   <div class="box">
-    <div class="lbl">Kullanılabilir Limit</div>
+    <div class="lbl">Kalan Boş Yapma Hakkı</div>
     <div class="big" id="avail">0</div>
     <div class="bar" id="bar"><div id="barIn" style="width:0"></div></div>
-    <div class="kv"><span>Toplam Kart Limiti</span><b id="total">0</b></div>
-    <div class="kv"><span>Bu Dönem Harcanan</span><b id="spent">0</b></div>
+    <div class="kv"><span>Toplam Boş Yapma Kotası</span><b id="total">0</b></div>
+    <div class="kv"><span>Bu Dönem Yapılan Boş</span><b id="spent">0</b></div>
+    <p class="note" style="margin-top:10px">Söylenen her kelime 1 boş yapma hakkı harcar.</p>
   </div>
-  <button class="apply" onclick="startApply(true)">Limit Artırım Başvurusu</button>
+  <button class="apply" onclick="startApply(true)">Kota Artırım Başvurusu</button>
   </div>
 
   <div class="quick">
-    <div><span>💸</span>Para Gönder</div>
-    <div><span>🧾</span>Fatura</div>
+    <div><span>🗣️</span>Boş Gönder</div>
+    <div><span>☕</span>Dedikodu</div>
     <div><span>🎁</span>Kampanyalar</div>
-    <div><span>⭐</span>Puanlar</div>
+    <div><span>🤐</span>Sessizlik Puanı</div>
   </div>
 
   <div class="box">
-    <h3>Son İşlemler</h3>
+    <h3>Son Boş Yapmalar</h3>
     <div id="list"></div>
   </div>
 </main>
@@ -144,55 +154,54 @@ input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border
 <div class="ov" id="admOv"><div class="sheet">
   <h2>Yönetici Paneli <button onclick="closeOv('admOv')">Kapat</button></h2>
 
-  <h3>Harcama Ekle (limitten düşer)</h3>
-  <label>Nereden / açıklama</label><input id="exDesc" placeholder="Örn. Market">
-  <div class="two">
-    <div><label>Tutar (<span class="cur"></span>)</label><input id="exAmt" inputmode="decimal" placeholder="250"></div>
-    <div><label>Simge</label><input id="exIco" placeholder="🛒" maxlength="2"></div>
-  </div>
-  <button class="btn red" onclick="addTx(-1)">Harcamayı Düş</button>
-  <button class="btn green" onclick="addTx(1)">Para Yatır / İade (limite ekler)</button>
+  <h3>Boş Yaptı (kotadan düşer)</h3>
+  <label>Ne dedi? (her kelime 1 boş)</label>
+  <textarea id="exText" placeholder="Örn. Bizim zamanımızda böyle şeyler yoktu"></textarea>
+  <div class="wc" id="wc">0 kelime</div>
+  <label>…ya da sadece kelime sayısı</label><input id="exAmt" inputmode="numeric" placeholder="Örn. 50">
+  <button class="btn red" onclick="addTx(-1)">Kotadan Düş</button>
+  <button class="btn green" onclick="addTx(1)">Sessiz Kaldı Bonusu (kotaya ekler)</button>
 
   <div class="sep"></div>
   <h3>Kart Ayarları</h3>
   <label>Kart sahibinin adı</label><input id="setName">
   <div class="two">
-    <div><label>Toplam limit (<span class="cur"></span>)</label><input id="setLimit" inputmode="decimal"></div>
+    <div><label>Toplam kota (kelime)</label><input id="setLimit" inputmode="numeric"></div>
     <div><label>Kartın son 4 hanesi</label><input id="setNo" inputmode="numeric" maxlength="4"></div>
   </div>
-  <label>Para birimi (uydurma, ör. AP, Jeton, Boncuk)</label><input id="setCur" maxlength="12">
   <label>Yönetici PIN (4 hane)</label><input id="setPin" inputmode="numeric" maxlength="4">
   <button class="btn" onclick="saveSettings()">Kaydet</button>
 
   <div class="sep"></div>
-  <button class="btn ghost" onclick="newPeriod()">Yeni Dönem (tüm harcamaları sil)</button>
+  <button class="btn ghost" onclick="newPeriod()">Yeni Dönem (kotayı doldur)</button>
   <button class="btn ghost" onclick="resetCard()">Kartı Kapat (yeniden başvuru yapılsın)</button>
 
-  <p class="note">Bu, gerçek bir banka değildir; eğlence amaçlı bir oyuncak uygulamadır. Veriler yalnızca bu telefonda saklanır, hiçbir yere gönderilmez.<br>Paneli açmak için üstteki <b>Aile Bank</b> logosuna art arda 5 kez dokunun. Varsayılan PIN: <b>0000</b>.</p>
+  <p class="note">Bu bir şaka uygulamasıdır; gerçek bir banka değildir, para ile ilgisi yoktur. Veriler yalnızca bu telefonda saklanır.<br>Paneli açmak için üstteki <b>Boş Bank</b> logosuna art arda 5 kez dokunun. Varsayılan PIN: <b>0000</b>.</p>
 </div></div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const KEY='aileBank.v1';
-const DEF={cur:'AP',name:'Annem',limit:0,no:'4821',pin:'0000',card:false,tx:[]};
+const KEY='bosBank.v1';
+const DEF={name:'Annem',limit:0,no:'4821',pin:'0000',card:false,tx:[]};
 let S=load();
 
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.tx))return Object.assign({},DEF,s)}catch(e){}return JSON.parse(JSON.stringify(DEF))}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Kaydedilemedi')}}
-const fmt=n=>(Math.round(n*100)/100).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+S.cur;
+const fmt=n=>Math.round(n).toLocaleString('tr-TR')+' boş';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const words=t=>(t.trim().match(/[\p{L}\p{N}]+/gu)||[]).length;
 let admin=false;
 
 function render(){
-  const net=S.tx.reduce((a,t)=>a+t.amt,0);           // harcamalar negatif, yatırımlar pozitif
+  const net=S.tx.reduce((a,t)=>a+t.amt,0);
   const spent=S.tx.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
   const avail=Math.max(0,Math.min(S.limit,S.limit+net));
   const pct=S.limit>0?avail/S.limit*100:0;
-  document.querySelectorAll('.cur').forEach(e=>e.textContent=S.cur);
   $('noCard').style.display=S.card?'none':'';
   $('hasCard').style.display=S.card?'':'none';
+  $('alert').classList.toggle('on',S.card&&avail<=0);
   $('hiName').textContent=S.name;
   $('cardName').textContent=S.name;
   $('cardNo').textContent='**** **** **** '+(S.no||'0000');
@@ -202,11 +211,11 @@ function render(){
   $('barIn').style.width=pct+'%';
   $('bar').className='bar'+(pct<20?' low':pct<50?' warn':'');
   const L=$('list');
-  if(!S.tx.length){L.innerHTML='<div class="empty">Henüz işlem yok</div>';return}
+  if(!S.tx.length){L.innerHTML='<div class="empty">Henüz boş yapılmadı (şaşırtıcı)</div>';return}
   L.innerHTML=S.tx.slice().reverse().map(t=>{
     const d=new Date(t.at);
-    return `<div class="tx"><div class="ico">${esc(t.ico||(t.amt<0?'💳':'💰'))}</div>
-      <div class="t"><b>${esc(t.desc)}</b><small>${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</small></div>
+    return `<div class="tx"><div class="ico">${t.amt<0?'🗣️':'🤐'}</div>
+      <div class="t"><b>${t.amt<0?'Boş yaptı':'Sessiz kaldı bonusu'}</b>${t.text?`<small class="qt">“${esc(t.text)}”</small>`:''}<small>${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</small></div>
       <div class="amt ${t.amt<0?'neg':'pos'}">${t.amt<0?'-':'+'}${fmt(Math.abs(t.amt))}</div>
       ${admin?`<button class="del" onclick="delTx(${t.at})">Sil</button>`:''}</div>`}).join('');
 }
@@ -227,76 +236,84 @@ $('logo').addEventListener('click',()=>{taps++;clearTimeout(tapT);tapT=setTimeou
   inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!inp.value&&i>0)all[i-1].focus()});
 });
 
-function openAdmin(){admin=true;$('setName').value=S.name;$('setLimit').value=S.limit;$('setNo').value=S.no;$('setPin').value=S.pin;$('setCur').value=S.cur;render();openOv('admOv')}
-function num(v){v=String(v).trim();if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');return parseFloat(v)}
+function openAdmin(){admin=true;$('setName').value=S.name;$('setLimit').value=S.limit;$('setNo').value=S.no;$('setPin').value=S.pin;render();openOv('admOv')}
+$('exText').addEventListener('input',()=>{$('wc').textContent=words($('exText').value)+' kelime'});
 
 function addTx(sign){
-  const amt=num($('exAmt').value);
-  if(!(amt>0)){toast('Geçerli bir tutar girin');return}
-  const desc=$('exDesc').value.trim()||(sign<0?'Kart Harcaması':'Para Yatırma');
-  S.tx.push({at:Date.now(),desc,amt:sign*amt,ico:$('exIco').value.trim()});
-  save();render();$('exAmt').value='';$('exDesc').value='';$('exIco').value='';
-  toast(sign<0?fmt(amt)+' düşüldü':fmt(amt)+' eklendi');
+  const text=$('exText').value.trim();
+  const n=text?words(text):parseInt($('exAmt').value,10);
+  if(!(n>0)){toast('Ne dediğini yaz ya da kelime sayısı gir');return}
+  S.tx.push({at:Date.now(),text,amt:sign*n});
+  save();render();$('exText').value='';$('exAmt').value='';$('wc').textContent='0 kelime';
+  toast(sign<0?fmt(n)+' düşüldü':fmt(n)+' eklendi');
 }
 function delTx(at){S.tx=S.tx.filter(t=>t.at!==at);save();render()}
 function saveSettings(){
-  const lim=num($('setLimit').value),pin=$('setPin').value.trim(),no=$('setNo').value.trim();
-  if(!(lim>=0)){toast('Limit geçersiz');return}
+  const lim=parseInt($('setLimit').value,10),pin=$('setPin').value.trim(),no=$('setNo').value.trim();
+  if(!(lim>=0)){toast('Kota geçersiz');return}
   if(!/^\d{4}$/.test(pin)){toast('PIN 4 rakam olmalı');return}
-  S.name=$('setName').value.trim()||DEF.name;S.cur=$('setCur').value.trim()||DEF.cur;S.limit=lim;S.pin=pin;S.no=/^\d{4}$/.test(no)?no:S.no;
+  S.name=$('setName').value.trim()||DEF.name;S.limit=lim;S.pin=pin;S.no=/^\d{4}$/.test(no)?no:S.no;
   save();render();toast('Kaydedildi');
 }
-function resetCard(){if(confirm('Kart kapatılsın mı? Tüm işlemler silinir, yeniden başvuru yapılabilir.')){S.card=false;S.limit=0;S.tx=[];save();render();closeOv('admOv');toast('Kart kapatıldı')}}
+function newPeriod(){if(confirm('Tüm boş yapmalar silinsin ve kota dolsun mu?')){S.tx=[];save();render();toast('Yeni dönem başladı')}}
+function resetCard(){if(confirm('Kart kapatılsın mı? Her şey silinir, yeniden başvuru yapılabilir.')){S.card=false;S.limit=0;S.tx=[];save();render();closeOv('admOv');toast('Kart kapatıldı')}}
 
-// ---- Kredi kartı başvurusu ----
+// ---- Boş Yapma Kartı başvurusu ----
+// Çok konuşan "riskli müşteri" sayılır, kotası düşer.
 const QS=[
  {k:'name',q:'Adınız ve soyadınız?',input:true},
- {k:'age',q:'Yaşınız?',o:[['18 - 25',.8],['26 - 40',1.05],['41 - 60',1.1],['60 üstü',.95]]},
- {k:'job',q:'Çalışma durumunuz?',o:[['Memur',1.25],['Özel sektör çalışanı',1.1],['Esnaf / kendi işi',1.15],['Emekli',1],['Ev hanımı / çalışmıyor',.6]]},
- {k:'inc',q:'Aylık net geliriniz?',o:[['10.000 {c} altı',6000],['10.000 – 25.000 {c}',15000],['25.000 – 50.000 {c}',35000],['50.000 – 100.000 {c}',70000],['100.000 {c} üstü',130000]]},
- {k:'home',q:'Oturduğunuz ev?',o:[['Kendi evim',1.2],['Kira',.95],['Aile yanında',1]]},
- {k:'car',q:'Adınıza kayıtlı araç var mı?',o:[['Evet',1.1],['Hayır',1]]},
- {k:'debt',q:'Başka bankada kredi veya kart borcunuz var mı?',o:[['Yok',1.15],['Var, düzenli ödüyorum',.95],['Var, gecikmelerim oldu',.55]]},
- {k:'kids',q:'Bakmakla yükümlü olduğunuz kişi sayısı?',o:[['Yok',1.05],['1 – 2',1],['3 ve üzeri',.9]]}
+ {k:'tel',q:'Telefonda günde ne kadar konuşursunuz?',o:[['5 dakikadan az',1.4],['Yarım saat kadar',1.1],['1-2 saat',.85],['Şarjım bitene kadar',.6]]},
+ {k:'zaman',q:'Ne sıklıkla "Bizim zamanımızda…" diye başlarsınız?',o:[['Hiç',1.3],['Ara sıra',1.05],['Her gün',.8],['Her cümlede',.6]]},
+ {k:'dedi',q:'Komşularla dedikodu sıklığınız?',o:[['Hiç yapmam',1.3],['Haftada bir çay',1.05],['Her gün kapı önünde',.75],['Mahallenin haber ajansıyım',.55]]},
+ {k:'tv',q:'Haberleri / diziyi izlerken yorum yapar mısınız?',o:[['Sessizce izlerim',1.2],['Arada bir',1.05],['Her sahneye yorum',.8],['Diziden çok ben konuşurum',.6]]},
+ {k:'wa',q:'WhatsApp\'ta "Günaydın" çiçekli mesaj atar mısınız?',o:[['Asla',1.15],['Bayramdan bayrama',1.05],['Her sabah',.85],['Her sabah + gece de',.7]]},
+ {k:'evlilik',q:'Akrabalara "Ne zaman evleniyorsun?" diye sorar mısınız?',o:[['Hayır',1.2],['Bazen',1],['Her düğünde',.85],['Her karşılaşmada',.7]]},
+ {k:'nasihat',q:'Çocuklara günde kaç nasihat verirsiniz?',o:[['0',1.25],['1-2',1.05],['5-10',.85],['Sayamıyorum',.65]]}
 ];
 let A={},step=0,raise=false;
 function startApply(r){raise=!!r;A={};step=r?1:0;if(r)A.name=S.name;showQ();openOv('apOv')}
 function showQ(){
   const q=QS[step],B=$('apBody');
-  const head=`<h2>${raise?'Limit Artırım Başvurusu':'Kredi Kartı Başvurusu'} <button onclick="closeOv('apOv')">Vazgeç</button></h2>
-    <div class="step">Adım ${step+1-(raise?1:0)} / ${QS.length-(raise?1:0)}</div><div class="q">${q.q}</div>`;
-  if(q.input){B.innerHTML=head+`<input id="apIn" value="${esc(A.name||'')}" placeholder="Ad Soyad"><button class="btn" onclick="ansName()">Devam</button>`;setTimeout(()=>$('apIn').focus(),50);return}
-  B.innerHTML=head+q.o.map((o,i)=>`<button class="opt" onclick="ans(${i})">${esc(o[0].replace(/\{c\}/g,S.cur))}</button>`).join('');
+  const head=`<h2>${raise?'Kota Artırım Başvurusu':'Boş Yapma Kartı Başvurusu'} <button onclick="closeOv('apOv')">Vazgeç</button></h2>
+    <div class="step">Adım ${step+1-(raise?1:0)} / ${QS.length-(raise?1:0)}</div><div class="q">${esc(q.q)}</div>`;
+  if(q.input){B.innerHTML=head+`<input id="apIn" value="${esc(A.name||'')}" placeholder="Ad Soyad"><button class="btn" onclick="ansName()">Devam</button>`;setTimeout(()=>{const e=$('apIn');if(e)e.focus()},50);return}
+  B.innerHTML=head+q.o.map((o,i)=>`<button class="opt" onclick="ans(${i})">${esc(o[0])}</button>`).join('');
 }
 function ansName(){const v=$('apIn').value.trim();if(v.length<2){toast('Adınızı yazın');return}A.name=v;step++;showQ()}
 function ans(i){A[QS[step].k]=QS[step].o[i][1];step++;if(step<QS.length)showQ();else evaluate()}
 function calcLimit(){
-  let l=A.inc*1.5;                                   // gelirin 1,5 katı taban
-  ['age','job','home','car','debt','kids'].forEach(k=>l*=A[k]);
-  l*=0.95+Math.random()*0.1;                         // ±%5 "banka takdiri"
-  return Math.max(2000,Math.round(l/500)*500);
+  let l=1000;                                         // taban: 1000 kelime
+  QS.slice(1).forEach(q=>l*=A[q.k]);
+  l*=0.95+Math.random()*0.1;                          // ±%5 "banka takdiri"
+  return Math.max(50,Math.round(l/50)*50);
+}
+function verdict(l){
+  if(l<300)return 'Risk grubundasınız: çok fazla boş yapma geçmişi tespit edildi. Kotanızı dikkatli kullanın! 🚨';
+  if(l<800)return 'Ortalama boş yapan müşteri. Kotanızı idareli kullanmanız önerilir.';
+  if(l<1500)return 'Az konuşan, güvenilir müşteri. 👍';
+  return 'Örnek sessiz vatandaş! Size özel yüksek kota tanımlandı. 🏆';
 }
 function evaluate(){
-  $('apBody').innerHTML=`<div class="center"><div class="spin"></div><div class="q" id="evT">Bilgileriniz kontrol ediliyor…</div><p class="lbl">Lütfen bekleyin</p></div>`;
-  const msgs=['Gelir bilgileriniz değerlendiriliyor…','Kredi notunuz hesaplanıyor…','Limitiniz belirleniyor…'];
+  $('apBody').innerHTML=`<div class="center"><div class="spin"></div><div class="q" id="evT">Bilgileriniz kontrol ediliyor…</div><p class="lbl">Lütfen bekleyin (ve sessiz olun)</p></div>`;
+  const msgs=['Komşulardan referans alınıyor…','"Bizim zamanımızda" sayınız hesaplanıyor…','Boş yapma notunuz belirleniyor…'];
   msgs.forEach((m,i)=>setTimeout(()=>{const e=$('evT');if(e)e.textContent=m},(i+1)*1100));
   setTimeout(()=>{
-    let lim=calcLimit();
+    const lim=calcLimit();
     if(raise&&lim<=S.limit){
-      $('apBody').innerHTML=`<div class="center"><div class="ok">😔</div><div class="q">Limit artırım talebiniz şu an olumsuz</div>
-        <p class="lbl" style="margin-top:8px">Mevcut limitiniz (${fmt(S.limit)}) bilgilerinize göre en uygun limittir.</p>
+      $('apBody').innerHTML=`<div class="center"><div class="ok">😔</div><div class="q">Kota artırım talebiniz olumsuz</div>
+        <p class="lbl" style="margin-top:8px">Son dönemdeki boş yapma alışkanlıklarınız nedeniyle mevcut kotanız (${fmt(S.limit)}) korunmuştur.</p>
         <button class="btn" onclick="closeOv('apOv')">Tamam</button></div>`;return}
     S.name=A.name;S.limit=lim;
     if(!S.card){S.card=true;S.no=String(1000+Math.floor(Math.random()*9000));S.tx=[]}
     save();render();
-    $('apBody').innerHTML=`<div class="center"><div class="ok">🎉</div><div class="q">${raise?'Limitiniz artırıldı!':'Tebrikler, başvurunuz onaylandı!'}</div>
-      <p class="lbl" style="margin-top:8px">${esc(A.name)}, size tanımlanan kredi kartı limiti:</p>
+    $('apBody').innerHTML=`<div class="center"><div class="ok">🎉</div><div class="q">${raise?'Kotanız artırıldı!':'Başvurunuz onaylandı!'}</div>
+      <p class="lbl" style="margin-top:8px">${esc(A.name)}, size tanımlanan aylık boş yapma kotası:</p>
       <div class="big" style="margin:10px 0">${fmt(lim)}</div>
+      <p class="lbl">${verdict(lim)}</p>
+      <p class="lbl" style="margin-top:6px">Unutmayın: her kelime 1 boş yapma hakkı harcar.</p>
       <button class="btn" onclick="closeOv('apOv')">Kartıma Git</button></div>`;
   },4500);
 }
-
-function newPeriod(){if(confirm('Tüm işlemler silinsin ve limit dolsun mu?')){S.tx=[];save();render();toast('Yeni dönem başladı')}}
 
 render();
 </script>
