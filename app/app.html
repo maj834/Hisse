@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0A0F16">
+<meta name="theme-color" content="#0D1A20">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,15 +16,15 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
 <style>
 :root{
   color-scheme:dark;
-  --bg:#0A0F16;--s1:#111823;--s2:#172130;--s3:#1E2A3B;--line:#1F2B3C;
-  --ink:#EAF0F7;--muted:#8B9AAE;--faint:#5C6C81;
-  --blue:#4C8DFF;--blue-a:rgba(76,141,255,.14);
-  --up:#22C38E;--up-a:rgba(34,195,142,.14);--down:#F4475C;--down-a:rgba(244,71,92,.14);--hold:#F2B53A;--hold-a:rgba(242,181,58,.14);
-  --r:18px;--font:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --bg:#0D1A20;--s1:#12232A;--s2:#182C34;--s3:#20363E;--line:#213740;
+  --ink:#E9EEE8;--muted:#94A6A3;--faint:#63787A;
+  --blue:#D3AC62;--blue-a:rgba(211,172,98,.13);--brass:#D3AC62;--brass-ink:#1A1408;
+  --up:#3DC48C;--up-a:rgba(61,196,140,.14);--down:#EE5D50;--down-a:rgba(238,93,80,.14);--hold:#8FB4D6;--hold-a:rgba(143,180,214,.14);
+  --r:10px;--font:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--dar:72%;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
@@ -40,90 +40,90 @@ h1,h2,h3{margin:0}
 .small{font-size:13px}.xs{font-size:12px}
 
 /* üst çubuk */
-.appbar{position:sticky;top:0;z-index:10;background:rgba(10,15,22,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding-top:env(safe-area-inset-top,0px)}
+.appbar{position:sticky;top:0;z-index:10;background:rgba(13,26,32,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding-top:env(safe-area-inset-top,0px)}
 .appbar .in{display:flex;align-items:center;gap:12px;height:60px}
-.appbar h1{font-size:19px;font-weight:800;letter-spacing:-.02em;flex:1}
+.appbar h1{font-size:21px;font-weight:800;font-stretch:var(--dar);letter-spacing:0;flex:1}
 .appbar h1{white-space:nowrap;min-width:0}
 .appbar .live{white-space:nowrap;flex-shrink:0;font-size:12px;padding:5px 10px}
 @media (max-width:420px){.appbar .in{gap:10px}.appbar h1{font-size:17px}.appbar .live{font-size:11px;padding:4px 9px;gap:5px}}
-.logo{width:30px;height:30px;border-radius:9px;background:var(--blue);display:grid;place-items:center;flex:none}
-.live{cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--muted);background:var(--s1);border:1px solid var(--line);padding:6px 11px;border-radius:999px}
+.logo{width:30px;height:30px;border-radius:50%;background:var(--brass);box-shadow:inset 0 0 0 3px #B38E48,inset 0 0 0 5px var(--brass);display:grid;place-items:center;flex:none}
+.live{cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--muted);background:none;border:1px solid var(--line);padding:6px 10px;border-radius:6px}
 .live i{width:8px;height:8px;border-radius:50%;background:var(--faint)}
 .live.on i{background:var(--up);animation:beat 2s infinite}
-@keyframes beat{0%{box-shadow:0 0 0 0 rgba(34,195,142,.55)}70%{box-shadow:0 0 0 8px rgba(34,195,142,0)}100%{box-shadow:0 0 0 0 rgba(34,195,142,0)}}
+@keyframes beat{0%{box-shadow:0 0 0 0 rgba(61,196,140,.55)}70%{box-shadow:0 0 0 8px rgba(61,196,140,0)}100%{box-shadow:0 0 0 0 rgba(61,196,140,0)}}
 
 /* genel */
-.page{display:flex;flex-direction:column;gap:16px;padding-block:8px 24px}
-.card{background:var(--s1);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.page{display:flex;flex-direction:column;gap:14px;padding-block:6px 28px}
+.card{background:var(--s1);border:0;border-radius:var(--r);padding:18px 16px}
 .card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-.card-h h2{font-size:17px;font-weight:700;letter-spacing:-.01em}
-.label{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-.pill{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;padding:4px 9px;border-radius:8px;white-space:nowrap}
+.card-h h2{font-size:19px;font-weight:750;font-stretch:85%;letter-spacing:0}
+.label{font-size:13px;font-weight:600;letter-spacing:0;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;padding:3px 8px;border-radius:4px;white-space:nowrap}
 .pill.up{background:var(--up-a)}.pill.down{background:var(--down-a)}.pill.hold{background:var(--hold-a)}.pill.n{background:var(--s3);color:var(--muted)}
-.seg{display:flex;gap:4px;background:var(--s1);border:1px solid var(--line);padding:4px;border-radius:14px}
-.seg button{flex:1;padding:9px 6px;border-radius:10px;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
-.seg button[aria-pressed="true"]{background:var(--s3);color:var(--ink)}
-.seg.sm button{padding:7px 4px;font-size:13px}
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;border-radius:14px;font-weight:700;font-size:16px;padding:0 18px;text-decoration:none}
-.btn.primary{background:var(--blue);color:#fff}
-.btn.ghost{background:var(--s2);border:1px solid var(--line)}
-.search{width:100%;background:var(--s1);border:1px solid var(--line);border-radius:14px;padding:13px 16px;font:inherit;color:var(--ink)}
+.seg{display:flex;gap:2px;background:none;border:0;border-bottom:1px solid var(--line);padding:0;border-radius:0}
+.seg button{flex:1;padding:10px 4px 9px;border-radius:0;font-size:14px;font-weight:600;color:var(--faint);white-space:nowrap;box-shadow:inset 0 -2px 0 transparent;margin-bottom:-1px}
+.seg button[aria-pressed="true"]{background:none;color:var(--ink);box-shadow:inset 0 -2px 0 var(--brass)}
+.seg.sm{border-bottom:0;gap:6px}.seg.sm button{padding:7px 4px;font-size:13px;border:1px solid var(--s3);border-radius:6px;box-shadow:none;margin:0}.seg.sm button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);box-shadow:none}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;border-radius:8px;font-weight:700;font-size:16px;padding:0 18px;text-decoration:none}
+.btn.primary{background:var(--brass);color:var(--brass-ink)}
+.btn.ghost{background:none;border:1px solid var(--s3)}
+.search{width:100%;background:none;border:0;border-bottom:1px solid var(--s3);border-radius:0;padding:12px 2px;font:inherit;color:var(--ink)}
 .search::placeholder{color:var(--faint)}
 .bar{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--s3);gap:2px}
 .bar i{display:block;height:100%}
 
 /* piyasa özeti */
 .sum-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
-.sum-big{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.sum-big{font-size:30px;font-weight:800;font-stretch:var(--dar);letter-spacing:0;line-height:1.1}
 .sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
-.sum-grid div{background:var(--s2);border-radius:12px;padding:10px 12px}
-.sum-grid b{display:block;font-size:18px}
+.sum-grid div{background:none;border-left:1px solid var(--s3);border-radius:0;padding:2px 0 2px 12px}
+.sum-grid b{display:block;font-size:22px;font-weight:750;font-stretch:var(--dar)}
 
 /* hisse listesi */
-.list{background:var(--s1);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
-.row{display:grid;grid-template-columns:minmax(0,1fr) 76px 108px;align-items:center;gap:12px;width:100%;padding:14px 16px;text-align:left;border-bottom:1px solid var(--line)}
-.row:last-child{border-bottom:0}
+.list{background:none;border:0;border-top:1px solid var(--line);border-radius:0;overflow:hidden}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 76px 108px;align-items:center;gap:12px;width:100%;padding:13px 2px;text-align:left;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:1px solid var(--line)}
 .row:active{background:var(--s2)}
-.row .code{font-size:16px;font-weight:800;letter-spacing:.01em}
+.row .code{font-size:19px;font-weight:800;font-stretch:var(--dar);letter-spacing:.01em;line-height:1.15}
 .row .name{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row svg{width:76px;height:30px;display:block}
 .row .r{text-align:right}
-.row .px{display:block;font-size:16px;font-weight:700}
-.row .ch{display:inline-block;margin-top:3px;font-size:12px;font-weight:700;padding:2px 7px;border-radius:7px}
-.ch.up{background:var(--up-a)}.ch.down{background:var(--down-a)}
+.row .px{display:block;font-size:18px;font-weight:700;font-stretch:85%}
+.row .ch{display:inline-block;margin-top:2px;font-size:13px;font-weight:700;padding:0;border-radius:0}
+.ch.up,.ch.down{background:none}
 .ai-dot{display:inline-block;margin-left:6px;font-size:10px;font-weight:800;padding:1px 6px;border-radius:6px;vertical-align:2px}
 
 /* detay */
 .dtop{display:flex;align-items:center;gap:8px;height:52px}
 .back{display:flex;align-items:center;gap:4px;font-weight:700;color:var(--blue);padding:8px 8px 8px 0}
 .dtop .sp{flex:1}
-.iconbtn{width:40px;height:40px;border-radius:12px;background:var(--s1);border:1px solid var(--line);display:grid;place-items:center;text-decoration:none}
+.iconbtn{width:40px;height:40px;border-radius:8px;background:none;border:1px solid var(--s3);display:grid;place-items:center;text-decoration:none}
 .price-block .nm{font-size:14px;color:var(--muted)}
-.price-block .big{font-size:40px;font-weight:800;letter-spacing:-.03em;line-height:1.15;margin-top:2px}
+.price-block .big{font-size:58px;font-weight:800;font-stretch:62%;letter-spacing:-.01em;line-height:1;margin-top:4px}
 .price-block .meta{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
 .chart-card{padding:14px 12px 12px}
 .chart-top{display:flex;gap:8px;align-items:center;padding-inline:4px}
 .chart-top .seg{flex:1}
-.modebtn{width:42px;height:42px;border-radius:12px;background:var(--s2);border:1px solid var(--line);display:grid;place-items:center;flex:none}
+.modebtn{width:42px;height:42px;border-radius:8px;background:none;border:1px solid var(--s3);display:grid;place-items:center;flex:none}
 .chart-wrap{position:relative;margin-top:12px;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 .chart-wrap svg{display:block;width:100%;height:auto}
-.tip{position:absolute;top:0;transform:translateX(-50%);background:var(--s3);border:1px solid var(--line);border-radius:10px;padding:5px 10px;font-size:13px;font-weight:700;white-space:nowrap;pointer-events:none}
-.tip span{display:block;font-size:11px;font-weight:600;color:var(--muted)}
+.tip{position:absolute;top:0;transform:translateX(-50%);background:var(--ink);color:var(--bg);border:0;border-radius:4px;padding:5px 10px;font-size:13px;font-weight:700;white-space:nowrap;pointer-events:none}
+.tip span{display:block;font-size:11px;font-weight:600;color:#4A5A5C}
 .chart-foot{display:flex;justify-content:space-between;gap:10px;padding:10px 4px 0;font-size:12px;color:var(--faint)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding:10px 4px 0}
 .legend i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:5px;vertical-align:3px}
 
 /* yapay zekâ kararı */
 .ask{display:flex;flex-direction:column;gap:12px;align-items:stretch}
-.verdict{display:flex;align-items:center;gap:16px;padding:16px;border-radius:14px;background:var(--s2)}
-.verdict .v{font-size:30px;font-weight:800;letter-spacing:.02em;min-width:74px;text-align:center;padding:8px 12px;border-radius:12px}
+.verdict{display:flex;align-items:center;gap:16px;padding:4px 0 14px;border-radius:0;background:none;border-bottom:1px solid var(--line)}
+.verdict .v{font-size:46px;font-weight:800;font-stretch:62%;letter-spacing:.02em;min-width:74px;text-align:center;padding:4px 14px;border-radius:6px;line-height:1.05}
 .v.up{background:var(--up-a)}.v.down{background:var(--down-a)}.v.hold{background:var(--hold-a)}
 .votes{display:flex;gap:6px;margin-top:6px}
 .votes i{width:22px;height:6px;border-radius:3px;background:var(--s3)}
 .models{display:flex;flex-direction:column;margin-top:6px}
 .model{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}
 .model:last-child{border-bottom:0;padding-bottom:0}
-.av{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:15px;background:var(--s3)}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:15px;background:var(--s3)}
 .model .mn{font-weight:700;font-size:15px}
 .model .why{font-size:14px;color:var(--muted);margin-top:2px}
 .model .rt{text-align:right}
@@ -132,7 +132,7 @@ h1,h2,h3{margin:0}
 
 /* hedef ölçeği */
 .target-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-.target-head b{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.target-head b{font-size:32px;font-weight:800;font-stretch:var(--dar);letter-spacing:0}
 .scale{position:relative;height:66px;margin:20px 6px 4px}
 .scale .track{position:absolute;left:0;right:0;top:30px;height:6px;border-radius:3px;background:var(--s3)}
 .scale .range{position:absolute;top:30px;height:6px;border-radius:3px}
@@ -145,9 +145,9 @@ h1,h2,h3{margin:0}
 
 /* seviyeler ve göstergeler */
 .levels{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.lv{background:var(--s2);border-radius:14px;padding:12px 14px;border-left:3px solid var(--line)}
+.lv{background:none;border-radius:0;padding:4px 0 4px 12px;border-left:3px solid var(--line)}
 .lv .k{font-size:12px;font-weight:700;color:var(--muted)}
-.lv .val{font-size:18px;font-weight:800;margin-top:2px}
+.lv .val{font-size:22px;font-weight:800;font-stretch:var(--dar);margin-top:2px}
 .lv .s{font-size:12px;color:var(--faint)}
 .lv.buy{border-left-color:var(--blue)}.lv.stop{border-left-color:var(--down)}.lv.tgt{border-left-color:var(--up)}
 .kv{display:flex;flex-direction:column}
@@ -164,34 +164,34 @@ h1,h2,h3{margin:0}
 .nw:last-child{border-bottom:0}
 .nw b{display:block;font-size:15px;font-weight:700;line-height:1.4}
 .nw .m{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--muted)}
-.tag{font-size:11px;font-weight:800;padding:2px 7px;border-radius:6px;background:var(--blue-a);color:var(--blue)}
-.kat{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--hold)}
+.tag{font-size:12px;font-weight:700;padding:1px 6px;border-radius:3px;background:none;border:1px solid rgba(211,172,98,.5);color:var(--brass)}
+.kat{font-size:12px;font-weight:700;letter-spacing:0;color:var(--hold)}
 
 /* beklenti */
-.exp{display:flex;flex-direction:column;gap:10px;width:100%;text-align:left;background:var(--s1);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.exp{display:flex;flex-direction:column;gap:10px;width:100%;text-align:left;background:var(--s1);border:0;border-left:3px solid var(--s3);border-radius:0 var(--r) var(--r) 0;padding:15px 16px}
 .exp .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.exp .code{font-size:17px;font-weight:800}
-.exp .tgtline{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--s2);border-radius:12px;padding:10px 12px;font-size:14px}
+.exp .code{font-size:22px;font-weight:800;font-stretch:var(--dar);line-height:1.1}
+.exp .tgtline{display:flex;justify-content:space-between;align-items:center;gap:10px;background:none;border-top:1px dashed var(--s3);border-radius:0;padding:10px 0 0;font-size:14px}
 .ev{padding:14px 0;border-bottom:1px solid var(--line)}
 .ev:last-child{border-bottom:0;padding-bottom:0}
 .ev a{text-decoration:none}
 .ev b{display:block;font-size:15px;line-height:1.4}
 .impacts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.imp{font-size:12px;font-weight:700;padding:4px 8px;border-radius:8px}
+.imp{font-size:12px;font-weight:700;padding:3px 7px;border-radius:3px}
 .imp.up{background:var(--up-a)}.imp.down{background:var(--down-a)}
 .cons{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.cons>div{background:var(--s2);border-radius:14px;padding:12px}
+.cons>div{background:none;border-top:2px solid var(--s3);border-radius:0;padding:10px 0 0}
 .cons button{display:flex;justify-content:space-between;width:100%;padding:8px 0;font-size:14px;font-weight:700}
 
 /* fon */
 .fund{display:flex;flex-direction:column;gap:12px}
 
 /* alt menü */
-nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(10,15,22,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(13,26,32,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
 nav button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 12px;font-size:12px;font-weight:600;color:var(--faint)}
 nav button svg{width:24px;height:24px}
-nav button[aria-selected="true"]{color:var(--ink)}
+nav button[aria-selected="true"]{color:var(--ink);box-shadow:inset 0 2px 0 var(--brass)}
 nav button[aria-selected="true"] svg{color:var(--blue)}
 .flash .price-block .big,.flash .row .px{animation:fl 1.4s}
 @keyframes fl{0%{color:var(--hold)}}
@@ -199,37 +199,37 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 .fin{display:flex;flex-direction:column;font-size:14px}
 .fin>div{display:grid;grid-template-columns:minmax(0,1.4fr) 1fr .8fr .8fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .fin>div>*:not(:first-child){text-align:right}
-.fin .fh{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding-top:0}
+.fin .fh{font-size:12px;font-weight:600;letter-spacing:0;color:var(--muted);padding-top:0}
 .fin span:first-child{color:var(--muted)}
 .ratios{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-.ratios div{background:var(--s2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column}
-.ratios span{font-size:12px;color:var(--muted)}.ratios b{font-size:17px}
+.ratios div{background:none;border-left:1px solid var(--s3);border-radius:0;padding:2px 0 2px 12px;display:flex;flex-direction:column}
+.ratios span{font-size:12px;color:var(--muted)}.ratios b{font-size:20px;font-stretch:var(--dar)}
 .frow{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 0;border-bottom:1px solid var(--line)}
 .frow:last-child{border-bottom:0}
 .frow .name{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.update{display:flex;flex-direction:column;gap:2px;margin-top:10px;padding:14px 16px;border-radius:14px;background:var(--blue);color:#fff;text-decoration:none}
+.update{display:flex;flex-direction:column;gap:2px;margin-top:10px;padding:14px 16px;border-radius:8px;background:var(--brass);color:var(--brass-ink);text-decoration:none}
 .update span{font-size:13px;opacity:.9}
-.star{color:var(--hold);margin-right:5px}
-.favbtn{font-size:20px;color:var(--muted)}.favbtn.on{color:var(--hold)}
+.star{color:var(--brass);margin-right:5px}
+.favbtn{font-size:20px;color:var(--muted)}.favbtn.on{color:var(--brass)}
 .nw.fav b{color:var(--ink)}
 .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex:none;padding:9px 14px;border-radius:999px;background:var(--s1);border:1px solid var(--line);font-size:14px;font-weight:600;color:var(--muted)}
-.chip[aria-pressed="true"]{background:var(--s3);color:var(--ink);border-color:var(--s3)}
+.chip{flex:none;padding:8px 13px;border-radius:6px;background:none;border:1px solid var(--s3);font-size:14px;font-weight:600;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--brass);color:var(--brass-ink);border-color:var(--brass)}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-.sgrid div{display:flex;flex-direction:column;gap:3px;background:var(--s1);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.sgrid div{display:flex;flex-direction:column;gap:3px;background:none;border:0;border-left:2px solid var(--s3);border-radius:0;padding:4px 0 4px 12px}
 .shead{display:block;font-size:14px;font-weight:800;color:var(--ink);letter-spacing:0;text-transform:none;margin-top:4px}
 .shead i{font-style:normal;margin-right:6px}
 .shead.up i{color:var(--up)}.shead.down i{color:var(--down)}
-.kriz-b{display:block;width:100%;text-align:left;border-color:rgba(244,71,92,.55);background:linear-gradient(180deg,rgba(244,71,92,.12),rgba(244,71,92,.04))}
-.secneden{border-color:rgba(76,141,255,.35)}
+.kriz-b{display:block;width:100%;text-align:left;border:0;border-left:4px solid var(--down);border-radius:0 var(--r) var(--r) 0;background:rgba(238,93,80,.08)}
+.secneden{border:0;border-left:3px solid var(--brass);border-radius:0 var(--r) var(--r) 0}
 .disc{font-size:12px;color:var(--faint);text-align:center;padding:8px 12px 0}
 .disc a{color:var(--muted)}
 /* açılış bilgilendirmesi */
 .onay{position:fixed;inset:0;z-index:50;background:rgba(5,8,12,.94);display:flex;align-items:center;justify-content:center;padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px))}
-.onay .kutu{width:100%;max-width:520px;max-height:100%;display:flex;flex-direction:column;gap:12px;background:var(--s1);border:1px solid var(--line);border-radius:20px;padding:18px}
+.onay .kutu{width:100%;max-width:520px;max-height:100%;display:flex;flex-direction:column;gap:12px;background:var(--s1);border:1px solid var(--line);border-radius:12px;padding:18px}
 .onay h2{font-size:20px;font-weight:800}
-.onay .yazi{overflow-y:auto;flex:1;min-height:120px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px;color:var(--muted);line-height:1.55}
+.onay .yazi{overflow-y:auto;flex:1;min-height:120px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--muted);line-height:1.55}
 .onay .yazi h2{font-size:16px;color:var(--ink);margin:0 0 8px}.onay .yazi h3{font-size:15px;color:var(--ink);margin:14px 0 6px}
 .onay .yazi p{margin:0 0 8px}.onay .yazi ul{margin:0 0 8px;padding-left:18px}.onay .yazi li{margin-bottom:6px}.onay .yazi b{color:var(--ink)}
 .onay label{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45}
@@ -244,16 +244,16 @@ body.kilit{overflow:hidden}
 @keyframes cubuk{from{transform:scaleY(.08)}}
 @keyframes ciz{to{stroke-dashoffset:0}}
 @keyframes zipla{40%{transform:translateY(-5px)}70%{transform:translateY(1px)}}
-@keyframes flUp{0%{background:rgba(34,195,142,.28)}100%{background:transparent}}
-@keyframes flDn{0%{background:rgba(244,71,92,.28)}100%{background:transparent}}
+@keyframes flUp{0%{background:rgba(61,196,140,.28)}100%{background:transparent}}
+@keyframes flDn{0%{background:rgba(238,93,80,.28)}100%{background:transparent}}
 @keyframes parilti{0%{background-position:-200px 0}100%{background-position:200px 0}}
 /* açılış (giriş) ekranı */
-.splash{position:fixed;inset:0;z-index:60;background:radial-gradient(120% 70% at 50% 35%,#13223A 0%,var(--bg) 60%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .5s ease,visibility .5s}
+.splash{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .5s ease,visibility .5s}
 .splash.bitti{opacity:0;visibility:hidden;pointer-events:none}
-.splash .lg{width:92px;height:92px;border-radius:28px;background:var(--blue);display:grid;place-items:center;box-shadow:0 20px 60px rgba(76,141,255,.4);animation:pop .7s cubic-bezier(.2,1.4,.4,1) both}
+.splash .lg{width:92px;height:92px;border-radius:50%;background:var(--brass);display:grid;place-items:center;box-shadow:inset 0 0 0 7px #B38E48,inset 0 0 0 11px var(--brass);animation:pop .7s cubic-bezier(.2,1.4,.4,1) both}
 .splash .lg path{transform-box:fill-box;transform-origin:bottom;animation:cubuk .8s cubic-bezier(.3,1.4,.5,1) both}
 .splash .lg path:nth-child(2){animation-delay:.12s}.splash .lg path:nth-child(3){animation-delay:.24s}.splash .lg path:nth-child(4){animation-delay:.36s}
-.splash h1{font-size:30px;font-weight:800;letter-spacing:-.02em;margin-top:8px;animation:yukari .6s .35s both}
+.splash h1{font-size:40px;font-weight:800;font-stretch:62%;letter-spacing:0;margin-top:8px;animation:yukari .6s .35s both}
 .splash p{color:var(--muted);font-size:14px;animation:yukari .6s .5s both}
 .splash .yuk{width:130px;height:3px;border-radius:2px;background:var(--s3);overflow:hidden;margin-top:18px;animation:solgun .4s .7s both}
 .splash .yuk i{display:block;height:100%;width:35%;border-radius:2px;background:var(--blue);animation:kay 1.1s ease-in-out infinite}
@@ -298,14 +298,14 @@ nav button[aria-selected="true"] svg{animation:zipla .45s ease}
 <template id="yasal-metin">__YASAL__</template>
 
 <div class="splash" id="splash" aria-hidden="true">
-  <span class="lg"><svg width="50" height="50" viewBox="0 0 18 18"><path d="M3 12v-3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><path d="M7 14V5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><path d="M11 11V8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><path d="M15 9V3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></span>
+  <span class="lg"><svg width="50" height="50" viewBox="0 0 18 18"><path d="M3 12v-3" stroke="#1A1408" stroke-width="2.2" stroke-linecap="round"/><path d="M7 14V5" stroke="#1A1408" stroke-width="2.2" stroke-linecap="round"/><path d="M11 11V8" stroke="#1A1408" stroke-width="2.2" stroke-linecap="round"/><path d="M15 9V3" stroke="#1A1408" stroke-width="2.2" stroke-linecap="round"/></svg></span>
   <h1>Hisse Radar</h1>
-  <p>Borsa İstanbul · hisseler · fonlar · haberler</p>
+  <p>Borsa İstanbul hisseleri, fonları ve haberleri</p>
   <span class="yuk"><i></i></span>
   <small>Yatırım tavsiyesi değildir</small>
 </div>
 <header class="appbar"><div class="wrap in">
-  <span class="logo"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 12v-3M7 14V5M11 11V8M15 9V3" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg></span>
+  <span class="logo"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 12v-3M7 14V5M11 11V8M15 9V3" stroke="#1A1408" stroke-width="2.2" stroke-linecap="round"/></svg></span>
   <h1 id="title">Hisse Radar</h1>
   <span class="live" id="live" role="button" tabindex="0" aria-label="Veri gecikmesi hakkında bilgi"><i></i><span id="liveTxt">Yükleniyor</span></span>
 </div></header>
@@ -332,7 +332,7 @@ nav button[aria-selected="true"] svg{animation:zipla .45s ease}
 "use strict";
 /* ================= kopya koruması: ekran yalnızca resmi APK'da ve resmi web adresinde çalışır ================= */
 const IZIN=(()=>{const ua=navigator.userAgent||"",apk=/HisseRadarApp\/\d+/.test(ua),h=location.hostname;let ust=true;try{ust=window.top===window.self}catch(e){ust=false}return apk||(h==="maj834.github.io"&&ust)})();
-if(!IZIN){document.title="Hisse Radar";document.body.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0A0F16;color:#EAF0F7;font-family:system-ui,sans-serif;text-align:center"><div><h2 style="margin:0 0 12px">Bu sayfa yetkisiz bir kopya</h2><p style="color:#8B9AAE;line-height:1.6;max-width:420px">Hisse Radar yalnızca resmi uygulamada ve resmi web adresinde çalışır. © 2026 Cem Ulaş Eren, tüm hakları saklıdır.</p><p><a style="color:#4C8DFF" href="https://maj834.github.io/Hisse/">Resmi Hisse Radar\'a git</a></p></div></div>';throw new Error("yetkisiz kopya")}
+if(!IZIN){document.title="Hisse Radar";document.body.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0D1A20;color:#E9EEE8;font-family:system-ui,sans-serif;text-align:center"><div><h2 style="margin:0 0 12px">Bu sayfa yetkisiz bir kopya</h2><p style="color:#94A6A3;line-height:1.6;max-width:420px">Hisse Radar yalnızca resmi uygulamada ve resmi web adresinde çalışır. © 2026 Cem Ulaş Eren, tüm hakları saklıdır.</p><p><a style="color:#4C8DFF" href="https://maj834.github.io/Hisse/">Resmi Hisse Radar\'a git</a></p></div></div>';throw new Error("yetkisiz kopya")}
 /* ================= yardımcılar ================= */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -491,7 +491,7 @@ const PETROL_ETKI={"Ulaştırma":[-1,"yakıt maliyeti"],"Enerji":[1,"rafineri ü
 /* risk: soruşturma / temerrüt / tasfiye yaşayan kurum ve hisseler (data/riskli.json + haberlerden otomatik, secim.json içinde) */
 function riskHisse(k){return ((SEC.riskli||{}).hisse||{})[k]||null}
 function riskFon(k){const ad=(fInfo(k).ad||"").split(" ")[0].toUpperCase();return ((SEC.riskli||{}).kurum||{})[ad]||null}
-const riskKart=n=>n?`<div class="card" style="border-color:rgba(244,71,92,.55);background:var(--down-a)"><b class="down">⚠️ Risk uyarısı</b><p class="small" style="margin-top:6px;line-height:1.6">${esc(n)}</p><p class="xs muted" style="margin-top:6px">Bu yüzden burada AL kararı verilmez ve Beklenti'de önerilmez.</p></div>`:"";
+const riskKart=n=>n?`<div class="card" style="border-color:rgba(238,93,80,.55);background:var(--down-a)"><b class="down">⚠️ Risk uyarısı</b><p class="small" style="margin-top:6px;line-height:1.6">${esc(n)}</p><p class="xs muted" style="margin-top:6px">Bu yüzden burada AL kararı verilmez ve Beklenti'de önerilmez.</p></div>`:"";
 function nedenKutu(k,con,vs){
   const a=getA(k),sek=(a&&a.s&&a.s.sektor)||(MK[k]||{}).sek||"",ha=GUN.haber_ai||{},m=[];
   const etkiYaz=e=>e==="olumlu"?`<b class="up">olumlu</b>`:e==="olumsuz"?`<b class="down">olumsuz</b>`:esc(e||"");
@@ -552,22 +552,22 @@ function drawChart(){
   const vals=pts.map(p=>p.v).concat(candle?pts.flatMap(p=>[p.h,p.lo]):[]).concat(range==="gun"?[base]:[]);
   let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.1||hi*.01;lo-=pad;hi+=pad;
   const x=i=>L+(W-L-R)*(pts.length===1?.5:i/(pts.length-1)),y=v=>Tp+(H-Tp-B)*(1-(v-lo)/(hi-lo));
-  const end=pts[pts.length-1].v,up=end>=base,col=up?"#22C38E":"#F4475C";
+  const end=pts[pts.length-1].v,up=end>=base,col=up?"#3DC48C":"#EE5D50";
   let g="";
-  [hi-pad,(hi+lo)/2,lo+pad].forEach(v=>{g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#1F2B3C" stroke-width="1"/><text x="${W-R+6}" y="${y(v)+4}" fill="#5C6C81" font-size="10.5" font-family="Manrope,sans-serif">${nf(v,v>=100?0:v>=10?1:2)}</text>`});
-  if(range==="gun")g+=`<line x1="${L}" x2="${W-R}" y1="${y(base)}" y2="${y(base)}" stroke="#5C6C81" stroke-dasharray="3 4"/>`;
+  [hi-pad,(hi+lo)/2,lo+pad].forEach(v=>{g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#213740" stroke-width="1"/><text x="${W-R+6}" y="${y(v)+4}" fill="#63787A" font-size="10.5" font-family="Manrope,sans-serif">${nf(v,v>=100?0:v>=10?1:2)}</text>`});
+  if(range==="gun")g+=`<line x1="${L}" x2="${W-R}" y1="${y(base)}" y2="${y(base)}" stroke="#63787A" stroke-dasharray="3 4"/>`;
   if(candle){
     const cw=(W-L-R)/pts.length,bw=Math.max(2,cw*.6),vmax=Math.max(...pts.map(p=>p.vol||0))||1,VT=H-B+12,VH=B-18;
-    pts.forEach((p,i)=>{const cx=L+cw*i+cw/2,c=p.v>=p.o?"#22C38E":"#F4475C";
+    pts.forEach((p,i)=>{const cx=L+cw*i+cw/2,c=p.v>=p.o?"#3DC48C":"#EE5D50";
       g+=`<line x1="${cx}" x2="${cx}" y1="${y(p.h)}" y2="${y(p.lo)}" stroke="${c}" stroke-width="1.2"/><rect x="${cx-bw/2}" y="${y(Math.max(p.o,p.v))}" width="${bw}" height="${Math.max(1.5,Math.abs(y(p.o)-y(p.v)))}" rx="1" fill="${c}"/>`;
       const vh=(p.vol||0)/vmax*VH;g+=`<rect x="${cx-bw/2}" y="${VT+VH-vh}" width="${bw}" height="${vh}" rx="1" fill="${c}" opacity=".35"/>`});
   }else{
     const P=pts.map((p,i)=>[x(i),y(p.v)]),d=smoothPath(P);
     g+=`<defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>`;
     if(pts.length>1)g+=`<path class="az" d="${d}L${x(pts.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#ga)"/><path class="cz" d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-    g+=`<circle class="nk" cx="${x(pts.length-1)}" cy="${y(end)}" r="4.5" fill="${col}" stroke="#111823" stroke-width="2"/>`;
+    g+=`<circle class="nk" cx="${x(pts.length-1)}" cy="${y(end)}" r="4.5" fill="${col}" stroke="#12232A" stroke-width="2"/>`;
   }
-  g+=`<g id="xh" visibility="hidden"><line id="xl" y1="${Tp-6}" y2="${H-B}" stroke="#8B9AAE" stroke-width="1" stroke-dasharray="2 3"/><circle id="xc" r="5" fill="${col}" stroke="#0A0F16" stroke-width="2"/></g>`;
+  g+=`<g id="xh" visibility="hidden"><line id="xl" y1="${Tp-6}" y2="${H-B}" stroke="#94A6A3" stroke-width="1" stroke-dasharray="2 3"/><circle id="xc" r="5" fill="${col}" stroke="#0D1A20" stroke-width="2"/></g>`;
   box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${a.k} fiyat grafiği">${g}</svg><div class="tip" id="tip" hidden></div>`;
   cizAnim(box,chartAnim);chartAnim=false;
   $("#cfoot").innerHTML=`<span>${esc(pts[0].l)}</span><span>${range==="gun"?"Kesikli çizgi: önceki kapanış "+px(base):""}</span><span>${esc(pts[pts.length-1].l)}</span>`;
@@ -585,7 +585,7 @@ function spark(a){
   const c=(a.intraday&&a.intraday.length>3&&a.s.id===((a.s.g||[]).slice(-1)[0]||[])[0])?[a.s.prev,...a.intraday.map(p=>p[1])]:a.closes.slice(-20);
   if(c.length<2)return "";const W=76,H=30,lo=Math.min(...c),hi=Math.max(...c);
   const P=c.map((v,i)=>[i*(W-4)/(c.length-1)+2,H-4-(v-lo)/(hi-lo||1)*(H-8)]);
-  const col=a.ch>=0?"#22C38E":"#F4475C";
+  const col=a.ch>=0?"#3DC48C":"#EE5D50";
   return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smoothPath(P)}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round"/></svg>`;
 }
 
@@ -624,12 +624,12 @@ function drawIdx(){
   const W=360,H=170,L=4,R=50,Tp=10,B=8;
   const vals=pts.map(p=>p.v).concat(irng==="gun"?[base]:[]);let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.1||hi*.002;lo-=pad;hi+=pad;
   const x=i=>L+(W-L-R)*(pts.length===1?.5:i/(pts.length-1)),y=v=>Tp+(H-Tp-B)*(1-(v-lo)/(hi-lo));
-  const end=pts[pts.length-1].v,col=end>=base?"#22C38E":"#F4475C",P=pts.map((p,i)=>[x(i),y(p.v)]),d=smoothPath(P);
-  let g="";[hi-pad,(hi+lo)/2,lo+pad].forEach(v=>{g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#1F2B3C"/><text x="${W-R+6}" y="${y(v)+4}" fill="#5C6C81" font-size="10.5" font-family="Manrope,sans-serif">${nf(v,0)}</text>`});
-  if(irng==="gun")g+=`<line x1="${L}" x2="${W-R}" y1="${y(base)}" y2="${y(base)}" stroke="#5C6C81" stroke-dasharray="3 4"/>`;
+  const end=pts[pts.length-1].v,col=end>=base?"#3DC48C":"#EE5D50",P=pts.map((p,i)=>[x(i),y(p.v)]),d=smoothPath(P);
+  let g="";[hi-pad,(hi+lo)/2,lo+pad].forEach(v=>{g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#213740"/><text x="${W-R+6}" y="${y(v)+4}" fill="#63787A" font-size="10.5" font-family="Manrope,sans-serif">${nf(v,0)}</text>`});
+  if(irng==="gun")g+=`<line x1="${L}" x2="${W-R}" y1="${y(base)}" y2="${y(base)}" stroke="#63787A" stroke-dasharray="3 4"/>`;
   g+=`<defs><linearGradient id="gi" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>`;
   if(pts.length>1)g+=`<path class="az" d="${d}L${x(pts.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#gi)"/><path class="cz" d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
-  g+=`<circle class="nk" cx="${x(pts.length-1)}" cy="${y(end)}" r="4.5" fill="${col}" stroke="#111823" stroke-width="2"/><g id="ixh" visibility="hidden"><line id="ixl" y1="${Tp}" y2="${H-B}" stroke="#8B9AAE" stroke-dasharray="2 3"/><circle id="ixc" r="5" fill="${col}" stroke="#0A0F16" stroke-width="2"/></g>`;
+  g+=`<circle class="nk" cx="${x(pts.length-1)}" cy="${y(end)}" r="4.5" fill="${col}" stroke="#12232A" stroke-width="2"/><g id="ixh" visibility="hidden"><line id="ixl" y1="${Tp}" y2="${H-B}" stroke="#94A6A3" stroke-dasharray="2 3"/><circle id="ixc" r="5" fill="${col}" stroke="#0D1A20" stroke-width="2"/></g>`;
   box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="BIST 100 grafiği">${g}</svg><div class="tip" id="itip" hidden></div>`;
   cizAnim(box,idxAnim);if(idxAnim)sayiSay($("#idxVal"),S.x.last,2);idxAnim=false;
   const svg=box.querySelector("svg"),tip=$("#itip"),xh=$("#ixh");
@@ -664,7 +664,7 @@ function rowHtml(a,rozet){return `<button class="row" data-k="${a.k}">
     <span class="r"><span class="px">${px(a.last)}</span><span class="ch ${cls(a.ch)} ${cls(a.ch)}">${pct(a.ch)}</span></span></button>`}
 function liteSpark(k,ch){const c=(((GEC&&GEC.g)||{})[k]||[]).slice(-20).map(r=>r[1]);const m=MK[k];if(m)c.push(m.last);if(c.length<3)return `<svg viewBox="0 0 76 30" aria-hidden="true"></svg>`;
   const W=76,H=30,lo=Math.min(...c),hi=Math.max(...c),P=c.map((v,i)=>[i*(W-4)/(c.length-1)+2,H-4-(v-lo)/(hi-lo||1)*(H-8)]);
-  return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smoothPath(P)}" fill="none" stroke="${ch>=0?"#22C38E":"#F4475C"}" stroke-width="1.8" stroke-linecap="round"/></svg>`}
+  return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smoothPath(P)}" fill="none" stroke="${ch>=0?"#3DC48C":"#EE5D50"}" stroke-width="1.8" stroke-linecap="round"/></svg>`}
 function liteRow(m,rozet){return `<button class="row" data-k="${esc(m.k)}">
     <span style="min-width:0"><span class="code">${isFav(m.k)?`<span class="star">★</span>`:""}${esc(m.k)}</span>${rozet?badge(m.k):""}<span class="name">${esc(m.ad)}</span></span>
     ${liteSpark(m.k,m.ch)}
@@ -725,7 +725,7 @@ function openDetail(k,keepScroll,fromPop){
       <button class="modebtn" id="mode" ${a.lite?"hidden":""} aria-label="${mode==="mum"?"Çizgi grafiğe geç":"Mum grafiğe geç"}">${mode==="mum"?`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 17l5-5 4 3 8-8"/></svg>`:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 3v18M17 3v18"/><rect x="5" y="7" width="4" height="8" rx="1"/><rect x="15" y="5" width="4" height="6" rx="1"/></svg>`}</button></div>
     <div class="chart-wrap" id="chart"></div>
     <div class="chart-foot" id="cfoot"></div>
-    <div class="legend" id="clegend" hidden><span><i style="background:#22C38E"></i>Yükselen gün</span><span><i style="background:#F4475C"></i>Düşen gün</span><span>Alt kısım: hacim</span></div>
+    <div class="legend" id="clegend" hidden><span><i style="background:#3DC48C"></i>Yükselen gün</span><span><i style="background:#EE5D50"></i>Düşen gün</span><span>Alt kısım: hacim</span></div>
   </div>
 
   <div class="card">
@@ -742,7 +742,7 @@ function openDetail(k,keepScroll,fromPop){
         <div class="votes">${vs.map(v=>`<i style="background:var(--${kCls(v.karar)==="up"?"up":kCls(v.karar)==="down"?"down":"hold"})" title="${esc(v.ad)}"></i>`).join("")}</div></div></div>
       ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--hold-a)">${esc(con.not)}</p>`:""}${nedenKutu(k,con,vs)}
       ${(()=>{const x=((GUN.haber_ai||{}).hisseler||{})[k];return x?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--${x.etki==="olumlu"?"up":"down"}-a)"><b class="${x.etki==="olumlu"?"up":"down"}">Haber yapay zekâsı: ${x.etki==="olumlu"?"olumlu":"olumsuz"} haber</b> <span class="xs muted">(önem ${x.onem}/3)</span><br>${esc(x.neden)}</p>`:""})()}
-      <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
+      <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#E9EEE8"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
         <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null||v.tarih?`<span class="xs faint">${v.guven!=null?"Güven: "+gSev(v.guven)+(v.guven<50?" · yarım oy sayılır":"")+(v.sig?" · işlem hacmi düşük hisse":""):""}${v.tarih?(v.guven!=null?" · ":"")+esc(fmtTime(new Date(v.tarih*1000).toISOString())):""}</span>`:""}${isabetTxt(v.id)}</div>
         <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.hedef?`<span class="tg">${HZL[HZ]}: ${px(v.hedef)}</span>`:""}</div></div>`).join("")}</div>
       ${a.lite?`<p class="note">Yapay zekâ en popüler 100 hisseyi borsa açıkken düzenli olarak, diğerlerini istek üzerine değerlendirir. TradingView göstergeleri ve teknik analiz de oy verir.</p>`:""}
@@ -1017,7 +1017,7 @@ function getiriOk(karar,r){if(!isFinite(r)||Math.abs(r)>GLIM[HZ])return false;if
 function fKarar(k){const key=HZ+k;if(FKC[key])return FKC[key];fMap();const c=consensus(fundVotes(k)),rk=riskFon(k);return FKC[key]=rk&&c.karar==="AL"?{...c,karar:"TUT",not:"Risk uyarısı: "+rk}:c}
 const fInfo=k=>{const t=fMap()[k]||{},d=(FUNDS.fonlar||{})[k]||{};return {k,...t,...d,getiri:d.getiri||{g1a:t.g1a,g3a:t.g3a,g6a:t.g6a,gyb:t.gyb,g1y:t.g1y,g3y:t.g3y}}};
 const gp=v=>v==null?`<span class="faint">–</span>`:`<span class="${cls(v)}">${v>=0?"+":"−"}%${nf(Math.abs(v),Math.abs(v)>=100?0:1)}</span>`;
-function fSpark(g){if(!g||g.length<3)return "";const c=g.map(r=>r[1]),W=76,H=30,lo=Math.min(...c),hi=Math.max(...c);const P=c.map((v,i)=>[i*(W-4)/(c.length-1)+2,H-4-(v-lo)/(hi-lo||1)*(H-8)]);const col=c[c.length-1]>=c[0]?"#22C38E":"#F4475C";return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smoothPath(P)}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round"/></svg>`}
+function fSpark(g){if(!g||g.length<3)return "";const c=g.map(r=>r[1]),W=76,H=30,lo=Math.min(...c),hi=Math.max(...c);const P=c.map((v,i)=>[i*(W-4)/(c.length-1)+2,H-4-(v-lo)/(hi-lo||1)*(H-8)]);const col=c[c.length-1]>=c[0]?"#3DC48C":"#EE5D50";return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><path d="${smoothPath(P)}" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round"/></svg>`}
 function renderFunds(){
   const t=nrm(fq.trim());
   let list=allFunds();const fk=ffilt==="al"||ffilt==="sat";
@@ -1054,7 +1054,7 @@ function fundAICard(k){
       <div><b>${con.karar==="AL"?"Alınır":con.karar==="SAT"?"Satılır":"Tutulur"} <span class="small muted">· ${HZL[HZ]} vadede</span></b><p class="small muted">${con.n} değerlendirmeden ${con.c.AL} AL, ${con.c.TUT} TUT, ${con.c.SAT} SAT</p>
       ${ort!=null&&!con.not?`<p class="small">Beklenen getiri ortalaması: <b class="${cls(ort)}">${pct(ort)}</b></p>`:""}</div></div>
     ${con.not?`<p class="small" style="margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--down-a)">${esc(con.not)} Bu yüzden AL verilmiyor.</p>`:""}
-    <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#EAF0F7"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
+    <div class="models">${vs.map(v=>`<div class="model"><span class="av" style="color:${MODEL_RENK[v.id]||"#E9EEE8"}">${MODEL_HARF[v.id]||v.ad[0]}</span>
       <div style="min-width:0"><div class="mn">${esc(v.ad)}${v.eski?` <span class="xs faint">(önceki analiz)</span>`:""}</div><p class="why">${esc(v.neden||"")}</p>${v.guven!=null?`<span class="xs faint">Güven: ${gSev(v.guven)}${v.guven<50?" · yarım oy sayılır":""}</span>`:""}</div>
       <div class="rt"><span class="pill ${kCls(v.karar)} ${kCls(v.karar)}">${v.karar}</span>${v.getiri!=null?`<span class="tg">${HZL[HZ]}: ${pct(+v.getiri)}</span>`:""}</div></div>`).join("")}</div>
     <p class="note">AL ya da SAT için oyların en az %60'ının aynı yönde olması gerekir, yoksa karar TUT'tur. Getiri momentumu fonu kendi türündeki fonlarla karşılaştırır. Yatırım tavsiyesi değildir; tahminler yanılabilir.</p></div>`;
@@ -1064,10 +1064,10 @@ function openFund(k,noPush){
   curF=k;const f=fInfo(k),g=f.getiri||{},on=myF.includes(k),s=f.g||[];
   let chart="";
   if(s.length>2){const c=s.map(r=>r[1]),W=360,H=180,L=4,R=44,Tp=12,B=12,lo=Math.min(...c),hi=Math.max(...c),pad=(hi-lo)*.1||hi*.01;
-    const y=v=>Tp+(H-Tp-B)*(1-(v-lo+pad)/(hi-lo+2*pad)),x=i=>L+(W-L-R)*i/(c.length-1),P=c.map((v,i)=>[x(i),y(v)]),d=smoothPath(P),col=c[c.length-1]>=c[0]?"#22C38E":"#F4475C";
+    const y=v=>Tp+(H-Tp-B)*(1-(v-lo+pad)/(hi-lo+2*pad)),x=i=>L+(W-L-R)*i/(c.length-1),P=c.map((v,i)=>[x(i),y(v)]),d=smoothPath(P),col=c[c.length-1]>=c[0]?"#3DC48C":"#EE5D50";
     chart=`<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(k)} fiyat grafiği"><defs><linearGradient id="gf" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
-      ${[hi,lo].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#1F2B3C"/><text x="${W-R+6}" y="${y(v)+4}" fill="#5C6C81" font-size="10.5" font-family="Manrope,sans-serif">${nf(v,v>=10?2:4)}</text>`).join("")}
-      <path d="${d}L${x(c.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#gf)"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${x(c.length-1)}" cy="${y(c[c.length-1])}" r="4.5" fill="${col}" stroke="#111823" stroke-width="2"/></svg></div>
+      ${[hi,lo].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#213740"/><text x="${W-R+6}" y="${y(v)+4}" fill="#63787A" font-size="10.5" font-family="Manrope,sans-serif">${nf(v,v>=10?2:4)}</text>`).join("")}
+      <path d="${d}L${x(c.length-1)},${H-B}L${x(0)},${H-B}Z" fill="url(#gf)"/><path d="${d}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${x(c.length-1)}" cy="${y(c[c.length-1])}" r="4.5" fill="${col}" stroke="#12232A" stroke-width="2"/></svg></div>
       <div class="chart-foot"><span>${dLbl(s[0][0])}</span><span>Son 3 ay: ${gp((c[c.length-1]/c[0]-1)*100)}</span><span>${dLbl(s[s.length-1][0])}</span></div>`}
   $("#p-fondetay").innerHTML=`
   <div class="dtop"><button class="back" id="fback"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>${GERI_AD[tab]||"Fonlar"}</button><span class="sp"></span></div>
