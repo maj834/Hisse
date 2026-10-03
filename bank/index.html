@@ -64,6 +64,18 @@ input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border
 .note{font-size:12px;color:var(--mut);margin-top:14px;line-height:1.5}
 .pin{display:flex;gap:10px;justify-content:center;margin:18px 0}
 .pin input{width:56px;text-align:center;font-size:24px}
+.opt{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#f8fafc;border-radius:12px;padding:14px;font-size:15px;margin-top:10px;color:var(--ink)}
+.opt:active{background:#eef2ff;border-color:#6366f1}
+.step{font-size:12px;color:var(--mut);margin-bottom:6px}
+.q{font-size:19px;font-weight:700;margin-bottom:4px}
+.apply{display:block;width:100%;border:0;border-radius:18px;padding:18px;margin-top:16px;font-size:16px;font-weight:800;color:var(--brand);background:linear-gradient(135deg,#f5c542,#fbbf24);box-shadow:0 6px 18px rgba(245,197,66,.35)}
+.spin{width:54px;height:54px;border:5px solid var(--line);border-top-color:var(--brand);border-radius:50%;margin:26px auto;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.center{text-align:center}
+.ok{font-size:54px;margin:10px 0}
+.nocard{border-radius:20px;padding:26px 22px;background:var(--card);text-align:center;box-shadow:0 12px 30px rgba(11,31,58,.15)}
+.nocard b{display:block;font-size:18px;margin:8px 0 4px}
+.nocard p{color:var(--mut);font-size:14px}
 .toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:10}
 .toast.on{opacity:1}
 </style>
@@ -78,8 +90,15 @@ input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border
 </header>
 
 <main>
+  <div id="noCard" class="nocard" style="display:none">
+    <div style="font-size:44px">💳</div>
+    <b>Henüz kredi kartınız yok</b>
+    <p>Birkaç soruyu yanıtlayın, size özel limitinizi hemen belirleyelim.</p>
+    <button class="apply" onclick="startApply()">Kredi Kartı Başvurusu Yap</button>
+  </div>
+  <div id="hasCard">
   <div class="cc">
-    <div class="row"><div class="chip"></div><small>AİLE KART</small></div>
+    <div class="row"><div class="chip"></div><small>AİLE KREDİ KARTI</small></div>
     <div class="num" id="cardNo">**** **** **** 0000</div>
     <div class="row">
       <div><small>KART SAHİBİ</small><div id="cardName" style="font-weight:700;text-transform:uppercase">-</div></div>
@@ -94,6 +113,8 @@ input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border
     <div class="kv"><span>Toplam Kart Limiti</span><b id="total">0 ₺</b></div>
     <div class="kv"><span>Bu Dönem Harcanan</span><b id="spent">0 ₺</b></div>
   </div>
+  <button class="apply" onclick="startApply(true)">Limit Artırım Başvurusu</button>
+  </div>
 
   <div class="quick">
     <div><span>💸</span>Para Gönder</div>
@@ -107,6 +128,9 @@ input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border
     <div id="list"></div>
   </div>
 </main>
+
+<!-- BAŞVURU -->
+<div class="ov" id="apOv"><div class="sheet" id="apBody"></div></div>
 
 <!-- PIN -->
 <div class="ov" id="pinOv"><div class="sheet">
@@ -141,6 +165,7 @@ input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border
 
   <div class="sep"></div>
   <button class="btn ghost" onclick="newPeriod()">Yeni Dönem (tüm harcamaları sil)</button>
+  <button class="btn ghost" onclick="resetCard()">Kartı Kapat (yeniden başvuru yapılsın)</button>
 
   <p class="note">Bu, gerçek bir banka değildir; eğlence amaçlı bir oyuncak uygulamadır. Veriler yalnızca bu telefonda saklanır, hiçbir yere gönderilmez.<br>Paneli açmak için üstteki <b>Aile Bank</b> logosuna art arda 5 kez dokunun. Varsayılan PIN: <b>0000</b>.</p>
 </div></div>
@@ -149,7 +174,7 @@ input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border
 
 <script>
 const KEY='aileBank.v1';
-const DEF={name:'Annem',limit:10000,no:'4821',pin:'0000',tx:[]};
+const DEF={name:'Annem',limit:0,no:'4821',pin:'0000',card:false,tx:[]};
 let S=load();
 
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.tx))return Object.assign({},DEF,s)}catch(e){}return JSON.parse(JSON.stringify(DEF))}
@@ -164,6 +189,8 @@ function render(){
   const spent=S.tx.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
   const avail=Math.max(0,Math.min(S.limit,S.limit+net));
   const pct=S.limit>0?avail/S.limit*100:0;
+  $('noCard').style.display=S.card?'none':'';
+  $('hasCard').style.display=S.card?'':'none';
   $('hiName').textContent=S.name;
   $('cardName').textContent=S.name;
   $('cardNo').textContent='**** **** **** '+(S.no||'0000');
@@ -217,6 +244,56 @@ function saveSettings(){
   S.name=$('setName').value.trim()||DEF.name;S.limit=lim;S.pin=pin;S.no=/^\d{4}$/.test(no)?no:S.no;
   save();render();toast('Kaydedildi');
 }
+function resetCard(){if(confirm('Kart kapatılsın mı? Tüm işlemler silinir, yeniden başvuru yapılabilir.')){S.card=false;S.limit=0;S.tx=[];save();render();closeOv('admOv');toast('Kart kapatıldı')}}
+
+// ---- Kredi kartı başvurusu ----
+const QS=[
+ {k:'name',q:'Adınız ve soyadınız?',input:true},
+ {k:'age',q:'Yaşınız?',o:[['18 - 25',.8],['26 - 40',1.05],['41 - 60',1.1],['60 üstü',.95]]},
+ {k:'job',q:'Çalışma durumunuz?',o:[['Memur',1.25],['Özel sektör çalışanı',1.1],['Esnaf / kendi işi',1.15],['Emekli',1],['Ev hanımı / çalışmıyor',.6]]},
+ {k:'inc',q:'Aylık net geliriniz?',o:[['10.000 ₺ altı',6000],['10.000 – 25.000 ₺',15000],['25.000 – 50.000 ₺',35000],['50.000 – 100.000 ₺',70000],['100.000 ₺ üstü',130000]]},
+ {k:'home',q:'Oturduğunuz ev?',o:[['Kendi evim',1.2],['Kira',.95],['Aile yanında',1]]},
+ {k:'car',q:'Adınıza kayıtlı araç var mı?',o:[['Evet',1.1],['Hayır',1]]},
+ {k:'debt',q:'Başka bankada kredi veya kart borcunuz var mı?',o:[['Yok',1.15],['Var, düzenli ödüyorum',.95],['Var, gecikmelerim oldu',.55]]},
+ {k:'kids',q:'Bakmakla yükümlü olduğunuz kişi sayısı?',o:[['Yok',1.05],['1 – 2',1],['3 ve üzeri',.9]]}
+];
+let A={},step=0,raise=false;
+function startApply(r){raise=!!r;A={};step=r?1:0;if(r)A.name=S.name;showQ();openOv('apOv')}
+function showQ(){
+  const q=QS[step],B=$('apBody');
+  const head=`<h2>${raise?'Limit Artırım Başvurusu':'Kredi Kartı Başvurusu'} <button onclick="closeOv('apOv')">Vazgeç</button></h2>
+    <div class="step">Adım ${step+1-(raise?1:0)} / ${QS.length-(raise?1:0)}</div><div class="q">${q.q}</div>`;
+  if(q.input){B.innerHTML=head+`<input id="apIn" value="${esc(A.name||'')}" placeholder="Ad Soyad"><button class="btn" onclick="ansName()">Devam</button>`;setTimeout(()=>$('apIn').focus(),50);return}
+  B.innerHTML=head+q.o.map((o,i)=>`<button class="opt" onclick="ans(${i})">${o[0]}</button>`).join('');
+}
+function ansName(){const v=$('apIn').value.trim();if(v.length<2){toast('Adınızı yazın');return}A.name=v;step++;showQ()}
+function ans(i){A[QS[step].k]=QS[step].o[i][1];step++;if(step<QS.length)showQ();else evaluate()}
+function calcLimit(){
+  let l=A.inc*1.5;                                   // gelirin 1,5 katı taban
+  ['age','job','home','car','debt','kids'].forEach(k=>l*=A[k]);
+  l*=0.95+Math.random()*0.1;                         // ±%5 "banka takdiri"
+  return Math.max(2000,Math.round(l/500)*500);
+}
+function evaluate(){
+  $('apBody').innerHTML=`<div class="center"><div class="spin"></div><div class="q" id="evT">Bilgileriniz kontrol ediliyor…</div><p class="lbl">Lütfen bekleyin</p></div>`;
+  const msgs=['Gelir bilgileriniz değerlendiriliyor…','Kredi notunuz hesaplanıyor…','Limitiniz belirleniyor…'];
+  msgs.forEach((m,i)=>setTimeout(()=>{const e=$('evT');if(e)e.textContent=m},(i+1)*1100));
+  setTimeout(()=>{
+    let lim=calcLimit();
+    if(raise&&lim<=S.limit){
+      $('apBody').innerHTML=`<div class="center"><div class="ok">😔</div><div class="q">Limit artırım talebiniz şu an olumsuz</div>
+        <p class="lbl" style="margin-top:8px">Mevcut limitiniz (${fmt(S.limit)}) bilgilerinize göre en uygun limittir.</p>
+        <button class="btn" onclick="closeOv('apOv')">Tamam</button></div>`;return}
+    S.name=A.name;S.limit=lim;
+    if(!S.card){S.card=true;S.no=String(1000+Math.floor(Math.random()*9000));S.tx=[]}
+    save();render();
+    $('apBody').innerHTML=`<div class="center"><div class="ok">🎉</div><div class="q">${raise?'Limitiniz artırıldı!':'Tebrikler, başvurunuz onaylandı!'}</div>
+      <p class="lbl" style="margin-top:8px">${esc(A.name)}, size tanımlanan kredi kartı limiti:</p>
+      <div class="big" style="margin:10px 0">${fmt(lim)}</div>
+      <button class="btn" onclick="closeOv('apOv')">Kartıma Git</button></div>`;
+  },4500);
+}
+
 function newPeriod(){if(confirm('Tüm işlemler silinsin ve limit dolsun mu?')){S.tx=[];save();render();toast('Yeni dönem başladı')}}
 
 render();
