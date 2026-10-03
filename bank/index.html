@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Aile Bank">
+<meta name="theme-color" content="#0b1f3a">
+<title>Aile Bank</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1f3a'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23f5c542' font-family='Arial' font-weight='bold'%3EA%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg:#f2f4f8;--card:#fff;--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--brand:#0b1f3a;--gold:#f5c542;--red:#dc2626;--green:#16a34a}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:40px}
+header{background:var(--brand);color:#fff;padding:calc(18px + env(safe-area-inset-top)) 16px 90px}
+.top{display:flex;align-items:center;justify-content:space-between;max-width:520px;margin:0 auto}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;user-select:none}
+.logo i{width:36px;height:36px;border-radius:10px;background:var(--gold);color:var(--brand);display:grid;place-items:center;font-style:normal;font-size:20px}
+.hi{max-width:520px;margin:18px auto 0;font-size:15px;opacity:.85}
+.hi b{display:block;font-size:22px;opacity:1;margin-top:2px}
+main{max-width:520px;margin:-70px auto 0;padding:0 16px}
+.cc{border-radius:20px;padding:22px;color:#fff;background:linear-gradient(135deg,#1e3a8a,#0b1f3a 60%,#312e81);box-shadow:0 12px 30px rgba(11,31,58,.35);position:relative;overflow:hidden}
+.cc:after{content:"";position:absolute;right:-60px;top:-60px;width:200px;height:200px;border-radius:50%;background:rgba(245,197,66,.15)}
+.cc .row{display:flex;justify-content:space-between;align-items:center}
+.chip{width:42px;height:30px;border-radius:6px;background:linear-gradient(135deg,#f5c542,#c99a1a)}
+.cc small{opacity:.75;font-size:12px;letter-spacing:.5px}
+.num{font-family:ui-monospace,Menlo,monospace;font-size:18px;letter-spacing:2px;margin:22px 0 16px}
+.box{background:var(--card);border-radius:18px;padding:18px;margin-top:16px;box-shadow:0 2px 10px rgba(15,23,42,.05)}
+.lbl{color:var(--mut);font-size:13px}
+.big{font-size:32px;font-weight:800;margin:4px 0 12px}
+.bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar div{height:100%;background:linear-gradient(90deg,#16a34a,#22c55e);border-radius:99px;transition:width .6s}
+.bar.warn div{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.bar.low div{background:linear-gradient(90deg,#dc2626,#ef4444)}
+.kv{display:flex;justify-content:space-between;margin-top:12px;font-size:14px}
+.kv span:first-child{color:var(--mut)}
+h3{font-size:16px;margin-bottom:6px}
+.tx{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.tx:last-child{border-bottom:0}
+.ico{width:40px;height:40px;border-radius:12px;background:#eef2ff;display:grid;place-items:center;font-size:18px;flex:none}
+.tx .t{flex:1;min-width:0}
+.tx .t b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx .t small{color:var(--mut);font-size:12px}
+.amt{font-weight:700;font-size:15px;white-space:nowrap}
+.amt.neg{color:var(--red)}.amt.pos{color:var(--green)}
+.del{border:0;background:#fee2e2;color:var(--red);border-radius:8px;padding:6px 9px;margin-left:6px;font-size:13px}
+.empty{color:var(--mut);text-align:center;padding:18px 0;font-size:14px}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.quick div{background:var(--card);border-radius:14px;padding:12px 4px;text-align:center;font-size:12px;color:var(--mut);box-shadow:0 2px 10px rgba(15,23,42,.05)}
+.quick div span{display:block;font-size:22px;margin-bottom:4px}
+/* yönetici */
+.ov{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-end;justify-content:center;z-index:9}
+.ov.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:520px;border-radius:22px 22px 0 0;padding:20px 16px calc(24px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto}
+.sheet h2{font-size:18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.sheet h2 button{border:0;background:var(--line);border-radius:10px;padding:6px 12px;font-size:14px}
+label{display:block;font-size:13px;color:var(--mut);margin:12px 0 5px}
+input{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;color:var(--ink)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{width:100%;border:0;border-radius:12px;padding:13px;font-size:15px;font-weight:700;margin-top:12px;color:#fff;background:var(--brand)}
+.btn.red{background:var(--red)}.btn.green{background:var(--green)}.btn.ghost{background:var(--line);color:var(--ink)}
+.sep{height:1px;background:var(--line);margin:18px 0 4px}
+.note{font-size:12px;color:var(--mut);margin-top:14px;line-height:1.5}
+.pin{display:flex;gap:10px;justify-content:center;margin:18px 0}
+.pin input{width:56px;text-align:center;font-size:24px}
+.toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.3s;pointer-events:none;z-index:10}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="logo" id="logo"><i>A</i>Aile Bank</div>
+    <div style="font-size:22px">🔔</div>
+  </div>
+  <div class="hi">İyi günler,<b id="hiName">-</b></div>
+</header>
+
+<main>
+  <div class="cc">
+    <div class="row"><div class="chip"></div><small>AİLE KART</small></div>
+    <div class="num" id="cardNo">**** **** **** 0000</div>
+    <div class="row">
+      <div><small>KART SAHİBİ</small><div id="cardName" style="font-weight:700;text-transform:uppercase">-</div></div>
+      <div style="text-align:right"><small>SKT</small><div>12/30</div></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <div class="lbl">Kullanılabilir Limit</div>
+    <div class="big" id="avail">0 ₺</div>
+    <div class="bar" id="bar"><div id="barIn" style="width:0"></div></div>
+    <div class="kv"><span>Toplam Kart Limiti</span><b id="total">0 ₺</b></div>
+    <div class="kv"><span>Bu Dönem Harcanan</span><b id="spent">0 ₺</b></div>
+  </div>
+
+  <div class="quick">
+    <div><span>💸</span>Para Gönder</div>
+    <div><span>🧾</span>Fatura</div>
+    <div><span>📱</span>TL Yükle</div>
+    <div><span>⭐</span>Puanlar</div>
+  </div>
+
+  <div class="box">
+    <h3>Son İşlemler</h3>
+    <div id="list"></div>
+  </div>
+</main>
+
+<!-- PIN -->
+<div class="ov" id="pinOv"><div class="sheet">
+  <h2>Yönetici Girişi <button onclick="closeOv('pinOv')">Kapat</button></h2>
+  <div class="pin" id="pinBox">
+    <input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1"><input inputmode="numeric" maxlength="1">
+  </div>
+</div></div>
+
+<!-- YÖNETİCİ PANELİ -->
+<div class="ov" id="admOv"><div class="sheet">
+  <h2>Yönetici Paneli <button onclick="closeOv('admOv')">Kapat</button></h2>
+
+  <h3>Harcama Ekle (limitten düşer)</h3>
+  <label>Nereden / açıklama</label><input id="exDesc" placeholder="Örn. Market">
+  <div class="two">
+    <div><label>Tutar (₺)</label><input id="exAmt" inputmode="decimal" placeholder="250"></div>
+    <div><label>Simge</label><input id="exIco" placeholder="🛒" maxlength="2"></div>
+  </div>
+  <button class="btn red" onclick="addTx(-1)">Harcamayı Düş</button>
+  <button class="btn green" onclick="addTx(1)">Para Yatır / İade (limite ekler)</button>
+
+  <div class="sep"></div>
+  <h3>Kart Ayarları</h3>
+  <label>Kart sahibinin adı</label><input id="setName">
+  <div class="two">
+    <div><label>Toplam limit (₺)</label><input id="setLimit" inputmode="decimal"></div>
+    <div><label>Kartın son 4 hanesi</label><input id="setNo" inputmode="numeric" maxlength="4"></div>
+  </div>
+  <label>Yönetici PIN (4 hane)</label><input id="setPin" inputmode="numeric" maxlength="4">
+  <button class="btn" onclick="saveSettings()">Kaydet</button>
+
+  <div class="sep"></div>
+  <button class="btn ghost" onclick="newPeriod()">Yeni Dönem (tüm harcamaları sil)</button>
+
+  <p class="note">Bu, gerçek bir banka değildir; eğlence amaçlı bir oyuncak uygulamadır. Veriler yalnızca bu telefonda saklanır, hiçbir yere gönderilmez.<br>Paneli açmak için üstteki <b>Aile Bank</b> logosuna art arda 5 kez dokunun. Varsayılan PIN: <b>0000</b>.</p>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY='aileBank.v1';
+const DEF={name:'Annem',limit:10000,no:'4821',pin:'0000',tx:[]};
+let S=load();
+
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.tx))return Object.assign({},DEF,s)}catch(e){}return JSON.parse(JSON.stringify(DEF))}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Kaydedilemedi')}}
+const fmt=n=>(Math.round(n*100)/100).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₺';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let admin=false;
+
+function render(){
+  const net=S.tx.reduce((a,t)=>a+t.amt,0);           // harcamalar negatif, yatırımlar pozitif
+  const spent=S.tx.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
+  const avail=Math.max(0,Math.min(S.limit,S.limit+net));
+  const pct=S.limit>0?avail/S.limit*100:0;
+  $('hiName').textContent=S.name;
+  $('cardName').textContent=S.name;
+  $('cardNo').textContent='**** **** **** '+(S.no||'0000');
+  $('avail').textContent=fmt(avail);
+  $('total').textContent=fmt(S.limit);
+  $('spent').textContent=fmt(spent);
+  $('barIn').style.width=pct+'%';
+  $('bar').className='bar'+(pct<20?' low':pct<50?' warn':'');
+  const L=$('list');
+  if(!S.tx.length){L.innerHTML='<div class="empty">Henüz işlem yok</div>';return}
+  L.innerHTML=S.tx.slice().reverse().map(t=>{
+    const d=new Date(t.at);
+    return `<div class="tx"><div class="ico">${esc(t.ico||(t.amt<0?'💳':'💰'))}</div>
+      <div class="t"><b>${esc(t.desc)}</b><small>${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</small></div>
+      <div class="amt ${t.amt<0?'neg':'pos'}">${t.amt<0?'-':'+'}${fmt(Math.abs(t.amt))}</div>
+      ${admin?`<button class="del" onclick="delTx(${t.at})">Sil</button>`:''}</div>`}).join('');
+}
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),1800)}
+function openOv(id){$(id).classList.add('on')}
+function closeOv(id){$(id).classList.remove('on');if(id==='admOv'){admin=false;render()}}
+
+// Logoya 5 kez dokununca PIN ekranı
+let taps=0,tapT;
+$('logo').addEventListener('click',()=>{taps++;clearTimeout(tapT);tapT=setTimeout(()=>taps=0,1500);
+  if(taps>=5){taps=0;const ins=[...$('pinBox').children];ins.forEach(i=>i.value='');openOv('pinOv');setTimeout(()=>ins[0].focus(),50)}});
+[...$('pinBox').children].forEach((inp,i,all)=>{
+  inp.addEventListener('input',()=>{inp.value=inp.value.replace(/\D/g,'');
+    if(inp.value&&i<3)all[i+1].focus();
+    const p=all.map(x=>x.value).join('');
+    if(p.length===4){if(p===S.pin){closeOv('pinOv');openAdmin()}else{toast('Hatalı PIN');all.forEach(x=>x.value='');all[0].focus()}}});
+  inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!inp.value&&i>0)all[i-1].focus()});
+});
+
+function openAdmin(){admin=true;$('setName').value=S.name;$('setLimit').value=S.limit;$('setNo').value=S.no;$('setPin').value=S.pin;render();openOv('admOv')}
+function num(v){v=String(v).trim();if(v.includes(','))v=v.replace(/\./g,'').replace(',','.');return parseFloat(v)}
+
+function addTx(sign){
+  const amt=num($('exAmt').value);
+  if(!(amt>0)){toast('Geçerli bir tutar girin');return}
+  const desc=$('exDesc').value.trim()||(sign<0?'Kart Harcaması':'Para Yatırma');
+  S.tx.push({at:Date.now(),desc,amt:sign*amt,ico:$('exIco').value.trim()});
+  save();render();$('exAmt').value='';$('exDesc').value='';$('exIco').value='';
+  toast(sign<0?fmt(amt)+' düşüldü':fmt(amt)+' eklendi');
+}
+function delTx(at){S.tx=S.tx.filter(t=>t.at!==at);save();render()}
+function saveSettings(){
+  const lim=num($('setLimit').value),pin=$('setPin').value.trim(),no=$('setNo').value.trim();
+  if(!(lim>=0)){toast('Limit geçersiz');return}
+  if(!/^\d{4}$/.test(pin)){toast('PIN 4 rakam olmalı');return}
+  S.name=$('setName').value.trim()||DEF.name;S.limit=lim;S.pin=pin;S.no=/^\d{4}$/.test(no)?no:S.no;
+  save();render();toast('Kaydedildi');
+}
+function newPeriod(){if(confirm('Tüm işlemler silinsin ve limit dolsun mu?')){S.tx=[];save();render();toast('Yeni dönem başladı')}}
+
+render();
+</script>
+</body>
+</html>
