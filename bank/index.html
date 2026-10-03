@@ -124,6 +124,26 @@ select{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);borde
 #tCard .row2{display:flex;gap:10px;margin-top:14px}
 #tCard .row2 .btn{margin:0}
 </style>
+<style>
+.cc.debit{background:linear-gradient(135deg,#0f766e,#064e3b 60%,#134e4a)}
+.cc.debit:after{background:rgba(255,255,255,.08)}
+.cc .bal{font-size:30px;font-weight:800;margin:14px 0 4px}
+.sec{font-size:13px;font-weight:700;color:var(--mut);letter-spacing:.5px;margin:22px 4px 8px;text-transform:uppercase}
+.prod{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px}
+.prod>div{background:var(--card);border-radius:16px;padding:14px;box-shadow:0 2px 10px rgba(15,23,42,.05);cursor:pointer}
+.prod>div:active{transform:scale(.97)}
+.prod b{display:block;font-size:15px;margin-top:4px}
+.prod small{display:block;font-size:12px;color:var(--mut);margin-top:3px;line-height:1.35}
+.prod .e{font-size:24px}
+.opt.sel{background:#eef2ff;border-color:#6366f1;font-weight:700}
+.sum{background:#f8fafc;border-radius:12px;padding:12px;margin-top:12px;font-size:14px}
+.sum .kv{margin-top:6px}
+.pbar{height:6px;background:var(--line);border-radius:99px;margin:4px 0 12px;overflow:hidden}
+.pbar div{height:100%;background:#6366f1;transition:width .3s}
+.camp p b{display:inline;font-size:inherit}
+.red-t{color:var(--red);font-weight:700}
+.btn.small{padding:9px;font-size:14px;margin-top:8px}
+</style>
 </head>
 <body>
 <!-- GİRİŞ -->
@@ -138,38 +158,54 @@ select{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);borde
 </header>
 
 <main>
+  <div class="cc debit" id="dcEl">
+    <div class="row"><div class="chip"></div><small>BANKA KARTI · VADESİZ</small></div>
+    <small style="display:block;margin-top:16px">KULLANILABİLİR BAKİYE</small>
+    <div class="bal" id="vBal">0</div>
+    <div class="row">
+      <div><small>KART SAHİBİ</small><div class="cName" style="font-weight:700;text-transform:uppercase">-</div></div>
+      <div style="text-align:right;font-family:ui-monospace,Menlo,monospace" id="dNo">**** 0000</div>
+    </div>
+  </div>
+  <div class="alert" id="negAlert">⚠️ Vadesiz hesabınız eksi bakiyede! Lütfen biraz sessiz kalın.</div>
+
+  <div class="sec">Kredi Kartı</div>
   <div id="noCard" class="nocard" style="display:none">
-    <div style="font-size:44px">🗣️</div>
-    <b>Henüz Boş Yapma Kartınız yok</b>
-    <p>Birkaç soruyu yanıtlayın, size özel boş yapma kotanızı hemen belirleyelim.</p>
-    <button class="apply" id="applyBtn" onclick="startApply()">Boş Yapma Kartı Başvurusu</button>
+    <div style="font-size:44px">💳</div>
+    <b>Henüz kredi kartınız yok</b>
+    <p>Birkaç soruyu yanıtlayın, Boşdeks notunuza göre kredi kartı limitinizi hemen belirleyelim.</p>
+    <button class="apply" id="applyBtn" onclick="startApply()">Kredi Kartı Başvurusu</button>
   </div>
   <div id="hasCard">
   <div class="cc" id="ccEl">
-    <div class="row"><div class="chip"></div><small>BOŞ YAPMA KARTI</small></div>
+    <div class="row"><div class="chip"></div><small>BOŞ YAPMA KREDİ KARTI</small></div>
     <div class="num" id="cardNo">**** **** **** 0000</div>
     <div class="row">
-      <div><small>KART SAHİBİ</small><div id="cardName" style="font-weight:700;text-transform:uppercase">-</div></div>
+      <div><small>KART SAHİBİ</small><div class="cName" style="font-weight:700;text-transform:uppercase">-</div></div>
       <div style="text-align:right"><small>SKT</small><div>12/30</div></div>
     </div>
   </div>
-
-  <div class="alert" id="alert">🤐 Boş yapma kotanız doldu! Lütfen bir süre sessiz kalın.</div>
-
+  <div class="alert" id="alert">🤐 Kredi kartı limitiniz doldu! Lütfen bir süre sessiz kalın.</div>
   <div class="box" id="limBox">
-    <div class="lbl">Kalan Boş Yapma Hakkı</div>
+    <div class="lbl">Kullanılabilir Limit</div>
     <div class="big" id="avail">0</div>
     <div class="bar" id="bar"><div id="barIn" style="width:0"></div></div>
-    <div class="kv"><span>Toplam Boş Yapma Kotası</span><b id="total">0</b></div>
-    <div class="kv"><span>Bu Dönem Yapılan Boş</span><b id="spent">0</b></div>
-    <p class="note" style="margin-top:10px">Söylenen her kelime 1 Boş YPH (Boş Yapma Hakkı) harcar.</p>
+    <div class="kv"><span>Toplam Kart Limiti</span><b id="total">0</b></div>
+    <div class="kv"><span>Kart Borcu</span><b id="debt" class="red-t">0</b></div>
+    <button class="btn small" onclick="qPayCard()">Kart Borcunu Öde</button>
   </div>
-  <button class="apply" id="raiseBtn" onclick="startApply(true)">Kota Artırım Başvurusu</button>
+  <button class="apply" id="raiseBtn" onclick="startApply(true)">Limit Artırım Başvurusu</button>
+  </div>
+
+  <div class="sec">Ürünler</div>
+  <div class="prod" id="prodEl">
+    <div onclick="qLoan()"><span class="e">💰</span><b>Kredi Çek</b><small id="loanSt">-</small></div>
+    <div onclick="qDep()"><span class="e">📈</span><b>Faize Koy</b><small id="depSt">-</small></div>
   </div>
 
   <div class="box" id="phBox">
     <h3>🔥 Boş Tarifesi</h3>
-    <p class="lbl" style="margin-bottom:4px">En sık yapılan boşlar ve fiyatları</p>
+    <p class="lbl" style="margin-bottom:4px">En sık yapılan boşlar ve fiyatları · Bu dönem yapılan boş: <b id="spent">0</b></p>
     <div id="phList"></div>
   </div>
 
@@ -207,18 +243,20 @@ select{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);borde
 <div class="ov" id="admOv"><div class="sheet">
   <h2>Yönetici Paneli <button onclick="closeOv('admOv')">Kapat</button></h2>
   <label>Yönetilen hesap</label><select id="admUser" onchange="admSelect(this.value)"></select>
+  <div class="sum" id="admSum"></div>
 
   <h3 style="margin-top:16px">Hızlı Düş (dokun, hemen düşsün)</h3>
+  <p class="lbl">Önce vadesiz bakiyeden düşer, yetmezse kredi kartına yazılır.</p>
   <div class="chips" id="admChips"></div>
   <div class="two" style="margin-top:8px"><input id="newPh" placeholder="Yeni kalıp cümle ekle"><button class="btn" style="margin:0" onclick="addPhrase()">Ekle</button></div>
   <div class="sep"></div>
-  <h3>Boş Yaptı (kotadan düşer)</h3>
+  <h3>Boş Yaptı</h3>
   <label>Ne dedi? (her kelime 1 Boş YPH)</label>
   <textarea id="exText" placeholder="Örn. Bizim zamanımızda böyle şeyler yoktu"></textarea>
   <div class="wc" id="wc">0 kelime</div>
   <label>…ya da sadece kelime sayısı</label><input id="exAmt" inputmode="numeric" placeholder="Örn. 50">
-  <button class="btn red" onclick="addTx(-1)">Kotadan Düş</button>
-  <button class="btn green" onclick="addTx(1)">Sessiz Kaldı Bonusu (kotaya ekler)</button>
+  <button class="btn red" onclick="addTx(-1)">Düş</button>
+  <button class="btn green" onclick="addTx(1)">Sessiz Kaldı Bonusu (vadesiz hesaba ekler)</button>
 
   <div id="pendBox"></div>
 
@@ -226,12 +264,13 @@ select{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);borde
   <h3>Hesap Ayarları</h3>
   <label>Ad</label><input id="setName">
   <div class="two">
-    <div><label>Toplam kota (kelime)</label><input id="setLimit" inputmode="numeric"></div>
+    <div><label>Kredi kartı limiti</label><input id="setLimit" inputmode="numeric"></div>
     <div><label>Giriş şifresi (4 hane)</label><input id="setUPin" inputmode="numeric" maxlength="4"></div>
   </div>
   <button class="btn" onclick="saveSettings()">Kaydet</button>
-  <button class="btn ghost" onclick="newPeriod()">Yeni Dönem (işlemleri sil, kota dolsun)</button>
-  <button class="btn ghost" onclick="resetCard()">Kartı Kapat (yeniden başvuru yapılsın)</button>
+  <button class="btn ghost" onclick="newPeriod()">Yeni Dönem (tüm işlemleri sil, hoş geldin bakiyesi yüklensin)</button>
+  <button class="btn ghost" onclick="clearLoan()">Krediyi Sil (borç affı)</button>
+  <button class="btn ghost" onclick="resetCard()">Kredi Kartını Kapat (yeniden başvuru yapılsın)</button>
   <button class="btn red" onclick="delUser()">Hesabı Sil</button>
 
   <div class="sep"></div>
@@ -243,7 +282,6 @@ select{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);borde
 </div></div>
 
 <div class="toast" id="toast"></div>
-
 <script>
 // ================= VERİ KATMANI =================
 // FIREBASE_URL doluysa tüm telefonlar ortak veritabanını kullanır (gönderimler gerçekten karşıya gider).
@@ -260,9 +298,9 @@ const db={
   async get(p){if(REMOTE){const r=await fetch(`${FIREBASE_URL}/${ROOT}/${p}.json`);if(!r.ok)throw 0;return await r.json()}
     const d=ldb();if(!p)return d;const[o,k]=walk(d,p);return o?(o[k]??null):null},
   async put(p,v){if(REMOTE){const r=await fetch(`${FIREBASE_URL}/${ROOT}/${p}.json`,{method:'PUT',body:JSON.stringify(v)});if(!r.ok)throw 0;return}
-    const d=ldb();const[o,k]=walk(d,p,true);if(v==null)delete o[k];else o[k]=v;lsave(d)},
+    const d=ldb();const[o,k]=walk(d,p,true);if(v==null)delete o[k];else o[k]=JSON.parse(JSON.stringify(v));lsave(d)},
   async patch(p,v){if(REMOTE){const r=await fetch(`${FIREBASE_URL}/${ROOT}/${p}.json`,{method:'PATCH',body:JSON.stringify(v)});if(!r.ok)throw 0;return}
-    const d=ldb();const[o,k]=walk(d,p,true);o[k]=Object.assign(o[k]||{},v);lsave(d)},
+    const d=ldb();const[o,k]=walk(d,p,true);o[k]=Object.assign(o[k]||{},JSON.parse(JSON.stringify(v)));lsave(d)},
   async push(p,v){const id=rid();await this.put(p+'/'+id,v);return id},
   async del(p){return this.put(p,null)}
 };
@@ -273,33 +311,46 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const fmt=n=>Math.round(n).toLocaleString('tr-TR')+' Boş YPH';
 const words=t=>(String(t).trim().match(/[\p{L}\p{N}]+/gu)||[]).length;
 const lc=s=>s.trim().toLocaleLowerCase('tr');
-function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2200)}
+const r50=n=>Math.round(n/50)*50;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2400)}
 function openOv(id){$(id).classList.add('on')}
 function closeOv(id){$(id).classList.remove('on');if(id==='admOv'){admin=false;refresh()}}
 function lget(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lset(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
+function dstr(t){const d=new Date(t);return d.toLocaleDateString('tr-TR')+' '+d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}
+function left(ms){if(ms<=0)return 'doldu';const m=Math.ceil(ms/60000);if(m<60)return m+' dk';const h=Math.floor(m/60);if(h<24)return h+' sa '+(m%60)+' dk';return Math.floor(h/24)+' gün '+(h%24)+' sa'}
+
+// ================= HESAP MATEMATİĞİ =================
+// İşlem: {at,amt,acct:'v'|'k',kind,title,text,ico}
+//  v = vadesiz hesap (banka kartı): + giriş, − çıkış
+//  k = kredi kartı: − harcama (borç artar), + ödeme (borç azalır)
+const WELCOME=100;
+const BOS=t=>t.amt<0&&(!t.kind||t.kind==='gossip');       // gerçekten "boş yapma" olan harcamalar
+const acctOf=t=>t.acct||'k';
+function calc(u,tx){
+  const v=tx.filter(t=>acctOf(t)==='v').reduce((a,t)=>a+t.amt,0);
+  const kNet=-tx.filter(t=>acctOf(t)==='k').reduce((a,t)=>a+t.amt,0);
+  const lim=u.card?(u.limit||0):0;
+  return {v,debt:Math.max(0,kNet),kAvail:u.card?Math.max(0,lim-kNet):0,lim,spent:tx.filter(BOS).reduce((a,t)=>a-t.amt,0)};
+}
 
 // ================= DURUM =================
-let ME=null;          // giriş yapan hesabın id'si
-let U=null;           // giriş yapan hesabın bilgileri {name,pin,limit,card,no,tour,myPh}
-let TX=[];            // işlemler (yeni→eski değil, eski→yeni)
-let PEND=[];
-let USERS={};         // tüm hesaplar
-let admin=false,AU=null;   // yönetici panelinde seçili hesap
+let ME=null,U=null,TX=[],PEND=[],DEPS=[],USERS={};
+let admin=false,AU=null,AT=[];
 let seen=new Set();
+const C=()=>calc(U,TX);
 
 function txArr(o){return Object.entries(o||{}).map(([id,t])=>Object.assign({id},t)).sort((a,b)=>a.at-b.at)}
-function balance(tx,lim){return Math.max(0,lim+tx.reduce((a,t)=>a+t.amt,0))}
-function avail(){return U?balance(TX,U.limit||0):0}
-
 async function loadMe(){
-  const [u,t,p]=await Promise.all([db.get('users/'+ME),db.get('tx/'+ME),db.get('pend/'+ME)]);
+  const [u,t,p,d]=await Promise.all([db.get('users/'+ME),db.get('tx/'+ME),db.get('pend/'+ME),db.get('deps/'+ME)]);
   if(!u){logout();return}
-  U=u;const nt=txArr(t);
-  // gelen yeni gönderimleri bildir
-  if(seen.size)nt.filter(x=>!seen.has(x.id)&&x.from&&x.amt>0).forEach(x=>toast(`📥 ${x.fromName} size ${fmt(x.amt)} gönderdi!`));
+  U=u;
+  if(!U.welcome){U.welcome=true;await db.patch('users/'+ME,{welcome:true});await db.push('tx/'+ME,{at:Date.now(),amt:WELCOME,acct:'v',kind:'welcome',ico:'🎉',title:'Hoş geldin bonusu'});return loadMe()}
+  const nt=txArr(t);
+  if(seen.size)nt.filter(x=>!seen.has(x.id)&&x.kind==='recv').forEach(x=>toast(`📥 ${x.fromName} size ${fmt(x.amt)} gönderdi!`));
   nt.forEach(x=>seen.add(x.id));
   TX=nt;PEND=Object.entries(p||{}).map(([id,v])=>Object.assign({id},v));
+  DEPS=Object.entries(d||{}).map(([id,v])=>Object.assign({id},v)).sort((a,b)=>a.end-b.end);
 }
 async function refresh(){if(!ME)return;try{await loadMe()}catch(e){toast('Bağlantı hatası');return}render()}
 
@@ -307,12 +358,12 @@ async function refresh(){if(!ME)return;try{await loadMe()}catch(e){toast('Bağla
 function loginView(mode){
   const reg=mode==='reg';
   $('loginBox').innerHTML=`<div class="lg"><i>B</i>Boş Bank</div>
-    <div class="sub">${reg?'Yeni hesap oluşturun':'Hesabınıza giriş yapın'}</div>
+    <div class="sub">${reg?'Yeni hesap açın, banka kartınız hemen tanımlansın':'Hesabınıza giriş yapın'}</div>
     <label>Adınız</label><input id="lName" placeholder="Örn. Annem" autocomplete="off">
     <label>Şifre (4 rakam)</label><input id="lPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••">
     ${reg?'<label>Şifre tekrar</label><input id="lPin2" type="password" inputmode="numeric" maxlength="4" placeholder="••••">':''}
-    <button class="btn" onclick="${reg?'doRegister()':'doLogin()'}">${reg?'Hesap Oluştur':'Giriş Yap'}</button>
-    <button class="link" onclick="loginView('${reg?'':'reg'}')">${reg?'Zaten hesabım var, giriş yap':'Hesabın yok mu? Hesap oluştur'}</button>
+    <button class="btn" onclick="${reg?'doRegister()':'doLogin()'}">${reg?'Hesap Aç':'Giriş Yap'}</button>
+    <button class="link" onclick="loginView('${reg?'':'reg'}')">${reg?'Zaten hesabım var, giriş yap':'Hesabın yok mu? Hesap aç'}</button>
     <div class="conn">${REMOTE?'🟢 Çevrimiçi: tüm telefonlar bağlı':'📱 Yerel mod: veriler bu telefonda'}</div>`;
 }
 async function findUser(name){USERS=await db.get('users')||{};return Object.entries(USERS).find(([id,u])=>lc(u.name)===lc(name))}
@@ -331,7 +382,8 @@ async function doRegister(){
   if(!/^\d{4}$/.test(p)){toast('Şifre 4 rakam olmalı');return}
   if(p!==p2){toast('Şifreler aynı değil');return}
   try{if(await findUser(n)){toast('Bu ad zaten alınmış');return}
-    const id=rid();await db.put('users/'+id,{name:n,pin:p,limit:0,card:false,no:'0000',tour:false,at:Date.now()});
+    const id=rid();
+    await db.put('users/'+id,{name:n,pin:p,limit:0,card:false,no:'0000',dno:String(1000+Math.floor(Math.random()*9000)),tour:false,at:Date.now()});
     enter(id);
   }catch(e){toast('Bağlantı hatası')}
 }
@@ -339,61 +391,72 @@ async function enter(id){
   ME=id;lset('bosBank.me',id);seen=new Set();
   await refresh();if(!U)return;
   $('login').style.display='none';
-  if(!U.tour)setTimeout(startTour,400);
+  if(!U.tour)setTimeout(()=>startTour(),400);
 }
 function logout(){ME=null;U=null;TX=[];lset('bosBank.me',null);$('login').style.display='';loginView()}
 
 // ================= EKRAN =================
 const PH=['Ders çalış','Okula git','Kardeşine kötü örnek oluyorsun','Bak komşunun oğlu ne yapmış','Telefonu bırak artık','Bizim zamanımızda böyle şeyler yoktu','Ben senin yaşındayken çalışıyordum','Odanı topla','Üşüteceksin üstüne bir şey al','Gece gece nereye','Elalem ne der','Bu saate kadar ne yaptın','Ne zaman evleneceksin','Babana söylerim','Yemeğini bitir','Sen daha çok küçüksün'];
 function phrases(u){return PH.concat((u||U||{}).myPh||[])}
-function phUses(p,tx){const q=lc(p);return tx.filter(t=>t.amt<0&&t.text&&lc(t.text).includes(q)).length}
+function phUses(p,tx){const q=lc(p);return tx.filter(t=>BOS(t)&&t.text&&lc(t.text).includes(q)).length}
+function maxLoan(){return U.card?Math.max(300,r50(U.limit*1.5)):300}
 
 function render(){
   if(!U)return;
-  const spent=TX.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
-  const av=avail(),lim=U.limit||0;
-  const pct=lim>0?Math.min(100,av/lim*100):0;
+  const c=C(),pct=c.lim>0?Math.min(100,c.kAvail/c.lim*100):0;
+  document.querySelectorAll('.cName').forEach(e=>e.textContent=U.name);
+  $('hiName').textContent=U.name;
+  $('vBal').textContent=fmt(c.v);
+  $('dNo').textContent='**** '+(U.dno||'0000');
+  $('negAlert').classList.toggle('on',c.v<0);
   $('noCard').style.display=U.card?'none':'';
   $('hasCard').style.display=U.card?'':'none';
-  $('alert').classList.toggle('on',U.card&&av<=0);
-  $('hiName').textContent=U.name;
-  $('cardName').textContent=U.name;
+  $('alert').classList.toggle('on',U.card&&c.kAvail<=0);
   $('cardNo').textContent='**** **** **** '+(U.no||'0000');
-  $('avail').textContent=fmt(av);
-  $('total').textContent=fmt(lim);
-  $('spent').textContent=fmt(spent);
+  $('avail').textContent=fmt(c.kAvail);
+  $('total').textContent=fmt(c.lim);
+  $('debt').textContent=fmt(c.debt);
+  $('spent').textContent=fmt(c.spent);
   $('barIn').style.width=pct+'%';
   $('bar').className='bar'+(pct<20?' low':pct<50?' warn':'');
+  if(U.loan){const rem=U.loan.total-U.loan.paid,late=Date.now()>U.loan.due;
+    $('loanSt').innerHTML=`Kalan borç: <b>${fmt(rem)}</b>${late?'<br><span class="red-t">Gecikmede!</span>':'<br>Vade: '+left(U.loan.due-Date.now())}`}
+  else $('loanSt').textContent=fmt(maxLoan())+'\'ye kadar, hemen hesabınızda';
+  if(DEPS.length){const s=DEPS.reduce((a,d)=>a+d.amt,0),ready=DEPS.filter(d=>Date.now()>=d.end).length;
+    $('depSt').innerHTML=`${DEPS.length} vadeli · <b>${fmt(s)}</b>${ready?'<br><span style="color:var(--green);font-weight:700">Vadesi dolan var!</span>':''}`}
+  else $('depSt').textContent='Günlük %10\'a varan faiz';
   const list=phrases().map(p=>({p,n:phUses(p,TX)})).sort((a,b)=>b.n-a.n).slice(0,8);
   $('phList').innerHTML=list.map(x=>`<div class="ph"><div class="t">“${esc(x.p)}”<small>${x.n?x.n+' kez yapıldı':'Henüz yapılmadı'}</small></div><span class="c">${fmt(words(x.p))}</span></div>`).join('');
-  const L=$('list');
-  L.innerHTML=TX.length?TX.slice().reverse().slice(0,40).map(txHtml).join(''):'<div class="empty">Henüz işlem yok (şaşırtıcı)</div>';
+  $('list').innerHTML=TX.length?TX.slice().reverse().slice(0,40).map(txHtml).join(''):'<div class="empty">Henüz işlem yok (şaşırtıcı)</div>';
 }
 function txHtml(t){
-  const d=new Date(t.at);
+  const src=acctOf(t)==='v'?'Banka Kartı':'Kredi Kartı';
   return `<div class="tx"><div class="ico">${esc(t.ico||(t.amt<0?'🗣️':'🤐'))}</div>
-    <div class="t"><b>${esc(t.title||(t.amt<0?'Boş yaptı':'Sessiz kaldı bonusu'))}</b>${t.text?`<small class="qt">“${esc(t.text)}”</small>`:''}<small>${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</small></div>
+    <div class="t"><b>${esc(t.title||(t.amt<0?'Boş yaptı':'Sessiz kaldı bonusu'))}</b>${t.text?`<small class="qt">“${esc(t.text)}”</small>`:''}<small>${src} · ${dstr(t.at)}</small></div>
     <div class="amt ${t.amt<0?'neg':'pos'}">${t.amt<0?'-':'+'}${fmt(Math.abs(t.amt))}</div></div>`;
 }
 
 // ================= TANITIM TURU =================
 const TOUR=[
  {el:null,t:'Boş Bank\'a hoş geldiniz! 👋',d:'Burası paranın değil, boş yapma hakkının bankası. Söylediğiniz her kelime 1 Boş YPH (Boş Yapma Hakkı) harcar. Size uygulamayı adım adım tanıtalım.'},
- {el:'applyBtn',nc:1,t:'Kart başvurusu',d:'Önce buradan Boş Yapma Kartı başvurusu yapın. Size birkaç soru sorulacak ("Günde kaç kez ders çalış dersiniz?" gibi) ve cevaplarınıza göre aylık boş yapma kotanız belirlenecek. Çok konuşan riskli müşteridir, kotası düşük çıkar!'},
- {el:'ccEl',c:1,t:'Boş Yapma Kartınız',d:'Size özel kart. Üzerinde adınız ve kart numaranız yazar.'},
- {el:'limBox',c:1,t:'Kalan Boş Yapma Hakkı',d:'Kaç kelime daha boş yapabileceğiniz burada yazar. Çubuk yeşilden sarıya, sonra kırmızıya döner. Sıfıra inerse susmanız gerekir 🤐'},
- {el:'raiseBtn',c:1,t:'Kota Artırım',d:'Kotanız yetmiyorsa artırım başvurusu yapabilirsiniz. Ama dikkat: boş yapma geçmişinize göre reddedilebilir!'},
+ {el:'dcEl',t:'Banka Kartınız',d:'Hesap açar açmaz size bir banka kartı tanımlandı ve vadesiz hesabınıza '+WELCOME+' Boş YPH hoş geldin bonusu yüklendi. Yaptığınız boşlar önce buradan düşer. Bakiye eksiye düşerse uyarı çıkar!'},
+ {el:'applyBtn',nc:1,t:'Kredi Kartı Başvurusu',d:'Bakiyeniz yetmeyecekse kredi kartı başvurusu yapın. "Telefonu açınca ilk cümleniz?", "Günde kaç kez ders çalış dersiniz?" gibi sorulara verdiğiniz cevaplarla Boşdeks notunuz ve limitiniz belirlenir. Çok konuşan riskli müşteridir!'},
+ {el:'ccEl',c:1,t:'Kredi Kartınız',d:'Size özel Boş Yapma Kredi Kartı. Banka kartınızdaki bakiye bitince boşlarınız buraya yazılır.'},
+ {el:'limBox',c:1,t:'Limit ve Kart Borcu',d:'Kullanılabilir limitiniz ve kart borcunuz burada. "Kart Borcunu Öde" ile banka kartınızdaki bakiyeden borcunuzu kapatabilirsiniz.'},
+ {el:'raiseBtn',c:1,t:'Limit Artırım',d:'Limit yetmiyorsa artırım başvurusu yapın. Ama boş yapma geçmişinize göre reddedilebilir!'},
+ {el:'prodEl',q:0,t:'Kredi Çek',d:'Acil boş yapmanız mı gerekiyor? Kredi çekin, tutar anında banka kartınıza yatsın. Ama unutmayın: faiziyle birlikte geri ödersiniz. Vade geçerse "Gecikmede" damgası yersiniz!'},
+ {el:'prodEl',q:1,t:'Faize Koy',d:'Sessiz kalıp biriktirdiğiniz Boş YPH\'leri vadeli hesaba koyun, vade sonunda faiziyle geri alın. Erken bozarsanız faiz yanar!'},
  {el:'phBox',t:'Boş Tarifesi',d:'"Ders çalış", "Okula git", "Kardeşine kötü örnek oluyorsun"… En sık yapılan boşlar ve kaç Boş YPH tuttukları. En çok söylediğiniz en üste çıkar.'},
- {el:'quickEl',q:0,t:'Boş Gönder',d:'Kendi Boş YPH\'nizden başka bir hesaba istediğiniz kadar gönderin. Gönderdiğiniz miktar sizden düşer, karşı tarafa gerçekten eklenir.'},
+ {el:'quickEl',q:0,t:'Boş Gönder',d:'Banka kartınızdan veya kredi kartınızdan başka bir hesaba istediğiniz kadar Boş YPH gönderin. Karşı tarafın banka kartına gerçekten eklenir.'},
  {el:'quickEl',q:1,t:'Dedikodu',d:'Dedikodu yapmak pahalıdır: her kelime 2 Boş YPH harcar!'},
- {el:'quickEl',q:2,t:'Kampanyalar',d:'"1 saat sessiz kal" gibi kampanyalara katılın, şartı yerine getirince bonus Boş YPH kazanın.'},
- {el:'quickEl',q:3,t:'Sessizlik Puanı',d:'Ne kadar sessiz olduğunuzu gösteren puanınız. Sessizlik sayacıyla sessiz kaldığınız süre için bonus da isteyebilirsiniz.'},
- {el:'txBox',t:'Son İşlemler',d:'Yaptığınız her boş, gönderdiğiniz ve size gelen Boş YPH\'ler burada listelenir.'},
+ {el:'quickEl',q:2,t:'Kampanyalar',d:'"Bir gün ders çalış deme" gibi kampanyalara katılın, şartı yerine getirince bonus kazanın.'},
+ {el:'quickEl',q:3,t:'Sessizlik Puanı',d:'Ne kadar sessiz olduğunuzu gösteren puanınız. Sessizlik sayacıyla bonus da isteyebilirsiniz.'},
+ {el:'txBox',t:'Son İşlemler',d:'Her boş, gönderim, kredi ve faiz hareketi hangi karttan yapıldığıyla birlikte burada listelenir.'},
  {el:'hdrBtns',t:'Rehber ve Çıkış',d:'Bu tanıtımı tekrar görmek için "❓ Rehber"e, hesaptan çıkmak için "Çıkış"a dokunun. İyi susmalar! 🤐'}
 ];
-let tSteps=[],tI=0;
-function startTour(){
-  tSteps=TOUR.filter(s=>!(s.c&&!U.card)&&!(s.nc&&U.card));tI=0;
+let tSteps=[],tI=0,tEl=null;
+function startTour(mode){
+  tSteps=mode==='card'?TOUR.filter(s=>s.c):TOUR.filter(s=>!(s.c&&!U.card)&&!(s.nc&&U.card));tI=0;
   window.scrollTo(0,0);$('tour').classList.add('on');showStep();
 }
 function showStep(){
@@ -407,7 +470,6 @@ function showStep(){
   tEl=el;el.scrollIntoView({block:'center',behavior:'instant'});
   tPos();setTimeout(tPos,120);setTimeout(tPos,400);
 }
-let tEl=null;
 function tPos(){
   if(!tEl||!$('tour').classList.contains('on'))return;
   const r=tEl.getBoundingClientRect(),pad=6,hole=$('tHole'),card=$('tCard');
@@ -419,22 +481,28 @@ addEventListener('scroll',tPos);addEventListener('resize',tPos);
 function tGo(d){tI+=d;if(tI>=tSteps.length){endTour();return}showStep()}
 async function endTour(){$('tour').classList.remove('on');window.scrollTo(0,0);if(U&&!U.tour){U.tour=true;try{await db.patch('users/'+ME,{tour:true})}catch(e){}}}
 
-// ================= HIZLI İŞLEMLER =================
-function needCard(){if(!U.card){toast('Önce Boş Yapma Kartı başvurusu yapın');return true}return false}
+// ================= ORTAK =================
 function qOpen(title,html){$('qBody').innerHTML=`<h2>${title} <button onclick="qClose()">Kapat</button></h2>`+html;openOv('qOv')}
 function qClose(){clearInterval(silT);silStart=0;closeOv('qOv')}
 function done(icon,msg){$('qBody').innerHTML=`<div class="center"><div class="ok">${icon}</div><div class="q">${msg}</div><button class="btn" onclick="qClose()">Tamam</button></div>`}
-async function spend(n,o){
+function srcSel(id){const c=C();return `<label>Hangi karttan?</label><select id="${id}"><option value="v">Banka Kartı · Bakiye ${fmt(c.v)}</option>${U.card?`<option value="k">Kredi Kartı · Limit ${fmt(c.kAvail)}</option>`:''}</select>`}
+function srcAvail(s){const c=C();return s==='v'?c.v:c.kAvail}
+async function spend(n,src,o){
   await refresh();
-  if(n>avail()){toast('Yetersiz boş yapma kotası! 🤐');return false}
-  await db.push('tx/'+ME,Object.assign({at:Date.now(),amt:-n},o));await refresh();return true}
+  if(n>srcAvail(src)){toast(src==='v'?'Yetersiz bakiye! 🤐':'Yetersiz kart limiti! 🤐');return false}
+  await db.push('tx/'+ME,Object.assign({at:Date.now(),amt:-n,acct:src},o));await refresh();return true}
+function busy(msgs,ms,fn){
+  $('qBody').innerHTML=`<div class="center"><div class="spin"></div><div class="q" id="bzT">${msgs[0]}</div></div>`;
+  msgs.slice(1).forEach((m,i)=>setTimeout(()=>{const e=$('bzT');if(e)e.textContent=m},(i+1)*ms/msgs.length));
+  setTimeout(fn,ms);
+}
 
+// ================= BOŞ GÖNDER =================
 async function qSend(){
-  if(needCard())return;
   try{USERS=await db.get('users')||{}}catch(e){toast('Bağlantı hatası');return}
   const others=Object.entries(USERS).filter(([id])=>id!==ME).sort((a,b)=>a[1].name.localeCompare(b[1].name,'tr'));
-  if(!others.length){qOpen('Boş Gönder',`<p class="lbl">Gönderebileceğiniz başka hesap yok. Önce karşı tarafın bir hesap oluşturması gerekiyor.</p>`);return}
-  qOpen('Boş Gönder',`<p class="lbl">Kalan hakkınız: <b>${fmt(avail())}</b></p>
+  if(!others.length){qOpen('Boş Gönder',`<p class="lbl">Gönderebileceğiniz başka hesap yok. Önce karşı tarafın bir hesap açması gerekiyor.</p>`);return}
+  qOpen('Boş Gönder',`${srcSel('sSrc')}
     <label>Kime?</label><select id="sTo">${others.map(([id,u])=>`<option value="${id}">${esc(u.name)}</option>`).join('')}</select>
     <label>Kaç Boş YPH?</label><input id="sAmt" inputmode="numeric" placeholder="Örn. 50">
     <div class="amts">${[10,25,50,100].map(n=>`<button onclick="$('sAmt').value=${n}">${n}</button>`).join('')}</div>
@@ -442,36 +510,158 @@ async function qSend(){
     <button class="btn" onclick="doSend()">Gönder</button>`);
 }
 async function doSend(){
-  const to=$('sTo').value,n=parseInt($('sAmt').value,10),note=$('sNote').value.trim();
+  const src=$('sSrc').value,to=$('sTo').value,n=parseInt($('sAmt').value,10),note=$('sNote').value.trim()||undefined;
   if(!(n>0)){toast('Kaç Boş YPH göndereceğini yaz');return}
   const toU=USERS[to];if(!toU){toast('Alıcı bulunamadı');return}
   try{
     await refresh();
-    if(n>avail()){toast('Yetersiz bakiye! Kalan: '+fmt(avail()));return}
+    if(n>srcAvail(src)){toast('Yetersiz! Kullanılabilir: '+fmt(srcAvail(src)));return}
     const at=Date.now();
-    await db.push('tx/'+ME,{at,amt:-n,ico:'📤',title:toU.name+' kişisine gönderildi',text:note||undefined,to});
-    await db.push('tx/'+to,{at,amt:n,ico:'📥',title:U.name+' size gönderdi',text:note||undefined,from:ME,fromName:U.name});
+    await db.push('tx/'+ME,{at,amt:-n,acct:src,kind:'send',ico:'📤',title:toU.name+' kişisine gönderildi',text:note,to});
+    await db.push('tx/'+to,{at,amt:n,acct:'v',kind:'recv',ico:'📥',title:U.name+' size gönderdi',text:note,from:ME,fromName:U.name});
     await refresh();
-    done('📤',`${esc(toU.name)} kişisine ${fmt(n)} gönderildi!<br><small class="lbl">Kalan: ${fmt(avail())}</small>`);
+    done('📤',`${esc(toU.name)} kişisine ${fmt(n)} gönderildi!<br><small class="lbl">Karşı tarafın banka kartına yattı.</small>`);
   }catch(e){toast('Gönderilemedi, bağlantıyı kontrol edin')}
 }
 
-function liveCount(inp,out,mul){$(inp).addEventListener('input',()=>{$(out).textContent=fmt(words($(inp).value)*mul)+' harcanacak · Kalan: '+fmt(avail())})}
+// ================= DEDİKODU =================
 function qGossip(){
-  if(needCard())return;
   qOpen('Dedikodu',`<span class="badge">⚠️ Dedikodu kelimesi 2 Boş YPH harcar</span>
+    ${srcSel('gSrc')}
     <label>Kim hakkında?</label><input id="gWho" placeholder="Örn. Üst kat komşu">
     <label>Dedikodu</label><textarea id="gMsg" placeholder="Duydun mu, …"></textarea>
-    <div class="wc" id="gWc">0 Boş YPH harcanacak · Kalan: ${fmt(avail())}</div>
+    <div class="wc" id="gWc">0 Boş YPH harcanacak</div>
     <button class="btn red" onclick="doGossip()">Dedikoduyu Yap</button>`);
-  liveCount('gMsg','gWc',2);
+  $('gMsg').addEventListener('input',()=>{$('gWc').textContent=fmt(words($('gMsg').value)*2)+' harcanacak'});
 }
 async function doGossip(){
   const who=$('gWho').value.trim()||'Birisi',msg=$('gMsg').value.trim(),n=words(msg)*2;
   if(!n){toast('Dedikodu yazmadın');return}
-  try{if(await spend(n,{ico:'☕',title:'Dedikodu: '+who,text:msg}))done('☕',`Dedikodu yapıldı, ${fmt(n)} harcandı.<br><small class="lbl">Bu bilgi komşulara iletilmeyecektir.</small>`)}catch(e){toast('Bağlantı hatası')}
+  try{if(await spend(n,$('gSrc').value,{kind:'gossip',ico:'☕',title:'Dedikodu: '+who,text:msg}))done('☕',`Dedikodu yapıldı, ${fmt(n)} harcandı.<br><small class="lbl">Bu bilgi komşulara iletilmeyecektir.</small>`)}catch(e){toast('Bağlantı hatası')}
 }
 
+// ================= KART BORCU =================
+function qPayCard(){
+  const c=C();
+  if(!c.debt){toast('Kart borcunuz yok 👍');return}
+  qOpen('Kart Borcunu Öde',`<div class="sum"><div class="kv"><span>Kart borcu</span><b class="red-t">${fmt(c.debt)}</b></div><div class="kv"><span>Banka kartı bakiyesi</span><b>${fmt(c.v)}</b></div></div>
+    <label>Ödenecek tutar</label><input id="cpAmt" inputmode="numeric" value="${Math.max(0,Math.min(c.debt,c.v))}">
+    <div class="amts"><button onclick="$('cpAmt').value=${Math.max(0,Math.min(c.debt,c.v))}">Tümü</button><button onclick="$('cpAmt').value=${Math.max(1,Math.round(c.debt*.2))}">Asgari %20</button></div>
+    <button class="btn green" onclick="doPayCard()">Banka Kartından Öde</button>`);
+}
+async function doPayCard(){
+  const n=parseInt($('cpAmt').value,10);await refresh();const c=C();
+  if(!(n>0)){toast('Tutar girin');return}
+  if(n>c.debt){toast('Borçtan fazla ödeyemezsiniz');return}
+  if(n>c.v){toast('Banka kartı bakiyesi yetersiz');return}
+  const at=Date.now();
+  await db.push('tx/'+ME,{at,amt:-n,acct:'v',kind:'cardpay',ico:'💳',title:'Kredi kartı borç ödemesi'});
+  await db.push('tx/'+ME,{at:at+1,amt:n,acct:'k',kind:'cardpay',ico:'💳',title:'Banka kartından ödeme alındı'});
+  await refresh();done('✅',`${fmt(n)} kart borcu ödendi.<br><small class="lbl">Kalan borç: ${fmt(C().debt)}</small>`);
+}
+
+// ================= KREDİ =================
+const LTERMS=[{lbl:'1 hafta',days:7,rate:.10},{lbl:'1 ay',days:30,rate:.25},{lbl:'3 ay',days:90,rate:.60}];
+const LPURP=['Bayram ziyareti konuşmaları','Düğünde "sıra sende" demek','Komşu çay toplantısı','Telefonda 3 saatlik sohbet','Akraba dedikodusu','Karne günü nasihatleri'];
+let LF={term:1};
+function qLoan(){
+  if(U.loan){
+    const L=U.loan,rem=L.total-L.paid,late=Date.now()>L.due,c=C();
+    qOpen('Kredim',`<div class="sum">
+      <div class="kv"><span>Amaç</span><b>${esc(L.purpose)}</b></div>
+      <div class="kv"><span>Çekilen</span><b>${fmt(L.amt)}</b></div>
+      <div class="kv"><span>Faiz (%${Math.round(L.rate*100)})</span><b>${fmt(L.total-L.amt)}</b></div>
+      <div class="kv"><span>Toplam geri ödeme</span><b>${fmt(L.total)}</b></div>
+      <div class="kv"><span>Ödenen</span><b>${fmt(L.paid)}</b></div>
+      <div class="kv"><span>Kalan borç</span><b class="red-t">${fmt(rem)}</b></div>
+      <div class="kv"><span>Son ödeme</span><b>${new Date(L.due).toLocaleDateString('tr-TR')}${late?' <span class="red-t">GECİKMEDE</span>':''}</b></div></div>
+      <div class="pbar"><div style="width:${Math.min(100,L.paid/L.total*100)}%"></div></div>
+      <label>Ödeme tutarı (banka kartından · bakiye ${fmt(c.v)})</label><input id="lpAmt" inputmode="numeric" placeholder="Örn. 50">
+      <div class="amts"><button onclick="$('lpAmt').value=${Math.max(0,Math.min(rem,c.v))}">Tümü</button>${[25,50,100].map(n=>`<button onclick="$('lpAmt').value=${n}">${n}</button>`).join('')}</div>
+      <button class="btn green" onclick="payLoan()">Kredi Taksiti Öde</button>`);
+    return;
+  }
+  LF={term:1,purpose:0};
+  qOpen('Kredi Çek',`<p class="lbl">Tutar anında banka kartınıza yatar. En fazla <b>${fmt(maxLoan())}</b>${U.card?'':' (kredi kartı olanlara daha yüksek limit)'}.</p>
+    <label>Krediyi ne için kullanacaksınız?</label><select id="lPurp">${LPURP.map((p,i)=>`<option value="${i}">${p}</option>`).join('')}</select>
+    <label>Tutar</label><input id="lAmt" inputmode="numeric" value="${Math.min(200,maxLoan())}">
+    <div class="amts">${[100,200,300].filter(n=>n<=maxLoan()).concat(maxLoan()).map((n,i,a)=>a.indexOf(n)===i?`<button onclick="$('lAmt').value=${n};lSum()">${n}</button>`:'').join('')}</div>
+    <label>Vade</label><div id="lTerms"></div>
+    <div class="sum" id="lSum"></div>
+    <button class="btn" onclick="takeLoan()">Krediyi Çek</button>`);
+  $('lAmt').addEventListener('input',lSum);lSum();
+}
+function lSum(){
+  $('lTerms').innerHTML=LTERMS.map((t,i)=>`<button class="opt ${i===LF.term?'sel':''}" onclick="LF.term=${i};lSum()">${t.lbl} · faiz %${Math.round(t.rate*100)}</button>`).join('');
+  const n=parseInt($('lAmt').value,10)||0,t=LTERMS[LF.term],tot=Math.round(n*(1+t.rate));
+  $('lSum').innerHTML=`<div class="kv"><span>Çekilecek</span><b>${fmt(n)}</b></div><div class="kv"><span>Faiz</span><b>${fmt(tot-n)}</b></div><div class="kv"><span>Toplam geri ödeme</span><b class="red-t">${fmt(tot)}</b></div><div class="kv"><span>Son ödeme</span><b>${new Date(Date.now()+t.days*864e5).toLocaleDateString('tr-TR')}</b></div>`;
+}
+function takeLoan(){
+  const n=parseInt($('lAmt').value,10),t=LTERMS[LF.term],purpose=LPURP[$('lPurp').value];
+  if(!(n>=10)){toast('En az 10 Boş YPH');return}
+  if(n>maxLoan()){toast('En fazla '+fmt(maxLoan())+' çekebilirsiniz');return}
+  busy(['Kredi başvurunuz alındı…','Boşdeks notunuz sorgulanıyor…','Kefil olarak komşunuz aranıyor…','Kredi onaylanıyor…'],3600,async()=>{
+    const at=Date.now(),loan={amt:n,rate:t.rate,total:Math.round(n*(1+t.rate)),paid:0,at,due:at+t.days*864e5,purpose,term:t.lbl};
+    try{await db.patch('users/'+ME,{loan});await db.push('tx/'+ME,{at,amt:n,acct:'v',kind:'loan',ico:'💰',title:'Kredi kullanıldı ('+t.lbl+')',text:purpose});await refresh()}catch(e){toast('Bağlantı hatası');qClose();return}
+    done('💰',`Krediniz onaylandı!<br>${fmt(n)} banka kartınıza yattı.<br><small class="lbl">${new Date(loan.due).toLocaleDateString('tr-TR')} tarihine kadar ${fmt(loan.total)} geri ödemelisiniz.</small>`);
+  });
+}
+async function payLoan(){
+  const n=parseInt($('lpAmt').value,10);await refresh();
+  const L=U.loan;if(!L){qClose();return}
+  const rem=L.total-L.paid,c=C();
+  if(!(n>0)){toast('Tutar girin');return}
+  if(n>rem){toast('Kalan borçtan fazla ödeyemezsiniz');return}
+  if(n>c.v){toast('Banka kartı bakiyesi yetersiz');return}
+  await db.push('tx/'+ME,{at:Date.now(),amt:-n,acct:'v',kind:'loanpay',ico:'🏦',title:'Kredi taksit ödemesi'});
+  if(L.paid+n>=L.total){await db.put('users/'+ME+'/loan',null);await refresh();done('🎉','Krediniz tamamen kapandı!<br><small class="lbl">Artık borçsuz boş yapabilirsiniz.</small>');return}
+  await db.patch('users/'+ME+'/loan',{paid:L.paid+n});await refresh();toast(fmt(n)+' ödendi');qLoan();
+}
+
+// ================= FAİZ (VADELİ HESAP) =================
+const DTERMS=[{lbl:'1 saat',ms:36e5,rate:.02},{lbl:'1 gün',ms:864e5,rate:.10},{lbl:'1 hafta',ms:6048e5,rate:.30}];
+let DF=1;
+function qDep(){
+  const c=C(),now=Date.now();
+  const list=DEPS.map(d=>{const ok=now>=d.end,pct=Math.min(100,(now-d.at)/(d.end-d.at)*100);
+    return `<div class="camp"><b>${fmt(d.amt)} <span class="badge">%${Math.round(d.rate*100)} · ${esc(d.lbl)}</span></b>
+      <p>Vade sonunda: <b>${fmt(Math.round(d.amt*(1+d.rate)))}</b> · ${ok?'<span style="color:var(--green);font-weight:700">Vadesi doldu!</span>':'Kalan: '+left(d.end-now)}</p>
+      <div class="pbar"><div style="width:${pct}%"></div></div>
+      ${ok?`<button class="btn green small" onclick="wdDep('${d.id}')">Faiziyle Çek</button>`:`<button class="btn ghost small" onclick="wdDep('${d.id}')">Erken Boz (faiz yanar)</button>`}</div>`}).join('');
+  qOpen('Faize Koy',`${list?'<h3>Vadeli Hesaplarım</h3>'+list+'<div class="sep"></div>':''}
+    <h3>Yeni Vadeli Hesap</h3>
+    <p class="lbl">Banka kartı bakiyeniz: <b>${fmt(c.v)}</b></p>
+    <label>Tutar</label><input id="dAmt" inputmode="numeric" value="${Math.max(0,Math.min(50,c.v))}">
+    <label>Vade</label><div id="dTerms"></div>
+    <div class="sum" id="dSum"></div>
+    <button class="btn" onclick="putDep()">Faize Koy</button>`);
+  $('dAmt').addEventListener('input',dSum);dSum();
+}
+function dSum(){
+  $('dTerms').innerHTML=DTERMS.map((t,i)=>`<button class="opt ${i===DF?'sel':''}" onclick="DF=${i};dSum()">${t.lbl} · faiz %${Math.round(t.rate*100)}</button>`).join('');
+  const n=parseInt($('dAmt').value,10)||0,t=DTERMS[DF];
+  $('dSum').innerHTML=`<div class="kv"><span>Yatırılacak</span><b>${fmt(n)}</b></div><div class="kv"><span>Faiz getirisi</span><b style="color:var(--green)">+${fmt(Math.round(n*t.rate))}</b></div><div class="kv"><span>Vade sonu</span><b>${dstr(Date.now()+t.ms)}</b></div>`;
+}
+async function putDep(){
+  const n=parseInt($('dAmt').value,10),t=DTERMS[DF];await refresh();
+  if(!(n>=10)){toast('En az 10 Boş YPH');return}
+  if(n>C().v){toast('Banka kartı bakiyesi yetersiz');return}
+  const at=Date.now();
+  await db.push('tx/'+ME,{at,amt:-n,acct:'v',kind:'dep',ico:'📈',title:'Vadeli hesaba yatırıldı ('+t.lbl+')'});
+  await db.push('deps/'+ME,{amt:n,rate:t.rate,at,end:at+t.ms,lbl:t.lbl});
+  await refresh();done('📈',`${fmt(n)} faize kondu!<br><small class="lbl">${dstr(at+t.ms)} tarihinde ${fmt(Math.round(n*(1+t.rate)))} olacak.</small>`);
+}
+async function wdDep(id){
+  const d=DEPS.find(x=>x.id===id);if(!d)return;
+  const ok=Date.now()>=d.end;
+  if(!ok&&!confirm('Erken bozarsanız faiz yanar, sadece anapara döner. Emin misiniz?'))return;
+  const got=ok?Math.round(d.amt*(1+d.rate)):d.amt;
+  await db.del('deps/'+ME+'/'+id);
+  await db.push('tx/'+ME,{at:Date.now(),amt:got,acct:'v',kind:'depout',ico:'📈',title:ok?'Vadeli hesap: anapara + faiz':'Vadeli hesap bozuldu (faiz yandı)'});
+  await refresh();toast((ok?'Faiziyle ':'')+fmt(got)+' banka kartına yattı');qDep();
+}
+
+// ================= KAMPANYALAR / SESSİZLİK =================
 const CAMPS=[
  {id:'sus1',t:'1 saat sessiz kal',d:'Bir saat boyunca hiç boş yapma.',b:100},
  {id:'ders',t:'"Ders çalış" demeden 1 gün',d:'Bir gün boyunca kimseye "ders çalış" deme.',b:200},
@@ -480,8 +670,7 @@ const CAMPS=[
  {id:'gunay',t:'Çiçekli mesaj yok',d:'Bir hafta "Günaydın" görseli atma.',b:400}
 ];
 function qCamps(){
-  if(needCard())return;
-  qOpen('Kampanyalar','<p class="lbl">Şartı yerine getir, onaylanınca kotana bonus Boş YPH eklensin.</p>'+CAMPS.map(c=>{
+  qOpen('Kampanyalar','<p class="lbl">Şartı yerine getir, onaylanınca banka kartına bonus Boş YPH yüklensin.</p>'+CAMPS.map(c=>{
     const p=PEND.find(x=>x.cid===c.id);
     return `<div class="camp"><b>${c.t} <span class="badge">+${fmt(c.b)}</span></b><p>${c.d}</p>
       ${p?'<button class="btn ghost" disabled>Onay bekliyor ⏳</button>':`<button class="btn" onclick="joinCamp('${c.id}')">Katıl</button>`}</div>`}).join(''));
@@ -491,18 +680,16 @@ async function joinCamp(id){
   try{await db.push('pend/'+ME,{cid:id,t:c.t,b:c.b,at:Date.now()});await refresh()}catch(e){toast('Bağlantı hatası');return}
   done('🎁',`"${c.t}" kampanyasına katıldınız!<br><small class="lbl">Şartı yerine getirince bonus, yönetici onayıyla hesabınıza eklenecek.</small>`);
 }
-
 let silT,silStart=0;
 function qSilence(){
-  if(needCard())return;
-  const used=TX.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
-  const bonus=TX.filter(t=>t.amt>0&&!t.from).length;
-  const score=Math.max(0,Math.min(1000,Math.round((U.limit?(1-used/U.limit):0)*800+bonus*40)));
+  const c=C(),bonus=TX.filter(t=>t.kind==='bonus').length,ref=Math.max(200,(U.card?U.limit:0)+WELCOME);
+  const score=Math.max(0,Math.min(1000,Math.round((1-c.spent/ref)*800+bonus*40)));
   const lvl=score>=800?['🏆','Sessizlik Ustası']:score>=600?['🥈','Ölçülü Konuşan']:score>=400?['🙂','Ortalama Vatandaş']:score>=200?['🗣️','Geveze']:['📢','Mahallenin Hoparlörü'];
   qOpen('Sessizlik Puanı',`<div class="center"><div class="ok">${lvl[0]}</div><div class="big" style="margin:0">${score} / 1000</div>
     <span class="badge">${lvl[1]}</span></div>
-    <div class="kv"><span>Bu dönem yapılan boş</span><b>${fmt(used)}</b></div>
+    <div class="kv"><span>Bu dönem yapılan boş</span><b>${fmt(c.spent)}</b></div>
     <div class="kv"><span>Kazanılan bonus</span><b>${bonus}</b></div>
+    ${U.notu?`<div class="kv"><span>Boşdeks notu</span><b>${U.notu} / 1900</b></div>`:''}
     <div class="sep"></div>
     <h3>Sessizlik Meydan Okuması</h3>
     <p class="lbl">Sayacı başlat ve sessiz kal. Bitirince her 5 dakika için 10 Boş YPH bonus talep edilir (yönetici onaylar).</p>
@@ -535,18 +722,23 @@ async function openAdmin(){
   admin=true;
   try{USERS=await db.get('users')||{}}catch(e){toast('Bağlantı hatası');return}
   const ids=Object.keys(USERS);
-  if(!ids.length){toast('Henüz hesap yok');return}
+  if(!ids.length){toast('Henüz hesap yok');admin=false;return}
   if(!AU||!USERS[AU])AU=ME&&USERS[ME]?ME:ids[0];
   $('admUser').innerHTML=ids.map(id=>`<option value="${id}" ${id===AU?'selected':''}>${esc(USERS[id].name)}${id===ME?' (bu telefon)':''}</option>`).join('');
   $('modeNote').textContent=REMOTE?'🟢 Çevrimiçi mod: tüm telefonlardaki hesapları buradan yönetebilirsiniz.':'📱 Yerel mod: sadece bu telefondaki hesaplar görünür.';
   $('setPin').value='';
   await admSelect(AU);openOv('admOv');
 }
-let AT=[];
 async function admSelect(id){
   AU=id;const u=USERS[id];
-  const [t,p]=await Promise.all([db.get('tx/'+id),db.get('pend/'+id)]);
-  AT=txArr(t);
+  const [t,p,d]=await Promise.all([db.get('tx/'+id),db.get('pend/'+id),db.get('deps/'+id)]);
+  AT=txArr(t);const c=calc(u,AT),dsum=Object.values(d||{}).reduce((a,x)=>a+x.amt,0);
+  $('admSum').innerHTML=`<div class="kv" style="margin:0"><span>Banka kartı bakiyesi</span><b>${fmt(c.v)}</b></div>
+    <div class="kv"><span>Kredi kartı</span><b>${u.card?fmt(c.kAvail)+' / '+fmt(c.lim):'Yok'}</b></div>
+    <div class="kv"><span>Kart borcu</span><b>${fmt(c.debt)}</b></div>
+    <div class="kv"><span>Kredi borcu</span><b>${u.loan?fmt(u.loan.total-u.loan.paid):'Yok'}</b></div>
+    <div class="kv"><span>Vadeli hesaplar</span><b>${fmt(dsum)}</b></div>
+    <div class="kv"><span>Yapılan boş</span><b>${fmt(c.spent)}</b></div>`;
   $('setName').value=u.name;$('setLimit').value=u.limit||0;$('setUPin').value=u.pin;
   $('admChips').innerHTML=phrases(u).map((ph,i)=>`<button class="chip2" onclick="quickPh(${i})">${esc(ph)} · ${words(ph)}</button>`).join('');
   const P=Object.entries(p||{});
@@ -554,27 +746,35 @@ async function admSelect(id){
     <div class="two"><button class="btn green" onclick="pendOk('${pid}',1)">Onayla</button><button class="btn ghost" onclick="pendOk('${pid}',0)">Reddet</button></div></div>`).join(''):'';
 }
 async function admDone(msg){USERS=await db.get('users')||{};await admSelect(AU);if(AU===ME)await refresh();if(msg)toast(msg)}
-async function quickPh(i){const ph=phrases(USERS[AU])[i];await db.push('tx/'+AU,{at:Date.now(),text:ph,amt:-words(ph)});admDone('“'+ph+'” · '+fmt(words(ph))+' düşüldü')}
+// Boşu düş: önce vadesiz bakiyeden, yetmezse kredi kartına; kart yoksa vadesiz eksiye düşer
+async function deduct(n,text){
+  const u=USERS[AU],c=calc(u,AT),at=Date.now();
+  const fromV=u.card?Math.min(n,Math.max(0,c.v)):n,rest=n-fromV;
+  if(fromV>0)await db.push('tx/'+AU,{at,amt:-fromV,acct:'v',text});
+  if(rest>0)await db.push('tx/'+AU,{at:at+1,amt:-rest,acct:'k',text:fromV>0?undefined:text,title:fromV>0?'Boş yaptı (kalanı kredi kartına)':undefined});
+}
+async function quickPh(i){const ph=phrases(USERS[AU])[i];await deduct(words(ph),ph);admDone('“'+ph+'” · '+fmt(words(ph))+' düşüldü')}
 async function addPhrase(){const v=$('newPh').value.trim();if(!words(v)){toast('Cümle yaz');return}
   await db.patch('users/'+AU,{myPh:(USERS[AU].myPh||[]).concat(v)});$('newPh').value='';admDone('Eklendi')}
 $('exText').addEventListener('input',()=>{$('wc').textContent=words($('exText').value)+' kelime'});
 async function addTx(sign){
-  const text=$('exText').value.trim();
+  const text=$('exText').value.trim()||undefined;
   const n=text?words(text):parseInt($('exAmt').value,10);
   if(!(n>0)){toast('Ne dediğini yaz ya da kelime sayısı gir');return}
-  await db.push('tx/'+AU,{at:Date.now(),text:text||undefined,amt:sign*n});
+  if(sign<0)await deduct(n,text);
+  else await db.push('tx/'+AU,{at:Date.now(),amt:n,acct:'v',kind:'bonus',text});
   $('exText').value='';$('exAmt').value='';$('wc').textContent='0 kelime';
   admDone(sign<0?fmt(n)+' düşüldü':fmt(n)+' eklendi');
 }
 async function pendOk(pid,ok){
   const x=await db.get('pend/'+AU+'/'+pid);if(!x)return;
   await db.del('pend/'+AU+'/'+pid);
-  if(ok)await db.push('tx/'+AU,{at:Date.now(),amt:x.b,ico:'🎁',title:'Bonus: '+x.t});
+  if(ok)await db.push('tx/'+AU,{at:Date.now(),amt:x.b,acct:'v',kind:'bonus',ico:'🎁',title:'Bonus: '+x.t});
   admDone(ok?'Bonus eklendi':'Reddedildi');
 }
 async function saveSettings(){
   const lim=parseInt($('setLimit').value,10),up=$('setUPin').value.trim(),name=$('setName').value.trim();
-  if(!(lim>=0)){toast('Kota geçersiz');return}
+  if(!(lim>=0)){toast('Limit geçersiz');return}
   if(!/^\d{4}$/.test(up)){toast('Şifre 4 rakam olmalı');return}
   if(name.length<2){toast('Ad geçersiz');return}
   if(Object.entries(USERS).some(([id,u])=>id!==AU&&lc(u.name)===lc(name))){toast('Bu ad başka hesapta var');return}
@@ -582,66 +782,83 @@ async function saveSettings(){
   await openAdmin();if(AU===ME)await refresh();toast('Kaydedildi');
 }
 async function saveAdminPin(){const p=$('setPin').value.trim();if(!/^\d{4}$/.test(p)){toast('PIN 4 rakam olmalı');return}await db.put('config/adminPin',p);$('setPin').value='';toast('Yönetici PIN değişti')}
-async function newPeriod(){if(!confirm('Bu hesabın tüm işlemleri silinsin ve kota dolsun mu?'))return;await db.del('tx/'+AU);admDone('Yeni dönem başladı')}
-async function resetCard(){if(!confirm('Kart kapatılsın mı? İşlemler silinir, yeniden başvuru yapılabilir.'))return;
-  await db.patch('users/'+AU,{card:false,limit:0});await db.del('tx/'+AU);await db.del('pend/'+AU);admDone('Kart kapatıldı')}
+async function newPeriod(){if(!confirm('Bu hesabın tüm işlemleri, kredisi ve vadeli hesapları silinsin mi?'))return;
+  await db.del('tx/'+AU);await db.del('deps/'+AU);await db.put('users/'+AU+'/loan',null);
+  await db.push('tx/'+AU,{at:Date.now(),amt:WELCOME,acct:'v',kind:'welcome',ico:'🎉',title:'Yeni dönem bakiyesi'});admDone('Yeni dönem başladı')}
+async function clearLoan(){if(!USERS[AU].loan){toast('Bu hesabın kredisi yok');return}if(!confirm('Kredi borcu silinsin mi?'))return;await db.put('users/'+AU+'/loan',null);admDone('Kredi silindi')}
+async function resetCard(){if(!confirm('Kredi kartı kapatılsın mı? Kart işlemleri silinir, yeniden başvuru yapılabilir.'))return;
+  await db.patch('users/'+AU,{card:false,limit:0});
+  for(const t of AT)if(acctOf(t)==='k')await db.del('tx/'+AU+'/'+t.id);
+  admDone('Kart kapatıldı')}
 async function delUser(){if(!confirm(USERS[AU].name+' hesabı tamamen silinsin mi?'))return;
-  const was=AU;await db.del('users/'+was);await db.del('tx/'+was);await db.del('pend/'+was);AU=null;
+  const was=AU;for(const p of ['users','tx','pend','deps'])await db.del(p+'/'+was);AU=null;
   if(was===ME){closeOv('admOv');logout();toast('Hesap silindi');return}
   await openAdmin();toast('Hesap silindi')}
 
-// ================= BAŞVURU =================
-const QS=[
- {k:'tel',q:'Telefonda günde ne kadar konuşursunuz?',o:[['5 dakikadan az',1.4],['Yarım saat kadar',1.1],['1-2 saat',.85],['Şarjım bitene kadar',.6]]},
- {k:'zaman',q:'Ne sıklıkla "Bizim zamanımızda…" diye başlarsınız?',o:[['Hiç',1.3],['Ara sıra',1.05],['Her gün',.8],['Her cümlede',.6]]},
- {k:'dedi',q:'Komşularla dedikodu sıklığınız?',o:[['Hiç yapmam',1.3],['Haftada bir çay',1.05],['Her gün kapı önünde',.75],['Mahallenin haber ajansıyım',.55]]},
- {k:'tv',q:'Haberleri / diziyi izlerken yorum yapar mısınız?',o:[['Sessizce izlerim',1.2],['Arada bir',1.05],['Her sahneye yorum',.8],['Diziden çok ben konuşurum',.6]]},
- {k:'wa',q:'WhatsApp\'ta "Günaydın" çiçekli mesaj atar mısınız?',o:[['Asla',1.15],['Bayramdan bayrama',1.05],['Her sabah',.85],['Her sabah + gece de',.7]]},
- {k:'evlilik',q:'Akrabalara "Ne zaman evleniyorsun?" diye sorar mısınız?',o:[['Hayır',1.2],['Bazen',1],['Her düğünde',.85],['Her karşılaşmada',.7]]},
- {k:'nasihat',q:'Çocuklara günde kaç nasihat verirsiniz?',o:[['0',1.25],['1-2',1.05],['5-10',.85],['Sayamıyorum',.65]]},
- {k:'ders',q:'Günde kaç kez "Ders çalış!" dersiniz?',o:[['Hiç',1.3],['1-2 kez',1.05],['Her saat başı',.8],['Kapıyı her açışımda',.6]]},
- {k:'kiyas',q:'"Bak komşunun oğlu ne yapmış" der misiniz?',o:[['Asla kıyaslamam',1.25],['Nadiren',1.05],['Karne günlerinde',.85],['Her fırsatta',.6]]},
- {k:'ornek',q:'"Kardeşine kötü örnek oluyorsun" cümlesini kullanır mısınız?',o:[['Hayır',1.2],['Bazen',1],['Sık sık',.8],['Favori cümlem',.6]]}
+// ================= KREDİ KARTI BAŞVURUSU =================
+// Her başvuruda sabit 3 soru + havuzdan rastgele 5 soru. Çok konuşan "riskli müşteri"dir.
+const QFIX=[
+ {q:'Günde kaç kez "Ders çalış!" dersiniz?',o:[['Hiç demem',1.3],['1-2 kez',1.05],['Her saat başı',.8],['Kapıyı her açışımda',.6]]},
+ {q:'"Bak komşunun oğlu ne yapmış" der misiniz?',o:[['Asla kıyaslamam',1.25],['Nadiren',1.05],['Karne günlerinde',.85],['Her fırsatta',.6]]},
+ {q:'"Kardeşine kötü örnek oluyorsun" cümlesini ne sıklıkla kurarsınız?',o:[['Hiç',1.2],['Ayda bir',1.05],['Haftada birkaç',.8],['Favori cümlem',.6]]}
 ];
-let A={},step=0,raise=false;
-function startApply(r){raise=!!r;A={};step=0;showQ();openOv('apOv')}
+const QPOOL=[
+ {q:'Mesleğiniz?',o:[['Emekli',1],['Memur',1.1],['Esnaf',.85],['Öğretmen (sınıfta konuşmaktan ses kalmadı)',.7],['Ev hanımı / ev beyi',.9]]},
+ {q:'Telefonu açınca ilk cümleniz ne olur?',o:[['"Alo, buyurun"',1.2],['"Neredesin?"',.95],['"Yemek yedin mi?"',.85],['"Niye hiç aramıyorsun?"',.7]]},
+ {q:'Misafirlikte "Hadi biz kalkalım" dedikten sonra ne kadar daha oturursunuz?',o:[['Hemen kalkarım',1.25],['15 dakika',1.05],['1 saat',.8],['Akşam yemeğine kalırım',.6]]},
+ {q:'Gönderdiğiniz sesli mesajlar ortalama kaç dakika?',o:[['Sesli mesaj atmam',1.2],['30 saniye',1.05],['2-3 dakika',.85],['Podcast uzunluğunda',.6]]},
+ {q:'Aynı anıyı aynı kişiye kaç kez anlattınız?',o:[['Bir kez',1.2],['2-3 kez',1],['Her bayram',.8],['Artık o da ezbere biliyor',.6]]},
+ {q:'Hastane / banka sırasında yanınızdakiyle sohbet eder misiniz?',o:[['Hayır, telefonuma bakarım',1.15],['Selam veririm',1.05],['Hastalıklarımızı karşılaştırırız',.8],['Sıra bitince numara alışverişi yaparız',.65]]},
+ {q:'Pazarda pazarlık yapar mısınız?',o:[['Etiket fiyatını öderim',1.15],['Biraz',1.05],['Her tezgahta',.85],['Satıcılar beni görünce kaçar',.65]]},
+ {q:'"Ben demiştim" cümlesini ne sıklıkla kurarsınız?',o:[['Hiç',1.2],['Ara sıra',1.05],['Her fırsatta',.8],['Olay olmadan önce de söylerim',.65]]},
+ {q:'Akşam yemeğinde sofrada ne konuşulur?',o:[['Sessizce yeriz',1.25],['Günün özeti',1.05],['Akraba dedikodusu',.8],['Siyaset ve herkesin hatası',.65]]},
+ {q:'Dizi / haber izlerken yorum yapar mısınız?',o:[['Sessizce izlerim',1.2],['Arada bir',1.05],['Her sahneye yorum',.8],['Diziden çok ben konuşurum',.6]]},
+ {q:'WhatsApp\'ta çiçekli "Günaydın" mesajı atar mısınız?',o:[['Asla',1.15],['Bayramdan bayrama',1.05],['Her sabah',.85],['Her sabah + "Hayırlı Cumalar"',.7]]},
+ {q:'Akrabalara "Ne zaman evleniyorsun?" diye sorar mısınız?',o:[['Hayır',1.2],['Bazen',1],['Her düğünde',.85],['Her karşılaşmada',.7]]},
+ {q:'Ne sıklıkla "Bizim zamanımızda…" diye başlarsınız?',o:[['Hiç',1.3],['Ara sıra',1.05],['Her gün',.8],['Her cümlede',.6]]},
+ {q:'Komşularla dedikodu sıklığınız?',o:[['Hiç yapmam',1.3],['Haftada bir çay',1.05],['Her gün kapı önünde',.75],['Mahallenin haber ajansıyım',.55]]},
+ {q:'Çocuk dışarı çıkarken kaç uyarı yaparsınız?',o:[['"Güle güle" derim',1.2],['"Erken gel"',1.05],['"Üşüteceksin, montunu al, kimlerle gidiyorsun…"',.8],['Kapıya kadar takip ederek anlatırım',.6]]}
+];
+let QS=[],A=[],step=0,raise=false;
+function startApply(r){
+  raise=!!r;A=[];step=0;
+  QS=QFIX.concat(QPOOL.slice().sort(()=>Math.random()-.5).slice(0,5)).sort(()=>Math.random()-.5);
+  showQ();openOv('apOv');
+}
 function showQ(){
   const q=QS[step];
-  $('apBody').innerHTML=`<h2>${raise?'Kota Artırım Başvurusu':'Boş Yapma Kartı Başvurusu'} <button onclick="closeOv('apOv')">Vazgeç</button></h2>
-    <div class="step">Adım ${step+1} / ${QS.length}</div><div class="q">${esc(q.q)}</div>`+
+  $('apBody').innerHTML=`<h2>${raise?'Limit Artırım Başvurusu':'Kredi Kartı Başvurusu'} <button onclick="closeOv('apOv')">Vazgeç</button></h2>
+    <div class="step">Soru ${step+1} / ${QS.length}</div><div class="pbar"><div style="width:${step/QS.length*100}%"></div></div><div class="q">${esc(q.q)}</div>`+
     q.o.map((o,i)=>`<button class="opt" onclick="ans(${i})">${esc(o[0])}</button>`).join('');
 }
-function ans(i){A[QS[step].k]=QS[step].o[i][1];step++;if(step<QS.length)showQ();else evaluate()}
-function calcLimit(){
-  let l=1000;QS.forEach(q=>l*=A[q.k]);
-  l*=0.95+Math.random()*0.1;
-  return Math.max(50,Math.round(l/50)*50);
-}
+function ans(i){A.push(QS[step].o[i][1]);step++;if(step<QS.length)showQ();else evaluate()}
 function verdict(l){
-  if(l<300)return 'Risk grubundasınız: çok fazla boş yapma geçmişi tespit edildi. Kotanızı dikkatli kullanın! 🚨';
-  if(l<800)return 'Ortalama boş yapan müşteri. Kotanızı idareli kullanmanız önerilir.';
+  if(l<300)return 'Risk grubundasınız: çok fazla boş yapma geçmişi tespit edildi. Limitinizi dikkatli kullanın! 🚨';
+  if(l<800)return 'Ortalama boş yapan müşteri. Limitinizi idareli kullanmanız önerilir.';
   if(l<1500)return 'Az konuşan, güvenilir müşteri. 👍';
-  return 'Örnek sessiz vatandaş! Size özel yüksek kota tanımlandı. 🏆';
+  return 'Örnek sessiz vatandaş! Size özel yüksek limit tanımlandı. 🏆';
 }
 function evaluate(){
   $('apBody').innerHTML=`<div class="center"><div class="spin"></div><div class="q" id="evT">Bilgileriniz kontrol ediliyor…</div><p class="lbl">Lütfen bekleyin (ve sessiz olun)</p></div>`;
-  ['Komşulardan referans alınıyor…','"Ders çalış" sayınız hesaplanıyor…','Kardeşlere kötü örnek analizi yapılıyor…','Boş yapma notunuz belirleniyor…']
+  ['Komşulardan referans alınıyor…','"Ders çalış" sayınız hesaplanıyor…','Kardeşlere kötü örnek analizi yapılıyor…','Boşdeks notunuz belirleniyor…']
     .forEach((m,i)=>setTimeout(()=>{const e=$('evT');if(e)e.textContent=m},(i+1)*1100));
   setTimeout(async()=>{
-    const lim=calcLimit();
+    const prod=A.reduce((a,x)=>a*x,1);
+    const notu=Math.max(1,Math.min(1900,Math.round(prod*950)));
+    const lim=Math.max(50,r50(1000*prod*(0.95+Math.random()*0.1)));
     if(raise&&lim<=U.limit){
-      $('apBody').innerHTML=`<div class="center"><div class="ok">😔</div><div class="q">Kota artırım talebiniz olumsuz</div>
-        <p class="lbl" style="margin-top:8px">Son dönemdeki boş yapma alışkanlıklarınız nedeniyle mevcut kotanız (${fmt(U.limit)}) korunmuştur.</p>
+      $('apBody').innerHTML=`<div class="center"><div class="ok">😔</div><div class="q">Limit artırım talebiniz olumsuz</div>
+        <p class="lbl" style="margin-top:8px">Boşdeks notunuz: <b>${notu} / 1900</b>. Son dönemdeki boş yapma alışkanlıklarınız nedeniyle mevcut limitiniz (${fmt(U.limit)}) korunmuştur.</p>
         <button class="btn" onclick="closeOv('apOv')">Tamam</button></div>`;return}
     const first=!U.card;
-    const upd={limit:lim,card:true};if(first)upd.no=String(1000+Math.floor(Math.random()*9000));
+    const upd={limit:lim,card:true,notu};if(first)upd.no=String(1000+Math.floor(Math.random()*9000));
     try{await db.patch('users/'+ME,upd);await refresh()}catch(e){toast('Bağlantı hatası');closeOv('apOv');return}
-    $('apBody').innerHTML=`<div class="center"><div class="ok">🎉</div><div class="q">${raise?'Kotanız artırıldı!':'Başvurunuz onaylandı!'}</div>
-      <p class="lbl" style="margin-top:8px">${esc(U.name)}, size tanımlanan aylık boş yapma kotası:</p>
+    $('apBody').innerHTML=`<div class="center"><div class="ok">🎉</div><div class="q">${raise?'Limitiniz artırıldı!':'Kredi kartınız onaylandı!'}</div>
+      <p class="lbl" style="margin-top:8px">Boşdeks notunuz: <b>${notu} / 1900</b></p>
+      <p class="lbl">${esc(U.name)}, kredi kartı limitiniz:</p>
       <div class="big" style="margin:10px 0">${fmt(lim)}</div>
       <p class="lbl">${verdict(lim)}</p>
-      <p class="lbl" style="margin-top:6px">Unutmayın: her kelime 1 Boş YPH harcar.</p>
-      <button class="btn" onclick="closeOv('apOv');${first?'startTour()':''}">Kartıma Git</button></div>`;
+      <button class="btn" onclick="closeOv('apOv');${first?"startTour('card')":''}">Kartıma Git</button></div>`;
   },5600);
 }
 
