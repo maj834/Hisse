@@ -48,6 +48,12 @@ h3{font-size:16px;margin-bottom:6px}
 .empty{color:var(--mut);text-align:center;padding:18px 0;font-size:14px}
 .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
 .quick div{background:var(--card);border-radius:14px;padding:12px 4px;text-align:center;font-size:12px;color:var(--mut);box-shadow:0 2px 10px rgba(15,23,42,.05)}
+.quick div{cursor:pointer;user-select:none}.quick div:active{transform:scale(.96);background:#eef2ff}
+.camp{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px}
+.camp b{display:block;font-size:15px}.camp p{font-size:13px;color:var(--mut);margin:4px 0 0}
+.camp .btn{margin-top:10px;padding:10px}
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;background:#fef3c7;color:#92400e}
+.timer{font-size:46px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;margin:16px 0}
 .quick div span{display:block;font-size:22px;margin-bottom:4px}
 /* yönetici */
 .ov{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-end;justify-content:center;z-index:9}
@@ -127,10 +133,10 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
   </div>
 
   <div class="quick">
-    <div><span>🗣️</span>Boş Gönder</div>
-    <div><span>☕</span>Dedikodu</div>
-    <div><span>🎁</span>Kampanyalar</div>
-    <div><span>🤐</span>Sessizlik Puanı</div>
+    <div onclick="qSend()"><span>🗣️</span>Boş Gönder</div>
+    <div onclick="qGossip()"><span>☕</span>Dedikodu</div>
+    <div onclick="qCamps()"><span>🎁</span>Kampanyalar</div>
+    <div onclick="qSilence()"><span>🤐</span>Sessizlik Puanı</div>
   </div>
 
   <div class="box">
@@ -138,6 +144,9 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
     <div id="list"></div>
   </div>
 </main>
+
+<!-- HIZLI İŞLEMLER -->
+<div class="ov" id="qOv"><div class="sheet" id="qBody"></div></div>
 
 <!-- BAŞVURU -->
 <div class="ov" id="apOv"><div class="sheet" id="apBody"></div></div>
@@ -161,6 +170,8 @@ textarea{width:100%;font-size:16px;padding:12px;border:1px solid var(--line);bor
   <label>…ya da sadece kelime sayısı</label><input id="exAmt" inputmode="numeric" placeholder="Örn. 50">
   <button class="btn red" onclick="addTx(-1)">Kotadan Düş</button>
   <button class="btn green" onclick="addTx(1)">Sessiz Kaldı Bonusu (kotaya ekler)</button>
+
+  <div id="pendBox"></div>
 
   <div class="sep"></div>
   <h3>Kart Ayarları</h3>
@@ -197,8 +208,8 @@ let admin=false;
 function render(){
   const net=S.tx.reduce((a,t)=>a+t.amt,0);
   const spent=S.tx.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
-  const avail=Math.max(0,Math.min(S.limit,S.limit+net));
-  const pct=S.limit>0?avail/S.limit*100:0;
+  const avail=Math.max(0,S.limit+net);
+  const pct=S.limit>0?Math.min(100,avail/S.limit*100):0;
   $('noCard').style.display=S.card?'none':'';
   $('hasCard').style.display=S.card?'':'none';
   $('alert').classList.toggle('on',S.card&&avail<=0);
@@ -214,8 +225,8 @@ function render(){
   if(!S.tx.length){L.innerHTML='<div class="empty">Henüz boş yapılmadı (şaşırtıcı)</div>';return}
   L.innerHTML=S.tx.slice().reverse().map(t=>{
     const d=new Date(t.at);
-    return `<div class="tx"><div class="ico">${t.amt<0?'🗣️':'🤐'}</div>
-      <div class="t"><b>${t.amt<0?'Boş yaptı':'Sessiz kaldı bonusu'}</b>${t.text?`<small class="qt">“${esc(t.text)}”</small>`:''}<small>${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</small></div>
+    return `<div class="tx"><div class="ico">${esc(t.ico||(t.amt<0?'🗣️':'🤐'))}</div>
+      <div class="t"><b>${esc(t.title||(t.amt<0?'Boş yaptı':'Sessiz kaldı bonusu'))}</b>${t.text?`<small class="qt">“${esc(t.text)}”</small>`:''}<small>${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}</small></div>
       <div class="amt ${t.amt<0?'neg':'pos'}">${t.amt<0?'-':'+'}${fmt(Math.abs(t.amt))}</div>
       ${admin?`<button class="del" onclick="delTx(${t.at})">Sil</button>`:''}</div>`}).join('');
 }
@@ -236,7 +247,7 @@ $('logo').addEventListener('click',()=>{taps++;clearTimeout(tapT);tapT=setTimeou
   inp.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!inp.value&&i>0)all[i-1].focus()});
 });
 
-function openAdmin(){admin=true;$('setName').value=S.name;$('setLimit').value=S.limit;$('setNo').value=S.no;$('setPin').value=S.pin;render();openOv('admOv')}
+function openAdmin(){admin=true;renderPend();$('setName').value=S.name;$('setLimit').value=S.limit;$('setNo').value=S.no;$('setPin').value=S.pin;render();openOv('admOv')}
 $('exText').addEventListener('input',()=>{$('wc').textContent=words($('exText').value)+' kelime'});
 
 function addTx(sign){
@@ -255,8 +266,111 @@ function saveSettings(){
   S.name=$('setName').value.trim()||DEF.name;S.limit=lim;S.pin=pin;S.no=/^\d{4}$/.test(no)?no:S.no;
   save();render();toast('Kaydedildi');
 }
+// ---- Hızlı işlemler ----
+function avail(){return Math.max(0,S.limit+S.tx.reduce((a,t)=>a+t.amt,0))}
+function needCard(){if(!S.card){toast('Önce Boş Yapma Kartı başvurusu yapın');return true}return false}
+function qOpen(title,html){$('qBody').innerHTML=`<h2>${title} <button onclick="qClose()">Kapat</button></h2>`+html;openOv('qOv')}
+function qClose(){clearInterval(silT);closeOv('qOv')}
+function spend(n,o){
+  if(n>avail()){toast('Yetersiz boş yapma kotası! 🤐');return false}
+  S.tx.push(Object.assign({at:Date.now(),amt:-n},o));save();render();return true}
+function done(icon,msg){$('qBody').innerHTML=`<div class="center"><div class="ok">${icon}</div><div class="q">${msg}</div><button class="btn" onclick="qClose()">Tamam</button></div>`}
+function liveCount(inp,out,mul){$(inp).addEventListener('input',()=>{const n=words($(inp).value)*mul;$(out).textContent=n+' boş harcanacak · Kalan: '+fmt(avail())})}
+
+function qSend(){
+  if(needCard())return;
+  qOpen('Boş Gönder',`<p class="lbl">Birine boş yap, her kelime 1 boş harcar.</p>
+    <label>Kime?</label><input id="sTo" placeholder="Örn. Teyzem">
+    <label>Mesaj</label><textarea id="sMsg" placeholder="Ne söylemek istiyorsun?"></textarea>
+    <div class="wc" id="sWc">0 boş harcanacak · Kalan: ${fmt(avail())}</div>
+    <button class="btn" onclick="doSend()">Gönder</button>`);
+  liveCount('sMsg','sWc',1);
+}
+function doSend(){
+  const to=$('sTo').value.trim(),msg=$('sMsg').value.trim(),n=words(msg);
+  if(!to){toast('Kime göndereceğini yaz');return}
+  if(!n){toast('Mesaj boş olamaz (ironik)');return}
+  if(spend(n,{ico:'📤',title:to+' kişisine boş gönderildi',text:msg}))done('📤',`${esc(to)} kişisine ${fmt(n)} gönderildi`);
+}
+
+function qGossip(){
+  if(needCard())return;
+  qOpen('Dedikodu',`<span class="badge">⚠️ Dedikodu kelimesi 2 boş harcar</span>
+    <label>Kim hakkında?</label><input id="gWho" placeholder="Örn. Üst kat komşu">
+    <label>Dedikodu</label><textarea id="gMsg" placeholder="Duydun mu, …"></textarea>
+    <div class="wc" id="gWc">0 boş harcanacak · Kalan: ${fmt(avail())}</div>
+    <button class="btn red" onclick="doGossip()">Dedikoduyu Yap</button>`);
+  liveCount('gMsg','gWc',2);
+}
+function doGossip(){
+  const who=$('gWho').value.trim()||'Birisi',msg=$('gMsg').value.trim(),n=words(msg)*2;
+  if(!n){toast('Dedikodu yazmadın');return}
+  if(spend(n,{ico:'☕',title:'Dedikodu: '+who,text:msg}))done('☕',`Dedikodu yapıldı, ${fmt(n)} harcandı.<br><small class="lbl">Bu bilgi komşulara iletilmeyecektir.</small>`);
+}
+
+const CAMPS=[
+ {id:'sus1',t:'1 saat sessiz kal',d:'Bir saat boyunca hiç boş yapma.',b:100},
+ {id:'dizi',t:'Diziyi sessiz izle',d:'Bir bölüm boyunca tek yorum yapma.',b:150},
+ {id:'zaman',t:'"Bizim zamanımızda" orucu',d:'Bir gün boyunca bu cümleyi kurma.',b:300},
+ {id:'evlen',t:'Evlilik sorusu yok',d:'Bir düğünde kimseye "sıra sende" deme.',b:250},
+ {id:'gunay',t:'Çiçekli mesaj yok',d:'Bir hafta "Günaydın" görseli atma.',b:400}
+];
+function qCamps(){
+  if(needCard())return;
+  S.pend=S.pend||[];
+  qOpen('Kampanyalar','<p class="lbl">Şartı yerine getir, onaylanınca kotana bonus boş eklensin.</p>'+CAMPS.map(c=>{
+    const p=S.pend.find(x=>x.id===c.id);
+    return `<div class="camp"><b>${c.t} <span class="badge">+${fmt(c.b)}</span></b><p>${c.d}</p>
+      ${p?'<button class="btn ghost" disabled>Onay bekliyor ⏳</button>':`<button class="btn" onclick="joinCamp('${c.id}')">Katıl</button>`}</div>`}).join(''));
+}
+function joinCamp(id){
+  const c=CAMPS.find(x=>x.id===id);S.pend=S.pend||[];
+  S.pend.push({id,t:c.t,b:c.b,at:Date.now()});save();
+  done('🎁',`"${c.t}" kampanyasına katıldınız!<br><small class="lbl">Şartı yerine getirince bonus, yönetici onayıyla hesabınıza eklenecek.</small>`);
+}
+
+let silT;
+function qSilence(){
+  if(needCard())return;
+  const used=S.tx.filter(t=>t.amt<0).reduce((a,t)=>a-t.amt,0);
+  const bonus=S.tx.filter(t=>t.amt>0).length;
+  const score=Math.max(0,Math.min(1000,Math.round((S.limit?(1-used/S.limit):0)*800+bonus*40)));
+  const lvl=score>=800?['🏆','Sessizlik Ustası']:score>=600?['🥈','Ölçülü Konuşan']:score>=400?['🙂','Ortalama Vatandaş']:score>=200?['🗣️','Geveze']:['📢','Mahallenin Hoparlörü'];
+  qOpen('Sessizlik Puanı',`<div class="center"><div class="ok">${lvl[0]}</div><div class="big" style="margin:0">${score} / 1000</div>
+    <span class="badge">${lvl[1]}</span></div>
+    <div class="kv"><span>Bu dönem yapılan boş</span><b>${fmt(used)}</b></div>
+    <div class="kv"><span>Kazanılan bonus</span><b>${bonus}</b></div>
+    <div class="sep"></div>
+    <h3>Sessizlik Meydan Okuması</h3>
+    <p class="lbl">Sayacı başlat ve sessiz kal. Bitirince her 5 dakika için 10 boş bonus talep edilir (yönetici onaylar).</p>
+    <div class="timer" id="tm">00:00</div>
+    <button class="btn green" id="tmBtn" onclick="silToggle()">Başlat</button>`);
+}
+let silStart=0;
+function silToggle(){
+  if(!silStart){silStart=Date.now();$('tmBtn').textContent='Bitir';$('tmBtn').className='btn red';
+    silT=setInterval(()=>{const s=Math.floor((Date.now()-silStart)/1000);const e=$('tm');if(e)e.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')},500);return}
+  clearInterval(silT);const min=Math.floor((Date.now()-silStart)/60000);silStart=0;
+  const b=Math.floor(min/5)*10;
+  if(!b){done('😅',`Sadece ${min} dakika dayanabildiniz.<br><small class="lbl">Bonus için en az 5 dakika sessiz kalın.</small>`);return}
+  S.pend=S.pend||[];S.pend.push({id:'sil'+Date.now(),t:min+' dk sessizlik',b,at:Date.now()});save();
+  done('🤐',`${min} dakika sessiz kaldınız! ${fmt(b)} bonus talebiniz yöneticiye iletildi.`);
+}
+
+function renderPend(){
+  const P=S.pend||[];
+  $('pendBox').innerHTML=P.length?'<div class="sep"></div><h3>Onay Bekleyen Bonuslar</h3>'+P.map(p=>`<div class="camp"><b>${esc(p.t)} <span class="badge">+${fmt(p.b)}</span></b>
+    <div class="two"><button class="btn green" onclick="pendOk('${p.id}',1)">Onayla</button><button class="btn ghost" onclick="pendOk('${p.id}',0)">Reddet</button></div></div>`).join(''):'';
+}
+function pendOk(id,ok){
+  const p=(S.pend||[]).find(x=>x.id===id);if(!p)return;
+  S.pend=S.pend.filter(x=>x.id!==id);
+  if(ok)S.tx.push({at:Date.now(),amt:p.b,ico:'🎁',title:'Bonus: '+p.t});
+  save();render();renderPend();toast(ok?'Bonus eklendi':'Reddedildi');
+}
+
 function newPeriod(){if(confirm('Tüm boş yapmalar silinsin ve kota dolsun mu?')){S.tx=[];save();render();toast('Yeni dönem başladı')}}
-function resetCard(){if(confirm('Kart kapatılsın mı? Her şey silinir, yeniden başvuru yapılabilir.')){S.card=false;S.limit=0;S.tx=[];save();render();closeOv('admOv');toast('Kart kapatıldı')}}
+function resetCard(){if(confirm('Kart kapatılsın mı? Her şey silinir, yeniden başvuru yapılabilir.')){S.card=false;S.limit=0;S.tx=[];S.pend=[];save();render();closeOv('admOv');toast('Kart kapatıldı')}}
 
 // ---- Boş Yapma Kartı başvurusu ----
 // Çok konuşan "riskli müşteri" sayılır, kotası düşer.
