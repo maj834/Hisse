@@ -468,7 +468,7 @@ function votes(k){
   const tv=MK[k]&&MK[k].tv;if(tv!=null&&HZ==="1h")list.push({id:"tv",ad:"TradingView göstergeleri",karar:tvKarar(tv),guven:Math.round(40+Math.abs(tv)*50),neden:tvYazi(tv)+" sinyali (hareketli ortalamalar ve osilatörler)"+(MK[k].rsi!=null?", RSI "+nf(MK[k].rsi,0):"")});
   if(a&&!a.noHist)list.push({id:"teknik",ad:"Teknik analiz",karar:HZ==="1h"?a.tone:HZ==="1a"?a.tone1a:a.tone3a,guven:Math.min(85,35+Math.abs(a.sc)*12),hedef:Math.round((HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc)*100)/100,neden:a.why.slice(0,2).map((w,i)=>i?w.charAt(0).toLocaleLowerCase("tr")+w.slice(1):w).join(", ")});
   const ol=a&&olsVade(k);
-  if(ol){const p=ol.p;list.push({id:"gecmis",ad:"Geçmiş benzer durumlar",karar:p>=.6?"AL":p<=.4?"SAT":"TUT",guven:Math.round(Math.min(80,30+Math.abs(p-.5)*200)),hedef:Math.round(last*(1+ol.q[1]/100)*100)/100,
+  if(ol&&ol.beceri){const p=ol.p;list.push({id:"gecmis",ad:"Geçmiş benzer durumlar",karar:p>=.6?"AL":p<=.4?"SAT":"TUT",guven:Math.round(Math.min(80,30+Math.abs(p-.5)*200)),hedef:Math.round(last*(1+ol.q[1]/100)*100)/100,
     neden:(ol.kos?`Son 3 yılda bu hisse bugünkü gibi bir durumdayken`:`Son 3 yılda bu hissede`)+` ${HZL[HZ]} sonra fiyatın yükselme oranı %${nf(p*100,0)} (${ol.n} gün incelendi). Ortanca getiri ${ysg(ol.q[1])}; günlerin yarısında ${ysg(ol.q[0])} ile ${ysg(ol.q[2])} arası`})}
   list.forEach(v=>{if(v.hedef&&!hedefOk(v.karar,+v.hedef,last))v.hedef=null});
   return list;
@@ -555,9 +555,10 @@ function nedenKutu(k,con,vs){
 function kararK(k){const key=HZ+k;if(KC[key])return KC[key];const a=getA(k);if(!a)return null;return KC[key]=hisseKarar(k)}
 function targets(k){
   const a=getA(k);if(!a)return [];
-  const t=[],vs=votes(k),gm=vs.some(v=>v.id==="gecmis"&&v.hedef);
-  // 1 ay / 3 ay: trendi uzatan teknik tahmin, ölçülmüş geçmiş dağılım varken ortalamaya katılmaz
-  vs.forEach(v=>{if(v.hedef&&!(gm&&v.id==="teknik"&&HZ!=="1h"))t.push({ad:v.ad,id:v.id,v:+v.hedef})});
+  const t=[],vs=votes(k),gm=!!(OLS.dogrulama&&OLS.dogrulama[HZ]);
+  // trendi uzatan teknik tahmin hedef ortalamasına katılmaz (oy olarak kalır); olasilik.json doğrulaması fiyat geçmişine
+  // dayalı yön tahmininin hiçbir vadede yazı-turadan iyi olmadığını gösterdi
+  vs.forEach(v=>{if(v.hedef&&!(gm&&v.id==="teknik"))t.push({ad:v.ad,id:v.id,v:+v.hedef})});
   const e=HZ==="1h"&&outTaze()&&[...(OUT.yukselis||[]),...(OUT.dusus||[])].find(x=>x.sembol===k&&x.hedef);if(e)t.push({ad:"Haber beklentisi",id:"haber",v:+e.hedef});
   return t.filter(x=>x.v>0);
 }
@@ -930,8 +931,11 @@ let OLS={};
 const ysg=v=>(v>=0?"+":"−")+"%"+nf(Math.abs(v),1);
 function olsVade(k){
   const o=(OLS.hisseler||{})[k],x=o&&o[HZ];if(!x||!OLS.son||Date.now()-T(OLS.son)>12*864e5)return null;
-  const iy=((OLS.dogrulama||{})[HZ]||{}).kosul_ise_yariyor;
-  return iy?{p:x.p,q:x.q,n:x.n,kos:true}:{p:x.pu,q:x.qu||x.q,n:x.N,kos:false};
+  // Yazı-tura Brier puanı 0,25'tir. Yalnızca bundan belirgin iyi çıkan yöntem yön söyleyebilir (beceri);
+  // değilse aralık sadece oynaklık olarak, bugünkü fiyatın etrafında kullanılır.
+  const d=(OLS.dogrulama||{})[HZ]||{},bk=d.brier_kosullu<.2475,bu=d.brier_kosulsuz<.2475;
+  const r=bk&&d.brier_kosullu<=d.brier_kosulsuz?{p:x.p,q:x.q,n:x.n,kos:true,beceri:true}:bu?{p:x.pu,q:x.qu||x.q,n:x.N,kos:false,beceri:true}:{p:x.pu,q:x.qu||x.q,n:x.N,kos:false,beceri:false};
+  r.alt=r.beceri?r.q[0]:r.q[0]-r.q[1];r.ust=r.beceri?r.q[2]:r.q[2]-r.q[1];return r;
 }
 const yuzde=v=>"%"+nf(v*100,0);
 const KOSUL_AD={"200 günlük ort. uzaklık: en düşük %20":"200 günlük ortalamanın en çok altında kalanlardan","200 günlük ort. uzaklık: en yüksek %20":"200 günlük ortalamanın en çok üstünde olanlardan",
@@ -1200,9 +1204,9 @@ let pfMesaj="",pfHesK="",pfHesT="";
 function pfTahmin(o){
   let yeni=0,kotu=0,iyi=0,alt25=0,ust75=0,olsVar=0;
   const r=o.satir.map(s=>{
-    const ol=olsVade(s.k);if(ol){olsVar++;alt25+=s.d*(1+ol.q[0]/100);ust75+=s.d*(1+ol.q[2]/100)}else{alt25+=s.d;ust75+=s.d}
+    const ol=olsVade(s.k);if(ol){olsVar++;alt25+=s.d*(1+ol.alt/100);ust75+=s.d*(1+ol.ust/100)}else{alt25+=s.d;ust75+=s.d}
     const a=getA(s.k);let tg=[],c=null;try{tg=targets(s.k)}catch(e){}try{c=hisseKarar(s.k)}catch(e){}
-    let h=tg.length?tg.reduce((t,x)=>t+x.v,0)/tg.length:(a&&!a.noHist?(HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc):null);
+    let h=tg.length?tg.reduce((t,x)=>t+x.v,0)/tg.length:(OLS.dogrulama?null:a&&!a.noHist?(HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc):null);
     if(!(h>0))h=null;
     const pl=PF.plan[s.k]||{},alt=pl.z||(a&&!a.noHist?a.stop:null),ust=pl.h||(a&&!a.noHist?a.t1:null);
     yeni+=s.adet*(h||s.son);kotu+=s.adet*(alt&&alt<s.son?alt:s.son);iyi+=s.adet*(ust&&ust>s.son?ust:s.son);
@@ -1250,11 +1254,11 @@ function renderPortfoy(){
     </div>
     <div class="list">${th.r.map(s=>`<div class="pf-th">
       <span><span class="code">${s.k}</span>${s.c&&s.c.n?` <span class="pill ${kCls(s.c.karar)}">${s.c.karar}</span>`:""}</span>
-      <span class="r">${s.h?`<b>${tl(s.h)}</b>`:`<span class="xs faint">tahmin yok</span>`}</span>
+      <span class="r">${s.h?`<b>${tl(s.h)}</b>`:`<span class="xs faint">yön tahmini yok</span>`}</span>
       ${s.h?`<span class="xs faint">Şimdi ${tl(s.son)} · <span class="${s.fark>=0?"up":"down"}">${yuz(s.fark)} · ${kzTl(s.tlFark)}</span> · ${s.n?s.n+" kaynağın hedef ortalaması":"teknik tahmin"}</span>`:""}
-      ${s.ol?`<span class="xs">Geçmişte yükselme oranı <b class="${s.ol.p>=.55?"up":s.ol.p<=.45?"down":""}">%${nf(s.ol.p*100,0)}</b> · olası aralık ${tl(s.son*(1+s.ol.q[0]/100))} – ${tl(s.son*(1+s.ol.q[2]/100))}</span>`:""}
+      ${s.ol?`<span class="xs">${s.ol.beceri?`Geçmişte yükselme oranı <b class="${s.ol.p>=.55?"up":s.ol.p<=.45?"down":""}">%${nf(s.ol.p*100,0)}</b> · `:""}Olası aralık ${tl(s.son*(1+s.ol.alt/100))} – ${tl(s.son*(1+s.ol.ust/100))}</span>`:""}
     </div>`).join("")}</div>
-    ${th.olsVar?`<p class="small" style="margin-top:10px">Geçmiş verilere göre ${HZL[HZ]} sonra portföyünün olası aralığı: <b>${tl(th.alt25)} – ${tl(th.ust75)}</b></p><p class="xs faint">Her hissenin son 3 yıldaki fiyat geçmişinden: benzer dönemlerin yarısında sonuç bu aralıkta kaldı. Hedef fiyatlar yapay zekâ, temel analiz ve bu istatistiğin ortalamasıdır.</p>`:""}
+    ${th.olsVar?`<p class="small" style="margin-top:10px">Geçmiş verilere göre ${HZL[HZ]} sonra portföyünün olası aralığı: <b>${tl(th.alt25)} – ${tl(th.ust75)}</b></p><p class="xs faint">Her hissenin son 3 yıllık fiyat hareketlerinden: benzer uzunluktaki dönemlerin yarısında değişim bu genişlikte kaldı. 581 hissede yapılan ölçümde geçmiş fiyat hareketleri yönü yazı-turadan iyi tahmin etmedi; bu yüzden aralık bugünkü fiyatın etrafına kurulur; hedef fiyatta trendi uzatan teknik tahmin kullanılmaz.</p>`:""}
     <p class="xs faint" style="margin-top:8px">Senaryo: zarar-kes / stop seviyelerine inerse ${tl(th.kotu)} (${kzTl(th.kotu-o.deger)}), hedeflerine çıkarsa ${tl(th.iyi)} (${kzTl(th.iyi-o.deger)}). Tahminler garanti değildir.</p>
   </div>`})():""}
   <div class="card">
