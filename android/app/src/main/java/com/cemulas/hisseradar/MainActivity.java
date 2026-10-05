@@ -8,10 +8,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.graphics.Bitmap;
 import android.view.View;
 import android.view.Window;
 import android.view.ViewGroup;
 import android.webkit.DownloadListener;
+import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -41,6 +43,8 @@ public class MainActivity extends Activity {
     private static final String YEREL = "file:///android_asset/index.html";
     private WebView web;
     private long sonGeri = 0;
+    /** Bildirim köprüsü yalnızca uygulamanın kendi sayfası açıkken çalışır (içeride açılan haber siteleri kullanamaz). */
+    private volatile boolean kendiSayfam = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +55,7 @@ public class MainActivity extends Activity {
 
         webKur();
         sayfayiYukle();
+        Bildirim.zamanla(this);
     }
 
     /** WebView'i kurar. Tarayıcı motoru çökerse yeniden kurulur, uygulama kapanmaz. */
@@ -69,7 +74,14 @@ public class MainActivity extends Activity {
         s.setTextZoom(100);
         s.setUserAgentString(s.getUserAgentString() + " HisseRadarApp/" + surum());
 
+        web.addJavascriptInterface(new Kopru(), "HRBildirim");
         web.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                // loadDataWithBaseURL sürüme göre taban adresi ya da data: bildirir; başka bir web sitesi ise köprü kapalı
+                kendiSayfam = url == null || !url.startsWith("http") || url.startsWith(TABAN);
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri u = request.getUrl();
@@ -109,6 +121,68 @@ public class MainActivity extends Activity {
                 disaAc(Uri.parse(url));
             }
         });
+    }
+
+    /** Sayfanın (Portföyüm) bildirim ayarları için çağırdığı köprü: window.HRBildirim */
+    private class Kopru {
+        /** "acik", "kapali" ya da "izin_yok" */
+        @JavascriptInterface
+        public String durum() {
+            if (!kendiSayfam) return "kapali";
+            if (!Bildirim.acik(MainActivity.this)) return "kapali";
+            return Bildirim.izinVar(MainActivity.this) ? "acik" : "izin_yok";
+        }
+
+        @JavascriptInterface
+        public void ac() {
+            if (!kendiSayfam) return;
+            Bildirim.tercih(MainActivity.this).edit().putBoolean("acik", true).apply();
+            Bildirim.zamanla(MainActivity.this);
+            runOnUiThread(() -> {
+                if (!Bildirim.izinVar(MainActivity.this) && Build.VERSION.SDK_INT >= 33) {
+                    requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 77);
+                } else {
+                    sayfayaHaber();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void kapat() {
+            if (!kendiSayfam) return;
+            Bildirim.tercih(MainActivity.this).edit().putBoolean("acik", false).apply();
+            Bildirim.zamanla(MainActivity.this);
+        }
+
+        /** Portföy ve eşikler: [{k, adet, ust, ustAd, alt, altAd}] */
+        @JavascriptInterface
+        public void guncelle(String json) {
+            if (!kendiSayfam || json == null || json.length() > 200000) return;
+            Bildirim.tercih(MainActivity.this).edit().putString("portfoy", json).apply();
+        }
+
+        @JavascriptInterface
+        public void dene() {
+            if (!kendiSayfam) return;
+            final android.content.Context c = getApplicationContext();
+            new Thread(() -> {
+                try {
+                    KontrolIsi.kontrol(c, true);
+                } catch (Throwable e) {
+                    Bildirim.goster(c, 3, "Deneme bildirimi", "Bildirimler çalışıyor, ama fiyatlar şu an alınamadı.");
+                }
+            }).start();
+        }
+    }
+
+    private void sayfayaHaber() {
+        if (web != null) web.evaluateJavascript("window.hrBildirimSonuc&&window.hrBildirimSonuc()", null);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int kod, String[] izinler, int[] sonuc) {
+        super.onRequestPermissionsResult(kod, izinler, sonuc);
+        if (kod == 77) sayfayaHaber();
     }
 
     private int surum() {

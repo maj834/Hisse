@@ -1150,7 +1150,7 @@ function openFund(k,noPush){
 // Veriler yalnızca bu telefonda (localStorage) tutulur; hiçbir sunucuya gönderilmez.
 // h: açık pozisyonlar {k,adet,maliyet}, kap: kapanan işlemler {k,alis,satis,kz,t}, isl: işlem geçmişi
 let PF=store.get("portfoy",{h:[],kap:[],isl:[]});PF.plan=PF.plan||{};
-const pfKaydet=()=>store.set("portfoy",PF);
+const pfKaydet=()=>{store.set("portfoy",PF);try{pfBildirimGonder()}catch(e){}};
 const tl=v=>"₺"+nf(v,2);
 const kzTl=v=>(v>=0?"+":"−")+"₺"+nf(Math.abs(v),2);
 const yuz=v=>(v>=0?"+":"−")+"%"+nf(Math.abs(v),1);
@@ -1200,6 +1200,25 @@ function pfIslem(yon,k,adet,fiyat){
   PF.isl.unshift({yon,k,adet,fiyat,t});PF.isl=PF.isl.slice(0,200);pfKaydet();return null;
 }
 let pfMesaj="",pfHesK="",pfHesT="";
+/* bildirimler: Android uygulaması (HRBildirim köprüsü) arka planda ~15 dakikada bir kontrol eder.
+   Portföy ve eşikler yalnızca telefondaki uygulamaya verilir, sunucuya gitmez. */
+const BK=window.HRBildirim||null;let pfBkSon="";
+function pfBildirimDurum(){try{return BK?BK.durum():"yok"}catch(e){return "yok"}}
+function pfBildirimGonder(){
+  if(!BK)return;
+  const v=PF.h.map(p=>{const a=getA(p.k),ok=a&&!a.noHist,pl=PF.plan[p.k]||{};
+    return {k:p.k,adet:p.adet,ust:pl.h||(ok?Math.round(a.res*100)/100:0),ustAd:pl.h?"satış hedefin":"direnç",alt:pl.z||(ok?Math.round(a.stop*100)/100:0),altAd:pl.z?"zarar-kes":"teknik stop"}});
+  const j=JSON.stringify(v);if(j===pfBkSon)return;pfBkSon=j;try{BK.guncelle(j)}catch(e){}
+}
+window.hrBildirimSonuc=()=>renderPortfoy();
+function pfBildirimKart(){
+  const d=pfBildirimDurum(),uyg=/HisseRadarApp\//.test(navigator.userAgent);
+  const ne=`<p class="xs muted">Uygulama kapalıyken de, seans saatlerinde yaklaşık 15 dakikada bir kontrol eder. Bildirim gelen durumlar: hisse <b>satış hedefine</b> ya da <b>zarar-kes</b> fiyatına gelince (Planım boşsa teknik direnç ve stop), günde <b>%4 / %8</b> üstü sert hareket ve her sabah <b>açılış özeti</b>. Aynı uyarı günde bir kez gelir.</p>`;
+  if(d==="yok")return `<div class="card"><div class="card-h"><h2>Bildirimler</h2></div>${ne}<p class="small" style="margin-top:8px">${uyg?`Bunun için uygulamanın yeni sürümü gerekiyor. <a href="https://github.com/maj834/Hisse/releases/latest/download/HisseRadar.apk">Yeni sürümü indir</a>, açıp kur; portföyün silinmez.`:"Bildirimler yalnızca telefondaki Hisse Radar uygulamasında çalışır."}</p></div>`;
+  return `<div class="card"><div class="card-h"><h2>Bildirimler</h2><span class="xs ${d==="acik"?"up":"faint"}">${d==="acik"?"açık":d==="izin_yok"?"izin yok":"kapalı"}</span></div>${ne}
+    ${d==="izin_yok"?`<p class="small" style="margin-top:8px;color:var(--brass)">Telefon bildirim iznini vermedi. Ayarlar → Uygulamalar → Hisse Radar → Bildirimler'den aç.</p>`:""}
+    <div class="pf-iki" style="margin-top:10px"><button class="btn ${d==="acik"?"ghost":"primary"}" id="pfBkAc" type="button">${d==="kapali"?"Bildirimleri aç":"Bildirimleri kapat"}</button><button class="btn ghost" id="pfBkDene" type="button"${d==="kapali"?" disabled":""}>Deneme gönder</button></div></div>`;
+}
 // Seçili vadede (HZ) hisse başına beklenen fiyat: önce kaynak hedeflerinin ortalaması, yoksa teknik tahmin
 function pfTahmin(o){
   let yeni=0,kotu=0,iyi=0,alt25=0,ust75=0,olsVar=0;
@@ -1231,7 +1250,7 @@ function pfHesapla(){
   </div>${pay>=50&&o.satir.length?`<p class="xs" style="margin-top:8px;color:var(--brass)">Bu alımla portföyünün yarısından fazlası tek hissede olur.</p>`:""}`;
 }
 function renderPortfoy(){
-  const el=$("#p-portfoy");if(!el)return;
+  const el=$("#p-portfoy");if(!el)return;try{pfBildirimGonder()}catch(e){}
   const o=pfOzet(),u=pfUyarilar(o),acikMi=$("#pfForm")&&!$("#pfForm").hidden;
   const kodlar=MKL.length?MKL.map(m=>m.k):ALL.map(a=>a.k);
   el.innerHTML=`
@@ -1265,6 +1284,7 @@ function renderPortfoy(){
     <div class="card-h"><h2>Jarvis</h2><span class="xs faint">${u.length?u.length+" not":"her şey sakin"}</span></div>
     ${u.length?`<div class="pf-not">${u.map(x=>`<p class="pf-${x.seviye}">${x.metin}</p>`).join("")}</div>`:`<p class="small muted">${PF.h.length?"Hisselerinde dikkat edilecek bir gelişme yok.":"Aşağıdan ilk alımını kaydet; Jarvis hisselerini izlemeye başlasın."}</p>`}
   </div>
+  ${pfBildirimKart()}
   <div class="card">
     <div class="card-h"><h2>Hisselerim</h2><button class="btn ghost pf-kucuk" id="pfAc">${acikMi?"Kapat":"İşlem ekle"}</button></div>
     <form id="pfForm" class="pf-form" ${acikMi?"":"hidden"}>
@@ -1323,6 +1343,8 @@ $("#p-portfoy").addEventListener("click",e=>{
   const r=e.target.closest(".pf-row[data-k]");if(r){if(getA(r.dataset.k))openDetail(r.dataset.k);return}
   if(e.target.closest("#pfAc")){const f=$("#pfForm");f.hidden=!f.hidden;e.target.closest("#pfAc").textContent=f.hidden?"İşlem ekle":"Kapat";if(!f.hidden)$("#pfK").focus();return}
   const y=e.target.closest("[data-yon]");if(y){pfYon=y.dataset.yon;document.querySelectorAll("#pfYon button").forEach(b=>b.setAttribute("aria-pressed",b===y));return}
+  if(e.target.closest("#pfBkAc")){try{pfBildirimDurum()==="kapali"?(pfBkSon="",pfBildirimGonder(),BK.ac()):BK.kapat()}catch(err){}renderPortfoy();return}
+  if(e.target.closest("#pfBkDene")){try{BK.dene();pfMesaj="Deneme bildirimi gönderildi; birkaç saniye içinde gelmeli."}catch(err){}renderPortfoy();return}
   if(e.target.closest("#pfVer")){$("#pfKod").value="JARVIS1:"+btoa(unescape(encodeURIComponent(JSON.stringify(PF))));$("#pfKod").select();return}
   if(e.target.closest("#pfYukle")){const v=$("#pfKod").value.trim();try{const d=JSON.parse(decodeURIComponent(escape(atob(v.replace(/^JARVIS1:/,"")))));if(!Array.isArray(d.h))throw 0;PF={h:d.h,kap:d.kap||[],isl:d.isl||[],plan:d.plan||{}};pfKaydet();pfMesaj="Portföy yüklendi."}catch(err){pfMesaj="Kod okunamadı. Tamamını kopyaladığından emin ol."}renderPortfoy();return}
 });
