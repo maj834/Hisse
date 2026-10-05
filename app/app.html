@@ -188,13 +188,32 @@ h1,h2,h3{margin:0}
 
 /* alt menü */
 nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(13,26,32,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
 nav button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 12px;font-size:12px;font-weight:600;color:var(--faint)}
 nav button svg{width:24px;height:24px}
 nav button[aria-selected="true"]{color:var(--ink);box-shadow:inset 0 2px 0 var(--brass)}
 nav button[aria-selected="true"] svg{color:var(--blue)}
 .flash .price-block .big,.flash .row .px{animation:fl 1.4s}
 @keyframes fl{0%{color:var(--hold)}}
+/* Portföyüm (Jarvis) */
+.pf-not{display:flex;flex-direction:column;gap:10px}
+.pf-not p{font-size:14px;line-height:1.55;padding:10px 12px;border-radius:8px;background:var(--s2);border-left:3px solid var(--s3)}
+.pf-not p.pf-up{border-left-color:var(--up)}.pf-not p.pf-down{border-left-color:var(--down)}.pf-not p.pf-hold{border-left-color:var(--hold)}
+.pf-not a{color:var(--brass)}
+.pf-sum b{font-size:17px;white-space:nowrap}
+.pf-kucuk{min-height:38px;font-size:14px;padding:0 12px}
+.pf-form{display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
+.pf-alan{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.pf-alan label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted)}
+.pf-alan input,.pf-kod{width:100%;min-width:0;font:inherit;color:var(--ink);background:var(--s2);border:1px solid var(--s3);border-radius:8px;padding:10px}
+.pf-kod{margin:12px 0;resize:vertical;font-size:13px}
+.pf-iki{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pf-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;width:100%;padding:13px 2px;text-align:left;border-bottom:1px solid var(--line)}
+.pf-row:active{background:var(--s2)}
+.pf-row .code{font-size:19px;font-weight:800;font-stretch:var(--dar)}
+.pf-row .name{display:block;font-size:13px;color:var(--muted)}
+.pf-row .r{text-align:right}.pf-row .px{display:block;font-size:17px;font-weight:700}
+.pf-row .bar{grid-column:1/-1;height:4px}.pf-row>.xs{grid-column:1/-1}
 @media (prefers-reduced-motion:reduce){.live.on i,.flash .price-block .big,.flash .row .px{animation:none}}
 .fin{display:flex;flex-direction:column;font-size:14px}
 .fin>div{display:grid;grid-template-columns:minmax(0,1.4fr) 1fr .8fr .8fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -318,6 +337,7 @@ nav button[aria-selected="true"] svg{animation:zipla .45s ease}
   <section class="page" id="p-fon" hidden></section>
   <section class="page" id="p-fondetay" hidden></section>
   <section class="page" id="p-kriz" hidden></section>
+  <section class="page" id="p-portfoy" hidden></section>
 </main>
 
 <nav><div class="in" role="tablist">
@@ -325,6 +345,7 @@ nav button[aria-selected="true"] svg{animation:zipla .45s ease}
   <button role="tab" data-tab="beklenti" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>Beklenti</button>
   <button role="tab" data-tab="haber" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>Haberler</button>
   <button role="tab" data-tab="fon" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M17 7.5c0-1.9-2.2-3-5-3s-5 1.1-5 3 2.2 2.6 5 3.2 5 1.4 5 3.3-2.2 3.3-5 3.3-5-1.2-5-3.3"/></svg>Fonlar</button>
+  <button role="tab" data-tab="portfoy" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg>Portföyüm</button>
 </div></nav>
 
 <script>
@@ -1091,12 +1112,126 @@ function openFund(k,noPush){
   setView("fondetay");if(!noPush){nav({v:"fondetay",k});window.scrollTo(0,0)}
 }
 
+/* ================= Portföyüm (Jarvis): kişisel portföy, kâr/zarar ve uyarılar ================= */
+// Veriler yalnızca bu telefonda (localStorage) tutulur; hiçbir sunucuya gönderilmez.
+// h: açık pozisyonlar {k,adet,maliyet}, kap: kapanan işlemler {k,alis,satis,kz,t}, isl: işlem geçmişi
+let PF=store.get("portfoy",{h:[],kap:[],isl:[]});
+const pfKaydet=()=>store.set("portfoy",PF);
+const tl=v=>"₺"+nf(v,2);
+const kzTl=v=>(v>=0?"+":"−")+"₺"+nf(Math.abs(v),2);
+const yuz=v=>(v>=0?"+":"−")+"%"+nf(Math.abs(v),1);
+const pfFiyat=k=>{const a=getA(k);return a?a.last:null};
+const pfDegisim=k=>{const a=getA(k);return a?a.ch:0};
+function pfOzet(){
+  let deger=0,maliyet=0,gun=0;
+  const satir=PF.h.map(p=>{const px=pfFiyat(p.k),son=px==null?p.maliyet:px,d=p.adet*son,m=p.adet*p.maliyet,ch=pfDegisim(p.k);
+    deger+=d;maliyet+=m;gun+=d-d/(1+ch/100);return {...p,son,d,m,kz:d-m,kzY:m?(d/m-1)*100:0,ch,var:px!=null}});
+  satir.forEach(s=>s.pay=deger?s.d/deger*100:0);
+  const gerc=PF.kap.reduce((t,x)=>t+x.kz,0);
+  return {satir:satir.sort((a,b)=>b.d-a.d),deger,maliyet,acik:deger-maliyet,gerc,gun};
+}
+// Jarvis'in uyarıları: kurallarla üretilir, her biri bir eylem ya da dikkat noktası söyler
+function pfUyarilar(o){
+  const u=[],ekle=(seviye,metin)=>u.push({seviye,metin});
+  o.satir.forEach(s=>{
+    const a=getA(s.k),rk=riskHisse(s.k);
+    if(rk)ekle("down",`<b>${s.k}</b> için risk uyarısı var: ${esc(rk)}`);
+    if(s.pay>=50&&o.satir.length>1)ekle("hold",`Portföyünün <b>%${nf(s.pay,0)}</b>'i <b>${s.k}</b>'de. Bu hissede kötü bir gün tüm portföyünü sarsar; yeni parayı başka sektöre dağıtmayı düşün.`);
+    if(s.kzY<=-8)ekle("down",`<b>${s.k}</b> maliyetinin <b>${yuz(s.kzY)}</b> altında. Nerede zarar keseceğine önceden karar ver; düşen hisseye ekleme yapmak zararı büyütebilir.`);
+    else if(s.kzY>=10)ekle("up",`<b>${s.k}</b> maliyetinin <b>${yuz(s.kzY)}</b> üstünde. Kârın bir kısmını korumak için bir satış seviyesi belirleyebilirsin.`);
+    if(Math.abs(s.ch)>=4)ekle(s.ch>0?"up":"down",`<b>${s.k}</b> bugün <b>${yuz(s.ch)}</b> hareket etti.`);
+    if(a&&!a.noHist){
+      if(s.son<a.stop)ekle("down",`<b>${s.k}</b> teknik stop seviyesinin (${tl(a.stop)}) altında.`);
+      else if(s.son<=a.sup*1.015)ekle("hold",`<b>${s.k}</b> destek seviyesine (${tl(a.sup)}) yakın. Altına sarkarsa düşüş hızlanabilir.`);
+      else if(s.son>=a.res*.985)ekle("hold",`<b>${s.k}</b> direnç seviyesine (${tl(a.res)}) yakın. Geçemezse geri çekilebilir.`);
+    }
+    try{const c=hisseKarar(s.k);if(c&&c.n>=2&&c.karar!=="TUT")ekle(c.karar==="AL"?"up":"down",`<b>${s.k}</b> için kaynakların ortak kararı <b>${c.karar}</b> (${c.n} kaynak). Ayrıntı için hisseye dokun.`)}catch(e){}
+    const ad=nrm(((MK[s.k]||{}).ad||"").split(" ")[0]),hb=(NEWS.items||[]).filter(n=>{const t=" "+nrm(n.title)+" ";return (n.sym===s.k||t.includes(" "+s.k.toLocaleLowerCase("tr")+" ")||(ad.length>3&&t.includes(" "+ad)))&&(!n.ts||Date.now()/1000-n.ts<86400)});
+    if(hb.length)ekle("hold",`<b>${s.k}</b> hakkında son 24 saatte <b>${hb.length}</b> haber var: <a href="${esc(hb[0].url)}" target="_blank" rel="noopener">${esc(hb[0].title)}</a>`);
+  });
+  const kisa=PF.kap.filter(x=>x.gun!=null&&x.gun<=3),kayip=kisa.filter(x=>x.kz<0);
+  if(kisa.length>=3&&kayip.length/kisa.length>=.6)ekle("hold",`Son kapanan işlemlerinin çoğunu 1-3 gün içinde ve zararla kapatmışsın. Bu kadar kısa vadede fiyat çoğunlukla rastgele hareket eder; girmeden önce "neden alıyorum, nerede satarım" planını yaz.`);
+  return u;
+}
+function pfIslem(yon,k,adet,fiyat){
+  const p=PF.h.find(x=>x.k===k),t=new Date().toISOString();
+  if(yon==="al"){if(p){p.maliyet=(p.maliyet*p.adet+fiyat*adet)/(p.adet+adet);p.adet+=adet;}else PF.h.push({k,adet,maliyet:fiyat,ilk:t})}
+  else{if(!p||p.adet<adet)return `Elinde ${adet} adet ${k} yok.`;
+    const kz=(fiyat-p.maliyet)*adet,gun=p.ilk?Math.round((Date.now()-T(p.ilk))/864e5):null;
+    PF.kap.unshift({k,alis:p.maliyet*adet,satis:fiyat*adet,kz,t,gun});p.adet-=adet;if(!p.adet)PF.h=PF.h.filter(x=>x!==p)}
+  PF.isl.unshift({yon,k,adet,fiyat,t});PF.isl=PF.isl.slice(0,200);pfKaydet();return null;
+}
+let pfMesaj="";
+function renderPortfoy(){
+  const el=$("#p-portfoy");if(!el)return;
+  const o=pfOzet(),u=pfUyarilar(o),acikMi=$("#pfForm")&&!$("#pfForm").hidden;
+  const kodlar=MKL.length?MKL.map(m=>m.k):ALL.map(a=>a.k);
+  el.innerHTML=`
+  <div class="card">
+    <div class="sum-top"><span class="label">Portföy değeri</span><span class="xs faint">15 dk gecikmeli</span></div>
+    <div class="sum-big">${tl(o.deger)}</div>
+    <div class="small ${o.gun>=0?"up":"down"}" style="margin-top:4px">Bugün ${kzTl(o.gun)}</div>
+    <div class="sum-grid pf-sum">
+      <div><span class="xs muted">Açık pozisyon</span><b class="${o.acik>=0?"up":"down"}">${kzTl(o.acik)}</b></div>
+      <div><span class="xs muted">Kapanan</span><b class="${o.gerc>=0?"up":"down"}">${kzTl(o.gerc)}</b></div>
+      <div><span class="xs muted">Toplam</span><b class="${o.acik+o.gerc>=0?"up":"down"}">${kzTl(o.acik+o.gerc)}</b></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-h"><h2>Jarvis</h2><span class="xs faint">${u.length?u.length+" not":"her şey sakin"}</span></div>
+    ${u.length?`<div class="pf-not">${u.map(x=>`<p class="pf-${x.seviye}">${x.metin}</p>`).join("")}</div>`:`<p class="small muted">${PF.h.length?"Hisselerinde dikkat edilecek bir gelişme yok.":"Aşağıdan ilk alımını kaydet; Jarvis hisselerini izlemeye başlasın."}</p>`}
+  </div>
+  <div class="card">
+    <div class="card-h"><h2>Hisselerim</h2><button class="btn ghost pf-kucuk" id="pfAc">${acikMi?"Kapat":"İşlem ekle"}</button></div>
+    <form id="pfForm" class="pf-form" ${acikMi?"":"hidden"}>
+      <div class="seg sm" id="pfYon"><button type="button" data-yon="al" aria-pressed="true">Alış</button><button type="button" data-yon="sat" aria-pressed="false">Satış</button></div>
+      <div class="pf-alan">
+        <label>Hisse<input id="pfK" list="pfKodlar" autocapitalize="characters" autocomplete="off" required maxlength="8" placeholder="ASELS"></label>
+        <label>Adet<input id="pfA" type="number" inputmode="numeric" min="1" step="1" required></label>
+        <label>Fiyat (₺)<input id="pfF" type="number" inputmode="decimal" min="0.01" step="0.01" required></label>
+      </div>
+      <datalist id="pfKodlar">${kodlar.map(k=>`<option value="${k}">`).join("")}</datalist>
+      <button class="btn primary" type="submit">Kaydet</button>
+    </form>
+    ${pfMesaj?`<p class="small" style="margin:10px 0">${esc(pfMesaj)}</p>`:""}
+    ${o.satir.length?`<div class="list pf-list">${o.satir.map(s=>{let c=null;try{c=hisseKarar(s.k)}catch(e){}return `<button class="pf-row" data-k="${s.k}">
+      <span><span class="code">${s.k}</span>${c&&c.n?` <span class="pill ${kCls(c.karar)}">${c.karar}</span>`:""}<span class="name">${s.adet} adet · ort. ${tl(s.maliyet)}</span></span>
+      <span class="r"><span class="px">${tl(s.d)}</span><span class="small ${s.kz>=0?"up":"down"}">${kzTl(s.kz)} (${yuz(s.kzY)})</span></span>
+      <span class="bar"><i style="width:${nf(s.pay,1).replace(",",".")}%;background:var(--brass)"></i></span>
+      <span class="xs faint">Son ${s.var?tl(s.son):"fiyat yok"} · bugün <span class="${s.ch>=0?"up":"down"}">${yuz(s.ch)}</span> · portföyün %${nf(s.pay,0)}'i</span>
+    </button>`}).join("")}</div>`:`<p class="small muted">Henüz hisse yok.</p>`}
+  </div>
+  ${PF.kap.length?`<div class="card"><div class="card-h"><h2>Kapanan işlemler</h2><span class="small ${o.gerc>=0?"up":"down"}">${kzTl(o.gerc)}</span></div>
+    <div class="kv">${PF.kap.slice(0,30).map(x=>`<div><span>${x.k} <span class="xs faint">${esc(dLbl(String(x.t).slice(0,10)))}</span></span><b class="${x.kz>=0?"up":"down"}">${kzTl(x.kz)}</b></div>`).join("")}</div></div>`:""}
+  <div class="card">
+    <div class="card-h"><h2>Yedek</h2></div>
+    <p class="small muted">Portföyün yalnızca bu telefonda saklanır. Telefon değiştirirken ya da hazır bir portföy kodunu yüklemek için kullan.</p>
+    <textarea id="pfKod" class="pf-kod" rows="3" placeholder="Portföy kodunu buraya yapıştır"></textarea>
+    <div class="pf-iki"><button class="btn ghost" id="pfYukle" type="button">Kodu yükle</button><button class="btn ghost" id="pfVer" type="button">Kodu al</button></div>
+  </div>
+  <p class="xs faint" style="text-align:center">Jarvis'in notları kurallarla ve uygulamadaki yapay zekâ kararlarıyla üretilir. Yatırım tavsiyesi değildir; emir vermez.</p>`;
+}
+let pfYon="al";
+$("#p-portfoy").addEventListener("click",e=>{
+  if(e.target.closest("a"))return;
+  const r=e.target.closest(".pf-row[data-k]");if(r){if(getA(r.dataset.k))openDetail(r.dataset.k);return}
+  if(e.target.closest("#pfAc")){const f=$("#pfForm");f.hidden=!f.hidden;e.target.closest("#pfAc").textContent=f.hidden?"İşlem ekle":"Kapat";if(!f.hidden)$("#pfK").focus();return}
+  const y=e.target.closest("[data-yon]");if(y){pfYon=y.dataset.yon;document.querySelectorAll("#pfYon button").forEach(b=>b.setAttribute("aria-pressed",b===y));return}
+  if(e.target.closest("#pfVer")){$("#pfKod").value="JARVIS1:"+btoa(unescape(encodeURIComponent(JSON.stringify(PF))));$("#pfKod").select();return}
+  if(e.target.closest("#pfYukle")){const v=$("#pfKod").value.trim();try{const d=JSON.parse(decodeURIComponent(escape(atob(v.replace(/^JARVIS1:/,"")))));if(!Array.isArray(d.h))throw 0;PF={h:d.h,kap:d.kap||[],isl:d.isl||[]};pfKaydet();pfMesaj="Portföy yüklendi."}catch(err){pfMesaj="Kod okunamadı. Tamamını kopyaladığından emin ol."}renderPortfoy();return}
+});
+$("#p-portfoy").addEventListener("input",e=>{if(e.target.id==="pfK"){const k=e.target.value.trim().toUpperCase(),px=pfFiyat(k);if(px!=null&&!$("#pfF").value)$("#pfF").value=px}});
+$("#p-portfoy").addEventListener("submit",e=>{e.preventDefault();
+  const k=$("#pfK").value.trim().toUpperCase(),adet=parseInt($("#pfA").value,10),fiyat=parseFloat($("#pfF").value);
+  if(!k||!(adet>0)||!(fiyat>0))return;
+  const h=pfIslem(pfYon,k,adet,fiyat);pfMesaj=h||`Kaydedildi: ${k} ${adet} adet ${pfYon==="al"?"alış":"satış"}.`;renderPortfoy()});
+
 /* ================= gezinme (telefonun geri tuşu uygulamadan atmaz) ================= */
-const VIEWS=["piyasa","detay","beklenti","haber","fon","fondetay","kriz"];
+const VIEWS=["piyasa","detay","beklenti","haber","fon","fondetay","kriz","portfoy"];
 function setView(v){VIEWS.forEach(n=>{const el=$("#p-"+n),once=el.hidden;el.hidden=n!==v;if(n===v&&once){el.classList.remove("giris");void el.offsetWidth;el.classList.add("giris")}});const tb=v==="detay"||v==="fondetay"||v==="kriz"?(tab||"piyasa"):v;document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tb))}
 function nav(st){try{history.pushState(st,"","#"+(st.k||st.v))}catch(e){}}
 function goBack(){if(history.state&&history.state.v&&history.state.v!=="piyasa")history.back();else showTab("piyasa",true)}
-const KAYDIR={},GERI_AD={piyasa:"Piyasa",beklenti:"Beklenti",haber:"Haberler",fon:"Fonlar"};
+const KAYDIR={},GERI_AD={piyasa:"Piyasa",beklenti:"Beklenti",haber:"Haberler",fon:"Fonlar",portfoy:"Portföyüm"};
 function kaydirSakla(){const v=VIEWS.find(n=>!$("#p-"+n).hidden);if(v&&v!=="detay"&&v!=="fondetay")KAYDIR[v]=window.scrollY}
 function showTab(t,noPush){tab=t;cur=null;setView(t);const y=noPush?(KAYDIR[t]||0):0;window.scrollTo(0,y);if(y){requestAnimationFrame(()=>window.scrollTo(0,y));[80,250,500].forEach(ms=>setTimeout(()=>{if(tab===t&&!$("#p-"+t).hidden&&Math.abs(scrollY-y)>4)window.scrollTo(0,y)},ms))}if(!noPush){if(t==="piyasa"){try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}}else nav({v:t})}}
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{if(!$("#p-"+b.dataset.tab).hidden)return;showTab(b.dataset.tab)});
@@ -1158,14 +1293,15 @@ function gecikmeBilgi(){if($("#onay"))return;const d=document.createElement("div
   document.body.appendChild(d);document.body.classList.add("kilit");
   const kapat=()=>{d.remove();document.body.classList.remove("kilit")};$("#onayKapat").onclick=kapat;d.onclick=e=>{if(e.target===d)kapat()}}
 $("#live").addEventListener("click",gecikmeBilgi);$("#live").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")gecikmeBilgi()});
-function renderAll(){rebuild();if($("#q")&&$("#idx")){$("#idx").innerHTML=idxCard();drawIdx();renderRows()}else renderMarket();renderOutlook();renderNews();renderFunds();updateLive();FKC={};if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true);if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}
+function pfYenile(){const f=$("#pfForm");if(f&&!f.hidden)return;renderPortfoy()}
+function renderAll(){rebuild();if($("#q")&&$("#idx")){$("#idx").innerHTML=idxCard();drawIdx();renderRows()}else renderMarket();renderOutlook();renderNews();renderFunds();pfYenile();updateLive();FKC={};if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true);if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}
 function flash(){document.body.classList.add("flash");setTimeout(()=>document.body.classList.remove("flash"),1500)}
 
 /* ================= veri: 5 saniyede bir ================= */
 async function getJ(u){const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error(r.status);return r.json()}
 let busy=false;
 async function poll(){if(busy||document.hidden)return;busy=true;try{const d=await getJ(RAW("data","snapshot.json"));if(d.hisseler&&T(d.updatedAt)>T(SNAP.updatedAt)){SNAP=d;renderAll();flash()}}catch(e){}busy=false;updateLive()}
-async function pollMarket(){try{const d=await getJ(RAW("data","market.json"));if(d.hisseler&&T(d.updatedAt)>T(MKD.updatedAt)){const ilk=!MKL.length;setMarket(d);if(ilk)renderMarket();else renderRows();if(FAV.length)renderNews();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}}
+async function pollMarket(){try{const d=await getJ(RAW("data","market.json"));if(d.hisseler&&T(d.updatedAt)>T(MKD.updatedAt)){const ilk=!MKL.length;setMarket(d);if(ilk)renderMarket();else renderRows();pfYenile();if(FAV.length)renderNews();if(cur&&cur.lite&&!$("#p-detay").hidden)openDetail(cur.k,true)}}catch(e){}}
 async function pollSlow(){
   pollMarket();loadGec();
   try{const d=await getJ(RAW("data","news.json"));if(d.items&&T(d.updatedAt)>T(NEWS.updatedAt)){NEWS=d;renderNews()}}catch(e){}
@@ -1186,7 +1322,7 @@ renderAll();talepIzle();
 (function(){const sp=$("#splash"),hazir=()=>{sp.classList.add("bitti");setTimeout(()=>{sp.remove();onayGoster(false)},520)};
   const az=matchMedia("(prefers-reduced-motion:reduce)").matches?200:1300;setTimeout(hazir,az)})();
 const h=location.hash.slice(1);try{history.replaceState({v:"piyasa"},"","#piyasa")}catch(e){}
-if(["beklenti","haber","fon"].includes(h))showTab(h);else if(getA(h.toUpperCase()))openDetail(h.toUpperCase());
+if(["beklenti","haber","fon","portfoy"].includes(h))showTab(h);else if(getA(h.toUpperCase()))openDetail(h.toUpperCase());
 poll();pollSlow();
 setInterval(poll,5000);setInterval(pollSlow,60000);setInterval(updateLive,15000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){poll();pollSlow()}});
