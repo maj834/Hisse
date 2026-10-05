@@ -1,0 +1,39 @@
+name: Geçmiş benzer durumlar
+
+# Her hisse için "bugünkü durumdayken geçmişte 1 hafta / 1 ay / 3 ay sonra ne oldu" istatistiği -> data/olasilik.json
+# Yapay zekâ kullanmaz; yalnızca Yahoo'dan 5 yıllık fiyat geçmişi.
+on:
+  schedule:
+    - cron: "35 16 * * 1-5"   # 19:35 TSİ, kapanıştan sonra
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: olasilik
+  cancel-in-progress: false
+
+jobs:
+  olasilik:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet requests curl_cffi pandas numpy
+      - run: python scraper/olasilik.py
+      - name: kaydet
+        run: |
+          git config user.name "hisse-radar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/olasilik.json
+          git diff --cached --quiet && exit 0
+          git commit --quiet -m "Geçmiş benzer durumlar $(TZ=Europe/Istanbul date '+%d.%m %H:%M')"
+          for i in 1 2 3; do
+            git pull --quiet --rebase origin main && git push --quiet origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1

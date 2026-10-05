@@ -467,6 +467,9 @@ function votes(k){
   const tm=((TEMEL.hisseler||{})[k]);if(tm&&tm.ozet!==undefined){const p=tm.puan||0;list.push({id:"temel",ad:"Temel analiz ("+tm.ceyrek+")",karar:p>=2?"AL":p<=-2?"SAT":"TUT",guven:HZ==="1h"?35:Math.min(75,45+Math.abs(p)*10),neden:tm.ozet?tm.ozet.charAt(0).toLocaleUpperCase("tr")+tm.ozet.slice(1):"Finansallarda belirgin bir sinyal yok"})}
   const tv=MK[k]&&MK[k].tv;if(tv!=null&&HZ==="1h")list.push({id:"tv",ad:"TradingView göstergeleri",karar:tvKarar(tv),guven:Math.round(40+Math.abs(tv)*50),neden:tvYazi(tv)+" sinyali (hareketli ortalamalar ve osilatörler)"+(MK[k].rsi!=null?", RSI "+nf(MK[k].rsi,0):"")});
   if(a&&!a.noHist)list.push({id:"teknik",ad:"Teknik analiz",karar:HZ==="1h"?a.tone:HZ==="1a"?a.tone1a:a.tone3a,guven:Math.min(85,35+Math.abs(a.sc)*12),hedef:Math.round((HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc)*100)/100,neden:a.why.slice(0,2).map((w,i)=>i?w.charAt(0).toLocaleLowerCase("tr")+w.slice(1):w).join(", ")});
+  const ol=a&&olsVade(k);
+  if(ol){const p=ol.p;list.push({id:"gecmis",ad:"Geçmiş benzer durumlar",karar:p>=.6?"AL":p<=.4?"SAT":"TUT",guven:Math.round(Math.min(80,30+Math.abs(p-.5)*200)),hedef:Math.round(last*(1+ol.q[1]/100)*100)/100,
+    neden:(ol.kos?`Son 3 yılda bu hisse bugünkü gibi bir durumdayken`:`Son 3 yılda bu hissede`)+` ${HZL[HZ]} sonra fiyatın yükselme oranı %${nf(p*100,0)} (${ol.n} gün incelendi). Ortanca getiri ${ysg(ol.q[1])}; günlerin yarısında ${ysg(ol.q[0])} ile ${ysg(ol.q[2])} arası`})}
   list.forEach(v=>{if(v.hedef&&!hedefOk(v.karar,+v.hedef,last))v.hedef=null});
   return list;
 }
@@ -552,7 +555,9 @@ function nedenKutu(k,con,vs){
 function kararK(k){const key=HZ+k;if(KC[key])return KC[key];const a=getA(k);if(!a)return null;return KC[key]=hisseKarar(k)}
 function targets(k){
   const a=getA(k);if(!a)return [];
-  const t=[];votes(k).forEach(v=>{if(v.hedef)t.push({ad:v.ad,id:v.id,v:+v.hedef})});
+  const t=[],vs=votes(k),gm=vs.some(v=>v.id==="gecmis"&&v.hedef);
+  // 1 ay / 3 ay: trendi uzatan teknik tahmin, ölçülmüş geçmiş dağılım varken ortalamaya katılmaz
+  vs.forEach(v=>{if(v.hedef&&!(gm&&v.id==="teknik"&&HZ!=="1h"))t.push({ad:v.ad,id:v.id,v:+v.hedef})});
   const e=HZ==="1h"&&outTaze()&&[...(OUT.yukselis||[]),...(OUT.dusus||[])].find(x=>x.sembol===k&&x.hedef);if(e)t.push({ad:"Haber beklentisi",id:"haber",v:+e.hedef});
   return t.filter(x=>x.v>0);
 }
@@ -920,6 +925,14 @@ function gundemKart(){const m=GUN.makro||{},pz=GUN.piyasa||{},sr=(m.seriler||[])
 let ex=store.get("ex","up");
 /* yüksek ihtimalli sinyaller: yalnızca geçmiş veri testinde tutan koşullar + canlı isabet takibi (data/secim.json) */
 let SEC={};
+/* geçmiş benzer durumlar (data/olasilik.json): bu hisse bugünkü durumdayken geçmişte seçili vadede ne oldu */
+let OLS={};
+const ysg=v=>(v>=0?"+":"−")+"%"+nf(Math.abs(v),1);
+function olsVade(k){
+  const o=(OLS.hisseler||{})[k],x=o&&o[HZ];if(!x||!OLS.son||Date.now()-T(OLS.son)>12*864e5)return null;
+  const iy=((OLS.dogrulama||{})[HZ]||{}).kosul_ise_yariyor;
+  return iy?{p:x.p,q:x.q,n:x.n,kos:true}:{p:x.pu,q:x.qu||x.q,n:x.N,kos:false};
+}
 const yuzde=v=>"%"+nf(v*100,0);
 const KOSUL_AD={"200 günlük ort. uzaklık: en düşük %20":"200 günlük ortalamanın en çok altında kalanlardan","200 günlük ort. uzaklık: en yüksek %20":"200 günlük ortalamanın en çok üstünde olanlardan",
   "oynaklık: en yüksek %20":"en oynak hisselerden","oynaklık: en düşük %20":"en sakin hisselerden","Zirveden %30+ aşağı":"52 haftalık zirvesinden %30'dan fazla aşağıda",
@@ -1185,16 +1198,17 @@ function pfIslem(yon,k,adet,fiyat){
 let pfMesaj="",pfHesK="",pfHesT="";
 // Seçili vadede (HZ) hisse başına beklenen fiyat: önce kaynak hedeflerinin ortalaması, yoksa teknik tahmin
 function pfTahmin(o){
-  let yeni=0,kotu=0,iyi=0;
+  let yeni=0,kotu=0,iyi=0,alt25=0,ust75=0,olsVar=0;
   const r=o.satir.map(s=>{
+    const ol=olsVade(s.k);if(ol){olsVar++;alt25+=s.d*(1+ol.q[0]/100);ust75+=s.d*(1+ol.q[2]/100)}else{alt25+=s.d;ust75+=s.d}
     const a=getA(s.k);let tg=[],c=null;try{tg=targets(s.k)}catch(e){}try{c=hisseKarar(s.k)}catch(e){}
     let h=tg.length?tg.reduce((t,x)=>t+x.v,0)/tg.length:(a&&!a.noHist?(HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc):null);
     if(!(h>0))h=null;
     const pl=PF.plan[s.k]||{},alt=pl.z||(a&&!a.noHist?a.stop:null),ust=pl.h||(a&&!a.noHist?a.t1:null);
     yeni+=s.adet*(h||s.son);kotu+=s.adet*(alt&&alt<s.son?alt:s.son);iyi+=s.adet*(ust&&ust>s.son?ust:s.son);
-    return {...s,h,n:tg.length,c,fark:h?(h/s.son-1)*100:null,tlFark:h?s.adet*(h-s.son):null};
+    return {...s,h,n:tg.length,c,ol,fark:h?(h/s.son-1)*100:null,tlFark:h?s.adet*(h-s.son):null};
   });
-  return {r,yeni,kotu,iyi};
+  return {r,yeni,kotu,iyi,alt25,ust75,olsVar};
 }
 function pfHesapla(){
   const k=pfHesK.trim().toUpperCase(),t=parseFloat(pfHesT),px=pfFiyat(k);
@@ -1238,7 +1252,9 @@ function renderPortfoy(){
       <span><span class="code">${s.k}</span>${s.c&&s.c.n?` <span class="pill ${kCls(s.c.karar)}">${s.c.karar}</span>`:""}</span>
       <span class="r">${s.h?`<b>${tl(s.h)}</b>`:`<span class="xs faint">tahmin yok</span>`}</span>
       ${s.h?`<span class="xs faint">Şimdi ${tl(s.son)} · <span class="${s.fark>=0?"up":"down"}">${yuz(s.fark)} · ${kzTl(s.tlFark)}</span> · ${s.n?s.n+" kaynağın hedef ortalaması":"teknik tahmin"}</span>`:""}
+      ${s.ol?`<span class="xs">Geçmişte yükselme oranı <b class="${s.ol.p>=.55?"up":s.ol.p<=.45?"down":""}">%${nf(s.ol.p*100,0)}</b> · olası aralık ${tl(s.son*(1+s.ol.q[0]/100))} – ${tl(s.son*(1+s.ol.q[2]/100))}</span>`:""}
     </div>`).join("")}</div>
+    ${th.olsVar?`<p class="small" style="margin-top:10px">Geçmiş verilere göre ${HZL[HZ]} sonra portföyünün olası aralığı: <b>${tl(th.alt25)} – ${tl(th.ust75)}</b></p><p class="xs faint">Her hissenin son 3 yıldaki fiyat geçmişinden: benzer dönemlerin yarısında sonuç bu aralıkta kaldı. Hedef fiyatlar yapay zekâ, temel analiz ve bu istatistiğin ortalamasıdır.</p>`:""}
     <p class="xs faint" style="margin-top:8px">Senaryo: zarar-kes / stop seviyelerine inerse ${tl(th.kotu)} (${kzTl(th.kotu-o.deger)}), hedeflerine çıkarsa ${tl(th.iyi)} (${kzTl(th.iyi-o.deger)}). Tahminler garanti değildir.</p>
   </div>`})():""}
   <div class="card">
@@ -1397,6 +1413,7 @@ async function pollSlow(){
   try{const d=await getJ(RAW("data","news.json"));if(d.items&&T(d.updatedAt)>T(NEWS.updatedAt)){NEWS=d;renderNews()}}catch(e){}
   try{const d=await getJ(RAW("main","data/endeksler.json"));if(T(d.updatedAt)>T(ENDK.updatedAt)){ENDK=d;renderRows()}}catch(e){}
   try{const d=await getJ(RAW("main","data/fon_krizi.json"));if(T(d.updatedAt)>T(KRIZ.updatedAt)){KRIZ=d;renderOutlook();renderNews();renderFunds();if(!$("#p-kriz").hidden)renderKriz()}}catch(e){}
+  try{const d=await getJ(RAW("main","data/olasilik.json"));if(T(d.updatedAt)>T(OLS.updatedAt)){OLS=d;KC={};renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/secim.json"));if(T(d.updatedAt)>T(SEC.updatedAt)){SEC=d;KC={};FKC={};renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/outlook.json"));if(T(d.updatedAt)>T(OUT.updatedAt)){OUT=d;renderAll()}}catch(e){}
   try{const d=await getJ(RAW("main","data/ai.json"));if(T(d.updatedAt)>T(AI.updatedAt)){AI=d;renderAll()}}catch(e){}
