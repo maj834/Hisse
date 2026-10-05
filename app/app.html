@@ -208,6 +208,22 @@ nav button[aria-selected="true"] svg{color:var(--blue)}
 .pf-alan input,.pf-kod{width:100%;min-width:0;font:inherit;color:var(--ink);background:var(--s2);border:1px solid var(--s3);border-radius:8px;padding:10px}
 .pf-kod{margin:12px 0;resize:vertical;font-size:13px}
 .pf-iki{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pf-th{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:11px 2px;border-bottom:1px solid var(--line)}
+.pf-th:last-child{border-bottom:0}
+.pf-th .r{text-align:right}
+.pf-th .xs{grid-column:1/-1}
+.pf-ozet2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 4px}
+.pf-ozet2 div{background:var(--s2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.pf-ozet2 b{font-size:16px;white-space:nowrap}
+.pf-plan{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:end;padding:8px 0;border-bottom:1px solid var(--line)}
+.pf-plan:last-child{border-bottom:0}
+.pf-plan .code{align-self:center}
+.pf-plan label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:600;color:var(--muted)}
+.pf-plan input,.pf-hes input{width:100%;min-width:0;font:inherit;color:var(--ink);background:var(--s2);border:1px solid var(--s3);border-radius:8px;padding:9px}
+.pf-hes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pf-hes label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted)}
+.pf-sek{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:4px 10px;align-items:center;margin-top:8px}
+.pf-sek .bar{grid-column:1/-1}
 .pf-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;width:100%;padding:13px 2px;text-align:left;border-bottom:1px solid var(--line)}
 .pf-row:active{background:var(--s2)}
 .pf-row .code{font-size:19px;font-weight:800;font-stretch:var(--dar)}
@@ -416,8 +432,9 @@ function analyze(k,s){
   let t1=res;if(t1<=bHi+A)t1=bHi+A*1.5;const t2=t1+A;
   const hafta=tone==="AL"?Math.min(res,last+A*2):tone==="SAT"?Math.max(sup,last-A*2):last+(m10-m20)*.5;
   // uzun vadeler: kısa vadeli eğimi sönümleyerek uzat, oynaklıkla sınırla
-  const egim=(m10-m20)/5,uzat=(n,s)=>{const d=Math.max(-A*Math.sqrt(n)*1.2,Math.min(A*Math.sqrt(n)*1.2,egim*n*s));return last+d};
-  const ay=uzat(21,.5),uc=uzat(63,.3);
+  const egim=(m10-m20)/5,uzat=(n,s,mx)=>{const l=Math.min(A*Math.sqrt(n)*1.2,last*mx),d=Math.max(-l,Math.min(l,egim*n*s));return last+d};
+  // oynak hisselerde ATR sınırı tek başına %60'lık uç tahminler üretiyordu; yüzde tavanı eklendi
+  const ay=uzat(21,.5,.15),uc=uzat(63,.3,.25);
   const kv=(h,esik)=>h>last*(1+esik)?"AL":h<last*(1-esik)?"SAT":"TUT";
   const i=(s.i||[]);
   return {k,s,last,ch,m10,m20,R,A,sup,res,sc,why,tone,noHist:c.length<21,bLo,bHi,stop,t1,t2,rr:(t1-mid)/Math.max(mid-stop,1e-9),hafta,ay,uc,tone1a:kv(ay,.03),tone3a:kv(uc,.06),
@@ -1115,7 +1132,7 @@ function openFund(k,noPush){
 /* ================= Portföyüm (Jarvis): kişisel portföy, kâr/zarar ve uyarılar ================= */
 // Veriler yalnızca bu telefonda (localStorage) tutulur; hiçbir sunucuya gönderilmez.
 // h: açık pozisyonlar {k,adet,maliyet}, kap: kapanan işlemler {k,alis,satis,kz,t}, isl: işlem geçmişi
-let PF=store.get("portfoy",{h:[],kap:[],isl:[]});
+let PF=store.get("portfoy",{h:[],kap:[],isl:[]});PF.plan=PF.plan||{};
 const pfKaydet=()=>store.set("portfoy",PF);
 const tl=v=>"₺"+nf(v,2);
 const kzTl=v=>(v>=0?"+":"−")+"₺"+nf(Math.abs(v),2);
@@ -1134,9 +1151,13 @@ function pfOzet(){
 function pfUyarilar(o){
   const u=[],ekle=(seviye,metin)=>u.push({seviye,metin});
   o.satir.forEach(s=>{
-    const a=getA(s.k),rk=riskHisse(s.k);
+    const a=getA(s.k),rk=riskHisse(s.k),pl=PF.plan[s.k]||{};
+    if(s.var&&pl.h&&s.son>=pl.h)ekle("up",`🎯 <b>${s.k}</b> belirlediğin satış hedefine (${tl(pl.h)}) ulaştı. Planına uyacaksan satışı düşün.`);
+    else if(s.var&&pl.h&&s.son>=pl.h*.98)ekle("hold",`<b>${s.k}</b> satış hedefine (${tl(pl.h)}) %2'den az kaldı.`);
+    if(s.var&&pl.z&&s.son<=pl.z)ekle("down",`🛑 <b>${s.k}</b> zarar-kes seviyene (${tl(pl.z)}) indi. Planına uyacaksan satışı düşün.`);
+    else if(s.var&&pl.z&&s.son<=pl.z*1.02)ekle("hold",`<b>${s.k}</b> zarar-kes seviyene (${tl(pl.z)}) %2'den az kaldı.`);
     if(rk)ekle("down",`<b>${s.k}</b> için risk uyarısı var: ${esc(rk)}`);
-    if(s.pay>=50&&o.satir.length>1)ekle("hold",`Portföyünün <b>%${nf(s.pay,0)}</b>'i <b>${s.k}</b>'de. Bu hissede kötü bir gün tüm portföyünü sarsar; yeni parayı başka sektöre dağıtmayı düşün.`);
+    if(s.pay>=50&&o.satir.length>1)ekle("hold",`<b>${s.k}</b> portföyünde çok ağır (pay <b>%${nf(s.pay,0)}</b>). Bu hissede kötü bir gün tüm portföyünü sarsar; yeni parayı başka sektöre dağıtmayı düşün.`);
     if(s.kzY<=-8)ekle("down",`<b>${s.k}</b> maliyetinin <b>${yuz(s.kzY)}</b> altında. Nerede zarar keseceğine önceden karar ver; düşen hisseye ekleme yapmak zararı büyütebilir.`);
     else if(s.kzY>=10)ekle("up",`<b>${s.k}</b> maliyetinin <b>${yuz(s.kzY)}</b> üstünde. Kârın bir kısmını korumak için bir satış seviyesi belirleyebilirsin.`);
     if(Math.abs(s.ch)>=4)ekle(s.ch>0?"up":"down",`<b>${s.k}</b> bugün <b>${yuz(s.ch)}</b> hareket etti.`);
@@ -1161,7 +1182,36 @@ function pfIslem(yon,k,adet,fiyat){
     PF.kap.unshift({k,alis:p.maliyet*adet,satis:fiyat*adet,kz,t,gun});p.adet-=adet;if(!p.adet)PF.h=PF.h.filter(x=>x!==p)}
   PF.isl.unshift({yon,k,adet,fiyat,t});PF.isl=PF.isl.slice(0,200);pfKaydet();return null;
 }
-let pfMesaj="";
+let pfMesaj="",pfHesK="",pfHesT="";
+// Seçili vadede (HZ) hisse başına beklenen fiyat: önce kaynak hedeflerinin ortalaması, yoksa teknik tahmin
+function pfTahmin(o){
+  let yeni=0,kotu=0,iyi=0;
+  const r=o.satir.map(s=>{
+    const a=getA(s.k);let tg=[],c=null;try{tg=targets(s.k)}catch(e){}try{c=hisseKarar(s.k)}catch(e){}
+    let h=tg.length?tg.reduce((t,x)=>t+x.v,0)/tg.length:(a&&!a.noHist?(HZ==="1h"?a.hafta:HZ==="1a"?a.ay:a.uc):null);
+    if(!(h>0))h=null;
+    const pl=PF.plan[s.k]||{},alt=pl.z||(a&&!a.noHist?a.stop:null),ust=pl.h||(a&&!a.noHist?a.t1:null);
+    yeni+=s.adet*(h||s.son);kotu+=s.adet*(alt&&alt<s.son?alt:s.son);iyi+=s.adet*(ust&&ust>s.son?ust:s.son);
+    return {...s,h,n:tg.length,c,fark:h?(h/s.son-1)*100:null,tlFark:h?s.adet*(h-s.son):null};
+  });
+  return {r,yeni,kotu,iyi};
+}
+function pfHesapla(){
+  const k=pfHesK.trim().toUpperCase(),t=parseFloat(pfHesT),px=pfFiyat(k);
+  if(!k||!(t>0))return `<p class="xs muted">Hisse ve tutarı yaz; kaç adet alacağını, yeni ortalama maliyetini ve portföydeki payını hesaplayayım.</p>`;
+  if(px==null)return `<p class="xs muted">${esc(k)} için fiyat bulunamadı.</p>`;
+  const adet=Math.floor(t/px);if(!adet)return `<p class="xs muted">${tl(t)} ile 1 adet ${esc(k)} (${tl(px)}) alınamıyor.</p>`;
+  const o=pfOzet(),p=PF.h.find(x=>x.k===k),har=adet*px,yAd=(p?p.adet:0)+adet,yOrt=p?(p.maliyet*p.adet+har)/yAd:px,mevcut=p?p.adet*px:0,pay=(mevcut+har)/(o.deger+har)*100;
+  let c=null;try{c=hisseKarar(k)}catch(e){}
+  return `<div class="kv" style="margin-top:10px">
+    <div><span>Alınacak</span><b>${adet} adet × ${tl(px)}</b></div>
+    <div><span>Harcanan / artan</span><b>${tl(har)} / ${tl(t-har)}</b></div>
+    ${p?`<div><span>Ortalama maliyet</span><b>${tl(p.maliyet)} → ${tl(yOrt)}</b></div>`:""}
+    <div><span>Toplam adet</span><b>${yAd}</b></div>
+    <div><span>Portföydeki payı</span><b>%${nf(pay,0)}</b></div>
+    ${c&&c.n?`<div><span>Kaynakların kararı (${HZL[HZ]})</span><b class="${kCls(c.karar)}">${c.karar}</b></div>`:""}
+  </div>${pay>=50&&o.satir.length?`<p class="xs" style="margin-top:8px;color:var(--brass)">Bu alımla portföyünün yarısından fazlası tek hissede olur.</p>`:""}`;
+}
 function renderPortfoy(){
   const el=$("#p-portfoy");if(!el)return;
   const o=pfOzet(),u=pfUyarilar(o),acikMi=$("#pfForm")&&!$("#pfForm").hidden;
@@ -1177,6 +1227,20 @@ function renderPortfoy(){
       <div><span class="xs muted">Toplam</span><b class="${o.acik+o.gerc>=0?"up":"down"}">${kzTl(o.acik+o.gerc)}</b></div>
     </div>
   </div>
+  ${o.satir.length?(()=>{const th=pfTahmin(o),fk=th.yeni-o.deger;return `<div class="card">
+    <div class="card-h"><h2>İleriye dönük tahmin</h2></div>
+    ${hzSeg("hzP")}
+    <div class="pf-ozet2">
+      <div><span class="xs muted">${HZL[HZ]} sonra tahmini değer</span><b>${tl(th.yeni)}</b><span class="small ${fk>=0?"up":"down"}">${kzTl(fk)} (${yuz(o.deger?fk/o.deger*100:0)})</span></div>
+      <div><span class="xs muted">Maliyetine göre</span><b class="${th.yeni-o.maliyet>=0?"up":"down"}">${kzTl(th.yeni-o.maliyet)}</b><span class="xs faint">bugün ${kzTl(o.acik)}</span></div>
+    </div>
+    <div class="list">${th.r.map(s=>`<div class="pf-th">
+      <span><span class="code">${s.k}</span>${s.c&&s.c.n?` <span class="pill ${kCls(s.c.karar)}">${s.c.karar}</span>`:""}</span>
+      <span class="r">${s.h?`<b>${tl(s.h)}</b>`:`<span class="xs faint">tahmin yok</span>`}</span>
+      ${s.h?`<span class="xs faint">Şimdi ${tl(s.son)} · <span class="${s.fark>=0?"up":"down"}">${yuz(s.fark)} · ${kzTl(s.tlFark)}</span> · ${s.n?s.n+" kaynağın hedef ortalaması":"teknik tahmin"}</span>`:""}
+    </div>`).join("")}</div>
+    <p class="xs faint" style="margin-top:8px">Senaryo: zarar-kes / stop seviyelerine inerse ${tl(th.kotu)} (${kzTl(th.kotu-o.deger)}), hedeflerine çıkarsa ${tl(th.iyi)} (${kzTl(th.iyi-o.deger)}). Tahminler garanti değildir.</p>
+  </div>`})():""}
   <div class="card">
     <div class="card-h"><h2>Jarvis</h2><span class="xs faint">${u.length?u.length+" not":"her şey sakin"}</span></div>
     ${u.length?`<div class="pf-not">${u.map(x=>`<p class="pf-${x.seviye}">${x.metin}</p>`).join("")}</div>`:`<p class="small muted">${PF.h.length?"Hisselerinde dikkat edilecek bir gelişme yok.":"Aşağıdan ilk alımını kaydet; Jarvis hisselerini izlemeye başlasın."}</p>`}
@@ -1198,9 +1262,31 @@ function renderPortfoy(){
       <span><span class="code">${s.k}</span>${c&&c.n?` <span class="pill ${kCls(c.karar)}">${c.karar}</span>`:""}<span class="name">${s.adet} adet · ort. ${tl(s.maliyet)}</span></span>
       <span class="r"><span class="px">${tl(s.d)}</span><span class="small ${s.kz>=0?"up":"down"}">${kzTl(s.kz)} (${yuz(s.kzY)})</span></span>
       <span class="bar"><i style="width:${nf(s.pay,1).replace(",",".")}%;background:var(--brass)"></i></span>
-      <span class="xs faint">Son ${s.var?tl(s.son):"fiyat yok"} · bugün <span class="${s.ch>=0?"up":"down"}">${yuz(s.ch)}</span> · portföyün %${nf(s.pay,0)}'i</span>
+      <span class="xs faint">Son ${s.var?tl(s.son):"fiyat yok"} · bugün <span class="${s.ch>=0?"up":"down"}">${yuz(s.ch)}</span> · pay %${nf(s.pay,0)}</span>
     </button>`}).join("")}</div>`:`<p class="small muted">Henüz hisse yok.</p>`}
   </div>
+  ${o.satir.length?`<div class="card">
+    <div class="card-h"><h2>Planım</h2><span class="xs faint">alarm</span></div>
+    <p class="xs muted">Her hisse için satış hedefini ve zarar-kes fiyatını yaz. Fiyat bu seviyelere gelince Jarvis seni uyarır. Boş kutudaki gri değer teknik öneridir.</p>
+    ${o.satir.map(s=>{const a=getA(s.k),pl=PF.plan[s.k]||{},ok=a&&!a.noHist;return `<div class="pf-plan">
+      <span class="code">${s.k}</span>
+      <label>Satış hedefi (₺)<input data-plan="${s.k}" data-t="h" type="number" inputmode="decimal" step="0.01" min="0" value="${pl.h||""}" placeholder="${ok?nf(a.t1,2):""}"></label>
+      <label>Zarar-kes (₺)<input data-plan="${s.k}" data-t="z" type="number" inputmode="decimal" step="0.01" min="0" value="${pl.z||""}" placeholder="${ok?nf(a.stop,2):""}"></label>
+    </div>`}).join("")}
+  </div>`:""}
+  <div class="card">
+    <div class="card-h"><h2>Ekleme hesaplayıcı</h2></div>
+    <div class="pf-hes">
+      <label>Hisse<input id="pfHK" list="pfKodlar" autocapitalize="characters" autocomplete="off" maxlength="8" placeholder="ASELS" value="${esc(pfHesK)}"></label>
+      <label>Tutar (₺)<input id="pfHT" type="number" inputmode="decimal" min="1" step="1" placeholder="10000" value="${esc(pfHesT)}"></label>
+    </div>
+    <div id="pfHS">${pfHesapla()}</div>
+  </div>
+  ${o.satir.length>0?(()=>{const g={};o.satir.forEach(s=>{const a=getA(s.k),sk=(a&&a.s&&a.s.sektor)||(MK[s.k]||{}).sek||"Diğer";g[sk]=(g[sk]||0)+s.pay});const l=Object.entries(g).sort((a,b)=>b[1]-a[1]);return `<div class="card">
+    <div class="card-h"><h2>Sektör dağılımı</h2><span class="xs faint">${l.length} sektör</span></div>
+    ${l.map(([sk,p])=>`<div class="pf-sek"><span class="small">${esc(sk)}</span><b class="small" style="text-align:right">%${nf(p,0)}</b><span class="bar"><i style="width:${nf(p,1).replace(",",".")}%;background:var(--brass)"></i></span></div>`).join("")}
+    ${l.length===1&&o.satir.length>1?`<p class="xs muted" style="margin-top:8px">Tüm hisselerin aynı sektörde; sektöre gelen kötü bir haber hepsini birlikte düşürür.</p>`:""}
+  </div>`})():""}
   ${PF.kap.length?`<div class="card"><div class="card-h"><h2>Kapanan işlemler</h2><span class="small ${o.gerc>=0?"up":"down"}">${kzTl(o.gerc)}</span></div>
     <div class="kv">${PF.kap.slice(0,30).map(x=>`<div><span>${x.k} <span class="xs faint">${esc(dLbl(String(x.t).slice(0,10)))}</span></span><b class="${x.kz>=0?"up":"down"}">${kzTl(x.kz)}</b></div>`).join("")}</div></div>`:""}
   <div class="card">
@@ -1218,9 +1304,13 @@ $("#p-portfoy").addEventListener("click",e=>{
   if(e.target.closest("#pfAc")){const f=$("#pfForm");f.hidden=!f.hidden;e.target.closest("#pfAc").textContent=f.hidden?"İşlem ekle":"Kapat";if(!f.hidden)$("#pfK").focus();return}
   const y=e.target.closest("[data-yon]");if(y){pfYon=y.dataset.yon;document.querySelectorAll("#pfYon button").forEach(b=>b.setAttribute("aria-pressed",b===y));return}
   if(e.target.closest("#pfVer")){$("#pfKod").value="JARVIS1:"+btoa(unescape(encodeURIComponent(JSON.stringify(PF))));$("#pfKod").select();return}
-  if(e.target.closest("#pfYukle")){const v=$("#pfKod").value.trim();try{const d=JSON.parse(decodeURIComponent(escape(atob(v.replace(/^JARVIS1:/,"")))));if(!Array.isArray(d.h))throw 0;PF={h:d.h,kap:d.kap||[],isl:d.isl||[]};pfKaydet();pfMesaj="Portföy yüklendi."}catch(err){pfMesaj="Kod okunamadı. Tamamını kopyaladığından emin ol."}renderPortfoy();return}
+  if(e.target.closest("#pfYukle")){const v=$("#pfKod").value.trim();try{const d=JSON.parse(decodeURIComponent(escape(atob(v.replace(/^JARVIS1:/,"")))));if(!Array.isArray(d.h))throw 0;PF={h:d.h,kap:d.kap||[],isl:d.isl||[],plan:d.plan||{}};pfKaydet();pfMesaj="Portföy yüklendi."}catch(err){pfMesaj="Kod okunamadı. Tamamını kopyaladığından emin ol."}renderPortfoy();return}
 });
-$("#p-portfoy").addEventListener("input",e=>{if(e.target.id==="pfK"){const k=e.target.value.trim().toUpperCase(),px=pfFiyat(k);if(px!=null&&!$("#pfF").value)$("#pfF").value=px}});
+$("#p-portfoy").addEventListener("change",e=>{const i=e.target.closest("[data-plan]");if(!i)return;
+  const k=i.dataset.plan,v=parseFloat(i.value);PF.plan[k]=PF.plan[k]||{};if(v>0)PF.plan[k][i.dataset.t]=v;else delete PF.plan[k][i.dataset.t];
+  if(!Object.keys(PF.plan[k]).length)delete PF.plan[k];pfKaydet();renderPortfoy()});
+$("#p-portfoy").addEventListener("input",e=>{if(e.target.id==="pfHK"||e.target.id==="pfHT"){pfHesK=$("#pfHK").value;pfHesT=$("#pfHT").value;$("#pfHS").innerHTML=pfHesapla();return}
+  if(e.target.id==="pfK"){const k=e.target.value.trim().toUpperCase(),px=pfFiyat(k);if(px!=null&&!$("#pfF").value)$("#pfF").value=px}});
 $("#p-portfoy").addEventListener("submit",e=>{e.preventDefault();
   const k=$("#pfK").value.trim().toUpperCase(),adet=parseInt($("#pfA").value,10),fiyat=parseFloat($("#pfF").value);
   if(!k||!(adet>0)||!(fiyat>0))return;
@@ -1293,7 +1383,7 @@ function gecikmeBilgi(){if($("#onay"))return;const d=document.createElement("div
   document.body.appendChild(d);document.body.classList.add("kilit");
   const kapat=()=>{d.remove();document.body.classList.remove("kilit")};$("#onayKapat").onclick=kapat;d.onclick=e=>{if(e.target===d)kapat()}}
 $("#live").addEventListener("click",gecikmeBilgi);$("#live").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")gecikmeBilgi()});
-function pfYenile(){const f=$("#pfForm");if(f&&!f.hidden)return;renderPortfoy()}
+function pfYenile(){const f=$("#pfForm"),ae=document.activeElement;if(f&&!f.hidden)return;if(ae&&/INPUT|TEXTAREA/.test(ae.tagName)&&ae.closest("#p-portfoy"))return;renderPortfoy()}
 function renderAll(){rebuild();if($("#q")&&$("#idx")){$("#idx").innerHTML=idxCard();drawIdx();renderRows()}else renderMarket();renderOutlook();renderNews();renderFunds();pfYenile();updateLive();FKC={};if(cur&&!$("#p-detay").hidden)openDetail(cur.k,true);if(curF&&!$("#p-fondetay").hidden)openFund(curF,true)}
 function flash(){document.body.classList.add("flash");setTimeout(()=>document.body.classList.remove("flash"),1500)}
 
