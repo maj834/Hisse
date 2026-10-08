@@ -1,13 +1,13 @@
-06.10 17:15 ai.yml
-17:15:22 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-17:15:25 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-17:15:25 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-17:15:25 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-17:15:25 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-17:15:25 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-17:15:25 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-17:15:42 haber AI: @cf/openai/gpt-oss-120b 1 hisse, 3 sektör etkisi
-17:15:42 gündem: {'tavily': 290, 'alphavantage': 4, 'marketaux': 38} kalan kredi
+08.10 23:43 ai.yml
+23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+23:43:11 haber AI: @cf/openai/gpt-oss-120b 3 hisse, 3 sektör etkisi
+23:43:11 gündem: {'tavily': 282, 'alphavantage': 4, 'marketaux': 31} kalan kredi
 Traceback (most recent call last):
   File "/home/runner/work/Hisse/Hisse/scraper/ai_degerlendir.py", line 971, in <module>
     sys.exit(main())
