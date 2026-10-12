@@ -1,13 +1,14 @@
-08.10 23:43 ai.yml
-23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-23:42:57 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-23:43:11 haber AI: @cf/openai/gpt-oss-120b 3 hisse, 3 sektör etkisi
-23:43:11 gündem: {'tavily': 282, 'alphavantage': 4, 'marketaux': 31} kalan kredi
+12.10 19:47 ai.yml
+19:47:06 Alpha Vantage: Thank you for using Alpha Vantage! This is a premium endpoint. You may subscribe to any of the premium plans at https://
+19:47:11 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+19:47:11 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+19:47:11 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+19:47:11 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+19:47:11 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+19:47:12 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+19:47:12 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+19:47:20 haber AI: @cf/openai/gpt-oss-120b 2 hisse, 2 sektör etkisi
+19:47:20 gündem: {'tavily': 278, 'alphavantage': 4, 'marketaux': 38} kalan kredi
 Traceback (most recent call last):
   File "/home/runner/work/Hisse/Hisse/scraper/ai_degerlendir.py", line 971, in <module>
     sys.exit(main())
