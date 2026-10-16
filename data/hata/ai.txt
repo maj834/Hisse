@@ -1,14 +1,14 @@
-12.10 19:47 ai.yml
-19:47:06 Alpha Vantage: Thank you for using Alpha Vantage! This is a premium endpoint. You may subscribe to any of the premium plans at https://
-19:47:11 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-19:47:11 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-19:47:11 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-19:47:11 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-19:47:11 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-19:47:12 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-19:47:12 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
-19:47:20 haber AI: @cf/openai/gpt-oss-120b 2 hisse, 2 sektör etkisi
-19:47:20 gündem: {'tavily': 278, 'alphavantage': 4, 'marketaux': 38} kalan kredi
+16.10 15:30 ai.yml
+15:29:50 Alpha Vantage: Thank you for using Alpha Vantage! This is a premium endpoint. You may subscribe to any of the premium plans at https://
+15:29:58 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+15:29:58 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+15:29:59 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+15:29:59 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+15:29:59 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+15:29:59 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+15:29:59 Marketaux 401 {"error":{"code":"invalid_api_token","message":"An invalid API token was supplied."}}
+15:30:11 haber AI: @cf/openai/gpt-oss-120b 1 hisse, 3 sektör etkisi
+15:30:11 gündem: {'tavily': 266, 'alphavantage': 4, 'marketaux': 38} kalan kredi
 Traceback (most recent call last):
   File "/home/runner/work/Hisse/Hisse/scraper/ai_degerlendir.py", line 971, in <module>
     sys.exit(main())
